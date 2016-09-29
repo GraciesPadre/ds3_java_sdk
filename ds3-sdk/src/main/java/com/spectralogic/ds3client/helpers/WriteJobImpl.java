@@ -27,6 +27,9 @@ import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
+import com.spectralogic.ds3client.helpers.strategies.chunkallocation.ChunkAllocationRetryBehavior;
+import com.spectralogic.ds3client.helpers.strategies.chunkallocation.ChunkAllocationRetryBehaviorFactory;
+import com.spectralogic.ds3client.helpers.strategies.chunkallocation.RetryIterationFailureCallback;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
@@ -58,6 +61,8 @@ class WriteJobImpl extends JobImpl {
     private Ds3ClientHelpers.MetadataAccess metadataAccess = null;
     private ChecksumFunction checksumFunction = null;
 
+    private final ChunkAllocationRetryBehavior chunkAllocationRetryBehavior;
+
     public WriteJobImpl(
             final Ds3Client client,
             final MasterObjectList masterObjectList,
@@ -85,6 +90,15 @@ class WriteJobImpl extends JobImpl {
         this.eventRunner = eventRunner;
 
         this.checksumType = type;
+
+        this.chunkAllocationRetryBehavior = ChunkAllocationRetryBehaviorFactory.make(retryAfter,
+                new RetryIterationFailureCallback() {
+                    @Override
+                    public void onFailure(final int iterationNumber) {
+                        throw new Ds3NoMoreRetriesException(iterationNumber)
+                    }
+                },
+                retryDelay);
     }
 
     @Override
