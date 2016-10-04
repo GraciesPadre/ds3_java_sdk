@@ -15,6 +15,7 @@
 
 package com.spectralogic.ds3client.helpers;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
@@ -27,6 +28,9 @@ import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
+import com.spectralogic.ds3client.helpers.strategies.chunkallocation.ChunkAllocationBehavior;
+import com.spectralogic.ds3client.helpers.strategies.chunkallocation.ChunkAllocationBehaviorFactory;
+import com.spectralogic.ds3client.helpers.strategies.chunkallocation.DelayBehavior;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
@@ -51,21 +55,20 @@ class WriteJobImpl extends JobImpl {
     private final Set<ChecksumListener> checksumListeners;
     private final Set<WaitingForChunksListener> waitingForChunksListeners;
     private final EventRunner eventRunner;
-    private final int retryAfter; // Negative retryAfter value represent infinity retries
-    private final int retryDelay; //Negative value means use default
 
-    private int retryAfterLeft; // The number of retries left
     private Ds3ClientHelpers.MetadataAccess metadataAccess = null;
     private ChecksumFunction checksumFunction = null;
 
-    public WriteJobImpl(
+    private final ChunkAllocationBehavior chunkAllocationBehavior;
+
+    private WriteJobImpl(
             final Ds3Client client,
             final MasterObjectList masterObjectList,
-            final int retryAfter,
             final ChecksumType.Type type,
             final int objectTransferAttempts,
-            final int retryDelay,
-            final EventRunner eventRunner) {
+            final EventRunner eventRunner,
+            final Set<WaitingForChunksListener> waitingForChunksListeners,
+            final ChunkAllocationBehavior chunkAllocationBehavior) {
         super(client, masterObjectList, objectTransferAttempts);
         if (this.masterObjectList == null || this.masterObjectList.getObjects() == null) {
             LOG.info("Job has no data to transfer");
@@ -78,13 +81,14 @@ class WriteJobImpl extends JobImpl {
             this.partTracker = JobPartTrackerFactory
                     .buildPartTracker(Iterables.concat(ReadJobImpl.getAllBlobApiBeans(filteredChunks)), eventRunner);
         }
-        this.retryAfter = this.retryAfterLeft = retryAfter;
-        this.retryDelay = retryDelay;
+
         this.checksumListeners = Sets.newIdentityHashSet();
-        this.waitingForChunksListeners = Sets.newIdentityHashSet();
+        this.waitingForChunksListeners = waitingForChunksListeners;
         this.eventRunner = eventRunner;
 
         this.checksumType = type;
+
+        this.chunkAllocationBehavior = chunkAllocationBehavior;
     }
 
     @Override
@@ -202,52 +206,7 @@ class WriteJobImpl extends JobImpl {
     }
 
     private Objects tryAllocateChunk(final Objects filtered) throws IOException {
-        final AllocateJobChunkSpectraS3Response response =
-                this.client.allocateJobChunkSpectraS3(new AllocateJobChunkSpectraS3Request(filtered.getChunkId().toString()));
-
-        LOG.info("AllocatedJobChunkResponse status: {}", response.getStatus().toString());
-        switch (response.getStatus()) {
-        case ALLOCATED:
-            retryAfterLeft = retryAfter; // Reset the number of retries to the initial value
-            return response.getObjectsResult();
-        case RETRYLATER:
-            try {
-                if (retryAfterLeft == 0) {
-                    throw new Ds3NoMoreRetriesException(this.retryAfter);
-                }
-                retryAfterLeft--;
-
-                final int retryAfter = computeRetryAfter(response.getRetryAfterSeconds());
-                emitWaitingForChunksEvents(retryAfter);
-
-                LOG.debug("Will retry allocate chunk call after {} seconds", retryAfter);
-                Thread.sleep(retryAfter * 1000);
-                return null;
-            } catch (final InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        default:
-            assert false : "This line of code should be impossible to hit."; return null;
-        }
-    }
-
-    private void emitWaitingForChunksEvents(final int retryAfter) {
-        for (final WaitingForChunksListener waitingForChunksListener : waitingForChunksListeners) {
-            eventRunner.emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    waitingForChunksListener.waiting(retryAfter);
-                }
-            });
-        }
-    }
-
-    private int computeRetryAfter(final int retryAfterSeconds) {
-        if (retryDelay == -1) {
-            return retryAfterSeconds;
-        } else {
-            return retryDelay;
-        }
+        return chunkAllocationBehavior.allocateDestinationChunks(filtered);
     }
 
     /**
@@ -296,6 +255,91 @@ class WriteJobImpl extends JobImpl {
         @Override
         public void transferItem(final Ds3Client client, final BulkObject ds3Object) throws IOException {
             WriteJobImpl.this.transferItem(client, ds3Object, putObjectTransferrer);
+        }
+    }
+
+    public static class WriteJobImplBuilder {
+        final Ds3Client client;
+        final MasterObjectList masterObjectList;
+        final ChecksumType.Type type;
+        final int objectTransferAttempts;
+        final EventRunner eventRunner;
+        final Set<WaitingForChunksListener> waitingForChunksListeners;
+        final ChunkAllocationBehavior chunkAllocationBehavior;
+
+        public WriteJobImplBuilder(
+                final Ds3Client client,
+                final MasterObjectList masterObjectList,
+                final int retryAfter,
+                final ChecksumType.Type type,
+                final int objectTransferAttempts,
+                final int retryDelay,
+                final EventRunner eventRunner
+        ) {
+            this.client = client;
+            this.masterObjectList = masterObjectList;
+            this.type = type;
+            this.objectTransferAttempts = objectTransferAttempts;
+            this.eventRunner = eventRunner;
+            this.waitingForChunksListeners = Sets.newIdentityHashSet();
+            this.chunkAllocationBehavior = makeChunkAllocationBehavior(client, retryAfter, retryDelay);
+        }
+
+        private ChunkAllocationBehavior makeChunkAllocationBehavior(final Ds3Client ds3Client,
+                                                                    final int retryAfter,
+                                                                    final int retryDelay) {
+            return ChunkAllocationBehaviorFactory.makeChunkAllocationBehavior(ds3Client,
+                    retryAfter,
+                    retryDelay,
+                    new DelayBehavior.DelayBehaviorCallback() {
+                        @Override
+                        public void onBeforeDelay(final int numSecondsToDelay) {
+                            LOG.debug("Will retry allocate chunk call after {} seconds", numSecondsToDelay);
+                            emitWaitingForChunksEvents(numSecondsToDelay);
+                        }
+                    });
+        }
+
+        private void emitWaitingForChunksEvents(final int retryAfter) {
+            for (final WaitingForChunksListener waitingForChunksListener : waitingForChunksListeners) {
+                eventRunner.emitEvent(new Runnable() {
+                    @Override
+                    public void run() {
+                        waitingForChunksListener.waiting(retryAfter);
+                    }
+                });
+            }
+        }
+
+        public WriteJobImplBuilder(
+                final Ds3Client client,
+                final MasterObjectList masterObjectList,
+                final ChecksumType.Type type,
+                final int objectTransferAttempts,
+                final EventRunner eventRunner,
+                final ChunkAllocationBehavior chunkAllocationBehavior) {
+
+            this.client = client;
+            this.masterObjectList = masterObjectList;
+            this.type = type;
+            this.objectTransferAttempts = objectTransferAttempts;
+            this.eventRunner = eventRunner;
+            this.waitingForChunksListeners = Sets.newIdentityHashSet();
+            this.chunkAllocationBehavior = chunkAllocationBehavior;
+        }
+
+        public WriteJobImpl build() {
+            Preconditions.checkNotNull(client, "client must not be null.");
+            Preconditions.checkNotNull(eventRunner, "eventRunner must not be null.");
+            Preconditions.checkNotNull(chunkAllocationBehavior, "chunkAllocationBehavior must not be null.");
+
+            return new WriteJobImpl(client,
+                    masterObjectList,
+                    type,
+                    objectTransferAttempts,
+                    eventRunner,
+                    waitingForChunksListeners,
+                    chunkAllocationBehavior);
         }
     }
 

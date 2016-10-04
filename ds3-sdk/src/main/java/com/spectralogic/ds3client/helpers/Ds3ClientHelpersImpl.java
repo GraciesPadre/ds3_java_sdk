@@ -115,14 +115,14 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withMaxUploadSize(options.getMaxUploadSize())
                 .withAggregating(options.isAggregating())
                 .withIgnoreNamingConflicts(options.doIgnoreNamingConflicts()));
-        return new WriteJobImpl(
-                this.client,
+        return new WriteJobImpl.WriteJobImplBuilder(this.client,
                 prime.getResult(),
                 this.retryAfter,
                 options.getChecksumType(),
                 this.objectTransferAttempts,
                 this.retryDelay,
-                this.eventRunner);
+                this.eventRunner)
+                .build();
     }
 
     @Override
@@ -192,14 +192,15 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                     jobResponse.getMasterObjectListResult().getRequestType().toString());
         }
         // TODO Need to allow the user to pass in the checksumming information again
-        return new WriteJobImpl(
+        return new WriteJobImpl.WriteJobImplBuilder(
                 this.client,
                 jobResponse.getMasterObjectListResult(),
                 this.retryAfter,
                 ChecksumType.Type.NONE,
                 this.objectTransferAttempts,
                 this.retryDelay,
-                this.eventRunner);
+                this.eventRunner)
+                .build();
     }
 
     @Override
