@@ -18,7 +18,6 @@ package com.spectralogic.ds3client.helpers;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.commands.PutObjectRequest;
@@ -79,7 +78,7 @@ class WriteJobImpl extends JobImpl {
                     this.masterObjectList.getJobId().toString(), this.masterObjectList.getObjects().size());
             this.filteredChunks = filterChunks(this.masterObjectList.getObjects());
             this.partTracker = JobPartTrackerFactory
-                    .buildPartTracker(Iterables.concat(ReadJobImpl.getAllBlobApiBeans(filteredChunks)), eventRunner);
+                    .buildPartTracker(ReadJobImpl.getAllBlobApiBeans(filteredChunks), eventRunner);
         }
 
         this.checksumListeners = Sets.newIdentityHashSet();
@@ -169,7 +168,7 @@ class WriteJobImpl extends JobImpl {
         LOG.debug("Starting job transfer");
         if (this.masterObjectList == null || this.masterObjectList.getObjects() == null) {
             LOG.info("There is nothing to transfer for job"
-                    + ((this.getJobId() == null) ? "" : " " + this.getJobId().toString()));
+                    + (this.getJobId() == null ? "" : " " + this.getJobId().toString()));
             return;
         }
 
