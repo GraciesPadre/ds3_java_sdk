@@ -17,11 +17,24 @@ package com.spectralogic.ds3client.helpers.strategies.chunkallocation;
 
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
+import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
+import com.spectralogic.ds3client.helpers.events.EventRunner;
 
 import java.io.IOException;
+import java.util.Set;
 
-public class ChunkAllocationBehaviorFactory {
+public final class ChunkAllocationBehaviorFactory {
     private ChunkAllocationBehaviorFactory() {
+    }
+
+    public static ChunkAllocationBehavior makeChunkAllocationBehavior(final Ds3Client ds3Client,
+                                                                      final int maxNumIterations,
+                                                                      final int numSecondsToDelay,
+                                                                      final DelayBehavior.DelayBehaviorCallback delayBehaviorCallback) {
+        final RetryBehavior retryBehavior = makeRetryBehavior(maxNumIterations);
+        final DelayBehavior delayBehavior = makeDelayBehavior(numSecondsToDelay, delayBehaviorCallback);
+
+        return new ChunkAllocationBehaviorImpl(ds3Client, retryBehavior, delayBehavior);
     }
 
     public static RetryBehavior makeRetryBehavior(final int maxNumIterations) {
@@ -44,13 +57,8 @@ public class ChunkAllocationBehaviorFactory {
         return new ThreadSleepDelayBehavior(numSecondsToDelay, delayBehaviorCallback);
     }
 
-    public static ChunkAllocationBehavior makeChunkAllocationBehavior(final Ds3Client ds3Client,
-                                                                      final int maxNumIterations,
-                                                                      final int numSecondsToDelay,
-                                                                      final DelayBehavior.DelayBehaviorCallback delayBehaviorCallback) {
-        final RetryBehavior retryBehavior = makeRetryBehavior(maxNumIterations);
-        final DelayBehavior delayBehavior = makeDelayBehavior(numSecondsToDelay, delayBehaviorCallback);
-
-        return new ChunkAllocationBehaviorImpl(ds3Client, retryBehavior, delayBehavior);
+    public static EventBehavior makeEventBehavior(final Set<WaitingForChunksListener> waitingForChunksListeners,
+                                                  final EventRunner eventRunner) {
+        return new EventBehaviorImpl(waitingForChunksListeners, eventRunner);
     }
 }

@@ -21,15 +21,13 @@ import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Sets;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.commands.PutObjectRequest;
-import com.spectralogic.ds3client.commands.spectrads3.AllocateJobChunkSpectraS3Request;
-import com.spectralogic.ds3client.commands.spectrads3.AllocateJobChunkSpectraS3Response;
-import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.strategies.chunkallocation.ChunkAllocationBehavior;
 import com.spectralogic.ds3client.helpers.strategies.chunkallocation.ChunkAllocationBehaviorFactory;
 import com.spectralogic.ds3client.helpers.strategies.chunkallocation.DelayBehavior;
+import com.spectralogic.ds3client.helpers.strategies.chunkallocation.EventBehavior;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
@@ -196,16 +194,16 @@ class WriteJobImpl extends JobImpl {
         }
     }
 
-    private Objects allocateChunk(final Objects filtered) throws IOException {
+    private Objects allocateChunk(final Objects filteredChunk) throws IOException {
         Objects chunk = null;
         while (chunk == null) {
-            chunk = tryAllocateChunk(filtered);
+            chunk = tryAllocateChunk(filteredChunk);
         }
         return chunk;
     }
 
-    private Objects tryAllocateChunk(final Objects filtered) throws IOException {
-        return chunkAllocationBehavior.allocateDestinationChunks(filtered);
+    private Objects tryAllocateChunk(final Objects filteredChunk) throws IOException {
+        return chunkAllocationBehavior.allocateDestinationChunks(filteredChunk);
     }
 
     /**
@@ -287,6 +285,8 @@ class WriteJobImpl extends JobImpl {
         private ChunkAllocationBehavior makeChunkAllocationBehavior(final Ds3Client ds3Client,
                                                                     final int retryAfter,
                                                                     final int retryDelay) {
+            final EventBehavior eventBehavior = ChunkAllocationBehaviorFactory.makeEventBehavior(waitingForChunksListeners,
+                    eventRunner);
             return ChunkAllocationBehaviorFactory.makeChunkAllocationBehavior(ds3Client,
                     retryAfter,
                     retryDelay,
@@ -294,20 +294,9 @@ class WriteJobImpl extends JobImpl {
                         @Override
                         public void onBeforeDelay(final int numSecondsToDelay) {
                             LOG.debug("Will retry allocate chunk call after {} seconds", numSecondsToDelay);
-                            emitWaitingForChunksEvents(numSecondsToDelay);
+                            eventBehavior.emitWaitingForChunksEvents(numSecondsToDelay);
                         }
                     });
-        }
-
-        private void emitWaitingForChunksEvents(final int numSecondsToDelay) {
-            for (final WaitingForChunksListener waitingForChunksListener : waitingForChunksListeners) {
-                eventRunner.emitEvent(new Runnable() {
-                    @Override
-                    public void run() {
-                        waitingForChunksListener.waiting(numSecondsToDelay);
-                    }
-                });
-            }
         }
 
         public WriteJobImplBuilder(
