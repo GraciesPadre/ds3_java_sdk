@@ -299,12 +299,12 @@ class WriteJobImpl extends JobImpl {
                     });
         }
 
-        private void emitWaitingForChunksEvents(final int retryAfter) {
+        private void emitWaitingForChunksEvents(final int numSecondsToDelay) {
             for (final WaitingForChunksListener waitingForChunksListener : waitingForChunksListeners) {
                 eventRunner.emitEvent(new Runnable() {
                     @Override
                     public void run() {
-                        waitingForChunksListener.waiting(retryAfter);
+                        waitingForChunksListener.waiting(numSecondsToDelay);
                     }
                 });
             }
