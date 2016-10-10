@@ -13,8 +13,7 @@
  *  ****************************************************************************
  */
 
-package com.spectralogic.ds3client.helpers.strategies.chunkallocation;
+package com.spectralogic.ds3client.helpers.strategies.chunktransfer;
 
-public interface EventBehavior {
-    void emitWaitingForChunksEvents(final int numSecondsToDelay);
+public interface ChunkTransferBehavior extends ItemTransferrer {
 }

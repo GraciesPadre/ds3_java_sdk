@@ -17,10 +17,8 @@ package com.spectralogic.ds3client.helpers;
 
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.Job;
-import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.MasterObjectList;
 
-import java.io.IOException;
 import java.util.UUID;
 
 abstract class JobImpl implements Job {
@@ -62,23 +60,7 @@ abstract class JobImpl implements Job {
         if (running) throw new IllegalStateException("You cannot modify a job after calling transfer");
     }
 
-    protected void transferItem(
-            final Ds3Client client,
-            final BulkObject ds3Object,
-            final ChunkTransferrer.ItemTransferrer itemTransferrer)
-            throws IOException
-    {
-        int objectTransfersAttempted = 0;
-
-        while(true) {
-            try {
-                itemTransferrer.transferItem(client, ds3Object);
-                break;
-            } catch (final Throwable t) {
-                if (ExceptionClassifier.isUnrecoverableException(t) || ++objectTransfersAttempted >= objectTransferAttempts) {
-                    throw t;
-                }
-            }
-        }
+    protected int getObjectTransferAttempts() {
+        return objectTransferAttempts;
     }
 }

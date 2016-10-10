@@ -21,7 +21,8 @@ import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Sets;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.commands.PutObjectRequest;
-import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
+import com.spectralogic.ds3client.helpers.strategies.chunktransfer.ChunkTransferBehaviorFactory;
+import com.spectralogic.ds3client.helpers.strategies.chunktransfer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.strategies.chunkallocation.ChunkAllocationBehavior;
@@ -176,7 +177,7 @@ class WriteJobImpl extends JobImpl {
                 partTracker,
                 ImmutableMap.<String, ImmutableMultimap<BulkObject,Range>>of())) {
             final ChunkTransferrer chunkTransferrer = new ChunkTransferrer(
-                new PutObjectTransferrerRetryDecorator(jobState),
+                ChunkTransferBehaviorFactory.makeRetryBehavior(getObjectTransferAttempts(), new PutObjectTransferrer(jobState)),
                 this.client,
                 jobState.getPartTracker(),
                 this.maxParallelRequests
@@ -240,19 +241,6 @@ class WriteJobImpl extends JobImpl {
             }
         }
         return filtered;
-    }
-
-    private final class PutObjectTransferrerRetryDecorator implements ItemTransferrer {
-        private final PutObjectTransferrer putObjectTransferrer;
-
-        private PutObjectTransferrerRetryDecorator(final JobState jobState) {
-            putObjectTransferrer = new PutObjectTransferrer(jobState);
-        }
-
-        @Override
-        public void transferItem(final Ds3Client client, final BulkObject ds3Object) throws IOException {
-            WriteJobImpl.this.transferItem(client, ds3Object, putObjectTransferrer);
-        }
     }
 
     public static class WriteJobImplBuilder {

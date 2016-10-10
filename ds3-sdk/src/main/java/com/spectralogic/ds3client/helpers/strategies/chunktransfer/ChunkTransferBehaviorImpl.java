@@ -13,8 +13,22 @@
  *  ****************************************************************************
  */
 
-package com.spectralogic.ds3client.helpers.strategies.chunkallocation;
+package com.spectralogic.ds3client.helpers.strategies.chunktransfer;
 
-public interface EventBehavior {
-    void emitWaitingForChunksEvents(final int numSecondsToDelay);
+import com.spectralogic.ds3client.Ds3Client;
+import com.spectralogic.ds3client.models.BulkObject;
+
+import java.io.IOException;
+
+public class ChunkTransferBehaviorImpl implements ChunkTransferBehavior {
+    final RetryBehavior retryBehavior;
+
+    public ChunkTransferBehaviorImpl(final RetryBehavior retryBehavior) {
+        this.retryBehavior = retryBehavior;
+    }
+
+    @Override
+    public void transferItem(final Ds3Client client, final BulkObject ds3Object) throws IOException {
+        retryBehavior.transferItem(client, ds3Object);
+    }
 }

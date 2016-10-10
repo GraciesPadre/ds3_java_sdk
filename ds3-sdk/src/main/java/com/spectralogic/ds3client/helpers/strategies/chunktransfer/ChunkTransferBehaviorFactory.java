@@ -13,8 +13,12 @@
  *  ****************************************************************************
  */
 
-package com.spectralogic.ds3client.helpers.strategies.chunkallocation;
+package com.spectralogic.ds3client.helpers.strategies.chunktransfer;
 
-public interface EventBehavior {
-    void emitWaitingForChunksEvents(final int numSecondsToDelay);
+public final class ChunkTransferBehaviorFactory {
+    private ChunkTransferBehaviorFactory() { }
+
+    public static final RetryBehavior makeRetryBehavior(final int maxNumTransferAttempts, final ItemTransferrer itemTransferrer) {
+        return new MaxIterationRetryBehavior(maxNumTransferAttempts, itemTransferrer);
+    }
 }

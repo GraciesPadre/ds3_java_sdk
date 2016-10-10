@@ -22,14 +22,15 @@ import com.spectralogic.ds3client.commands.GetObjectResponse;
 import com.spectralogic.ds3client.commands.spectrads3.GetJobChunksReadyForClientProcessingSpectraS3Request;
 import com.spectralogic.ds3client.commands.spectrads3.GetJobChunksReadyForClientProcessingSpectraS3Response;
 import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
-import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
+import com.spectralogic.ds3client.helpers.strategies.chunktransfer.ChunkTransferBehaviorFactory;
 import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.networking.Metadata;
 import com.spectralogic.ds3client.utils.Guard;
+import com.spectralogic.ds3client.helpers.strategies.chunktransfer.ItemTransferrer;
 
 import java.io.IOException;
 import java.util.List;
@@ -160,7 +161,7 @@ class ReadJobImpl extends JobImpl {
                 this.masterObjectList.getObjects(),
                 partTracker, blobToRanges)) {
             final ChunkTransferrer chunkTransferrer = new ChunkTransferrer(
-                new GetObjectTransferrerRetryDecorator(jobState),
+                ChunkTransferBehaviorFactory.makeRetryBehavior(getObjectTransferAttempts(), new GetObjectTransferrer(jobState)),
                 this.client,
                 jobState.getPartTracker(),
                 this.maxParallelRequests
@@ -217,19 +218,6 @@ class ReadJobImpl extends JobImpl {
                     waitingForChunksListener.waiting(secondsToRetry);
                 }
             });
-        }
-    }
-
-    private final class GetObjectTransferrerRetryDecorator implements ItemTransferrer {
-        private final GetObjectTransferrer getObjectTransferrer;
-
-        private GetObjectTransferrerRetryDecorator(final JobState jobState) {
-            getObjectTransferrer = new GetObjectTransferrer(jobState);
-        }
-
-        @Override
-        public void transferItem(final Ds3Client client, final BulkObject ds3Object) throws IOException {
-            ReadJobImpl.this.transferItem(client, ds3Object, getObjectTransferrer);
         }
     }
 

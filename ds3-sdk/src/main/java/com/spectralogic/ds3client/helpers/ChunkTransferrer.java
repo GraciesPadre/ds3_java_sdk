@@ -21,6 +21,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.spectralogic.ds3client.Ds3Client;
+import com.spectralogic.ds3client.helpers.strategies.chunktransfer.ItemTransferrer;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.JobNode;
@@ -39,10 +40,6 @@ class ChunkTransferrer {
     private final Ds3Client mainClient;
     private final JobPartTracker partTracker;
     private final int maxParallelRequests;
-
-    public interface ItemTransferrer {
-        void transferItem(Ds3Client client, BulkObject ds3Object) throws IOException;
-    }
 
     public ChunkTransferrer(
             final ItemTransferrer transferrer,
