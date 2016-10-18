@@ -26,7 +26,6 @@ import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.models.Contents;
 import com.spectralogic.ds3client.models.bulk.Ds3Object;
 import com.spectralogic.ds3client.utils.ResourceUtils;
-import com.spectralogic.ds3client.IntValue;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
@@ -53,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.spectralogic.ds3client.integration.Util.deleteAllContents;
 
@@ -161,7 +161,7 @@ public class JobImpl_Test {
     public void testWriteObjectCompletionEventsPopulateCorrectJobPartTracker()
             throws IOException, URISyntaxException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, NoSuchFieldException, ClassNotFoundException
     {
-        final IntValue intValue = new IntValue();
+        final AtomicInteger intValue = new AtomicInteger();
 
 
 
@@ -170,7 +170,7 @@ public class JobImpl_Test {
 
             @Override
             public void objectCompleted(final String name) {
-                intValue.increment();
+                intValue.addAndGet(1);
                 assertTrue(bookTitles.contains(name));
                 assertEquals(1, ++numCompletedObjects);
             }
@@ -193,7 +193,7 @@ public class JobImpl_Test {
 
         jobImplJobPartDecoratorPair.getJobPartTrackerDecorator().completePart(FILE_NAMES[0], new ObjectPart(0, bookSize));
 
-        assertEquals(1, intValue.getValue());
+        assertEquals(1, intValue.get());
     }
 
     private enum AccessMode {
@@ -325,14 +325,14 @@ public class JobImpl_Test {
     public void testWriteObjectCompletionPopulatesInternalJobPartTrackers()
             throws NoSuchMethodException, IOException, ClassNotFoundException, URISyntaxException, IllegalAccessException, InvocationTargetException, NoSuchFieldException
     {
-        final IntValue intValue = new IntValue();
+        final AtomicInteger intValue = new AtomicInteger();
 
         final ObjectCompletedListener objectCompletedListener = new ObjectCompletedListener() {
             private int numCompletedObjects = 0;
 
             @Override
             public void objectCompleted(final String name) {
-                intValue.increment();
+                intValue.addAndGet(1);
                 assertTrue(bookTitles.contains(name));
                 assertEquals(1, ++numCompletedObjects);
             }
@@ -375,14 +375,14 @@ public class JobImpl_Test {
     @Test
     public void testWriteObjectCompletionFiresInternalHandlersFirst()
             throws NoSuchMethodException, IOException, ClassNotFoundException, URISyntaxException, IllegalAccessException, InvocationTargetException, NoSuchFieldException {
-        final IntValue intValue = new IntValue();
+        final AtomicInteger intValue = new AtomicInteger();
 
         final ObjectCompletedListener objectCompletedListener = new ObjectCompletedListener() {
             private int numCompletedObjects = 0;
 
             @Override
             public void objectCompleted(final String name) {
-                intValue.increment();
+                intValue.addAndGet(1);
                 assertTrue(bookTitles.contains(name));
                 assertEquals(1, ++numCompletedObjects);
             }
@@ -575,14 +575,14 @@ public class JobImpl_Test {
     public void testWriteObjectRemovesEventsFromCorrectPartTracker()
             throws IOException, URISyntaxException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, NoSuchFieldException, ClassNotFoundException
     {
-        final IntValue intValue = new IntValue();
+        final AtomicInteger intValue = new AtomicInteger();
 
         final ObjectCompletedListener objectCompletedListener = new ObjectCompletedListener() {
             private int numCompletedObjects = 0;
 
             @Override
             public void objectCompleted(final String name) {
-                intValue.increment();
+                intValue.addAndGet(1);
                 assertTrue(bookTitles.contains(name));
                 assertEquals(1, ++numCompletedObjects);
             }
@@ -639,14 +639,14 @@ public class JobImpl_Test {
     {
         putBigFileIntoBlackPearl();
 
-        final IntValue intValue = new IntValue();
+        final AtomicInteger intValue = new AtomicInteger();
 
         final ObjectCompletedListener objectCompletedListener = new ObjectCompletedListener() {
             private int numCompletedObjects = 0;
 
             @Override
             public void objectCompleted(final String name) {
-                intValue.increment();
+                intValue.addAndGet(1);
                 assertTrue(bookTitles.contains(name));
                 assertEquals(1, ++numCompletedObjects);
             }
@@ -669,7 +669,7 @@ public class JobImpl_Test {
 
         jobImplJobPartDecoratorPair.getJobPartTrackerDecorator().completePart(FILE_NAMES[0], new ObjectPart(0, bookSize));
 
-        assertEquals(1, intValue.getValue());
+        assertEquals(1, intValue.get());
     }
 
     private void putBigFileIntoBlackPearl() throws IOException, URISyntaxException {
@@ -692,14 +692,14 @@ public class JobImpl_Test {
         final String tempPathPrefix = null;
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
-        final IntValue intValue = new IntValue();
+        final AtomicInteger intValue = new AtomicInteger();
 
         final ObjectCompletedListener objectCompletedListener = new ObjectCompletedListener() {
             private int numCompletedObjects = 0;
 
             @Override
             public void objectCompleted(final String name) {
-                intValue.increment();
+                intValue.addAndGet(1);
                 assertTrue(bookTitles.contains(name));
                 assertEquals(1, ++numCompletedObjects);
             }

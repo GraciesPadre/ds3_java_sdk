@@ -18,7 +18,6 @@ package com.spectralogic.ds3client.integration;
 import com.google.common.collect.Lists;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.Ds3ClientImpl;
-import com.spectralogic.ds3client.IntValue;
 import com.spectralogic.ds3client.commands.DeleteObjectRequest;
 import com.spectralogic.ds3client.commands.GetObjectRequest;
 import com.spectralogic.ds3client.commands.GetObjectResponse;
@@ -38,7 +37,6 @@ import com.spectralogic.ds3client.helpers.options.ReadJobOptions;
 import com.spectralogic.ds3client.integration.test.helpers.ABMTestHelper;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShim;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory;
-import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimWithFailedChunkAllocation;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageIds;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageUtil;
 import com.spectralogic.ds3client.models.ChecksumType;
@@ -48,7 +46,6 @@ import com.spectralogic.ds3client.models.bulk.Ds3Object;
 import com.spectralogic.ds3client.models.bulk.PartialDs3Object;
 import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.utils.ResourceUtils;
-import com.spectralogic.ds3client.IntValue;
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -67,6 +64,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.spectralogic.ds3client.integration.Util.RESOURCE_BASE_NAME;
 import static com.spectralogic.ds3client.integration.Util.deleteAllContents;
@@ -297,7 +295,7 @@ public class GetJobManagement_Test {
                     maxNumObjectTransferAttempts);
 
             final Ds3ClientHelpers.Job job = ds3ClientHelpers.startReadJob(BUCKET_NAME, filesToGet);
-            final IntValue intValue = new IntValue();
+            final AtomicInteger intValue = new AtomicInteger();
 
             job.attachObjectCompletedListener(new ObjectCompletedListener() {
                 int numPartsCompleted = 0;
@@ -305,13 +303,13 @@ public class GetJobManagement_Test {
                 @Override
                 public void objectCompleted(final String name) {
                     assertEquals(1, ++numPartsCompleted);
-                    intValue.increment();
+                    intValue.addAndGet(1);
                 }
             });
 
             job.transfer(new FileObjectGetter(tempDirectory));
 
-            assertEquals(1, intValue.getValue());
+            assertEquals(1, intValue.get());
 
             try (final InputStream originalFileStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(DIR_NAME + FILE_NAME)) {
                 final byte[] first200Bytes = new byte[200];
@@ -344,12 +342,12 @@ public class GetJobManagement_Test {
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
         try {
-            final IntValue numFailuresRecorded = new IntValue();
+            final AtomicInteger numFailuresRecorded = new AtomicInteger();
 
             final FailureEventListener failureEventListener = new FailureEventListener() {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
-                    numFailuresRecorded.increment();
+                    numFailuresRecorded.addAndGet(1);
                     assertEquals(FailureEvent.FailureActivity.GettingObject, failureEvent.doingWhat());
                 }
             };
@@ -361,7 +359,7 @@ public class GetJobManagement_Test {
             try {
                 readJob.transfer(new FileObjectGetter(tempDirectory));
             } catch (final IOException e) {
-                assertEquals(1, numFailuresRecorded.getValue());
+                assertEquals(1, numFailuresRecorded.get());
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
@@ -402,12 +400,12 @@ public class GetJobManagement_Test {
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
         try {
-            final IntValue numFailuresRecorded = new IntValue();
+            final AtomicInteger numFailuresRecorded = new AtomicInteger();
 
             final FailureEventListener failureEventListener = new FailureEventListener() {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
-                    numFailuresRecorded.increment();
+                    numFailuresRecorded.addAndGet(1);
                     assertEquals(FailureEvent.FailureActivity.GettingObject, failureEvent.doingWhat());
                 }
             };
@@ -419,7 +417,7 @@ public class GetJobManagement_Test {
             try {
                 readJob.transfer(new FileObjectGetter(tempDirectory));
             } catch (final IOException e) {
-                assertEquals(1, numFailuresRecorded.getValue());
+                assertEquals(1, numFailuresRecorded.get());
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());

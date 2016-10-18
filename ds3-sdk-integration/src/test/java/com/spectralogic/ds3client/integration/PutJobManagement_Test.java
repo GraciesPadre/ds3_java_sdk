@@ -18,7 +18,6 @@ package com.spectralogic.ds3client.integration;
 import com.google.common.collect.Lists;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.Ds3ClientImpl;
-import com.spectralogic.ds3client.IntValue;
 import com.spectralogic.ds3client.commands.*;
 import com.spectralogic.ds3client.commands.spectrads3.*;
 import com.spectralogic.ds3client.commands.spectrads3.notifications.*;
@@ -40,9 +39,6 @@ import com.spectralogic.ds3client.networking.FailedRequestException;
 import com.spectralogic.ds3client.utils.ByteArraySeekableByteChannel;
 import com.spectralogic.ds3client.utils.ResourceUtils;
 
-import com.spectralogic.ds3client.IntValue;
-
-import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimWithFailedChunkAllocation;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory.ClientFailureType;
 
 import org.apache.commons.io.FileUtils;
@@ -62,6 +58,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShim;
 
 import static com.spectralogic.ds3client.integration.Util.RESOURCE_BASE_NAME;
@@ -860,7 +858,7 @@ public class PutJobManagement_Test {
                     maxNumBlockAllocationRetries,
                     maxNumObjectTransferAttempts);
 
-            final IntValue intValue = new IntValue();
+            final AtomicInteger intValue = new AtomicInteger();
 
             final Ds3ClientHelpers.Job writeJob = ds3ClientHelpers.startWriteJob(BUCKET_NAME, objects);
             writeJob.attachObjectCompletedListener(new ObjectCompletedListener() {
@@ -870,7 +868,7 @@ public class PutJobManagement_Test {
                 public void objectCompleted(final String name) {
                     assertTrue(bookTitles.contains(name));
                     assertEquals(1, ++numCompletedObjects);
-                    intValue.increment();
+                    intValue.addAndGet(1);
                 }
             });
 
@@ -886,7 +884,7 @@ public class PutJobManagement_Test {
                 return;
             }
 
-            assertEquals(1, intValue.getValue());
+            assertEquals(1, intValue.get());
 
             final GetBucketResponse request = ds3ClientShim.getBucket(new GetBucketRequest(BUCKET_NAME));
             final ListBucketResult result = request.getListBucketResult();
@@ -949,7 +947,7 @@ public class PutJobManagement_Test {
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
         try {
-            final IntValue numFailureEventsFired = new IntValue();
+            final AtomicInteger numFailureEventsFired = new AtomicInteger();
 
             final int maxNumObjectTransferAttempts = 1;
             final Ds3ClientHelpers.Job writeJob = createWriteJobWithObjectsReadyToTransfer(maxNumObjectTransferAttempts,
@@ -958,7 +956,7 @@ public class PutJobManagement_Test {
             final FailureEventListener failureEventListener = new FailureEventListener() {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
-                    numFailureEventsFired.increment();
+                    numFailureEventsFired.addAndGet(1);
                     assertEquals(FailureEvent.FailureActivity.PuttingObject, failureEvent.doingWhat());
                 }
             };
@@ -968,7 +966,7 @@ public class PutJobManagement_Test {
             try {
                 writeJob.transfer(new FileObjectPutter(tempDirectory));
             } catch (final Ds3NoMoreRetriesException e) {
-                assertEquals(1, numFailureEventsFired.getValue());
+                assertEquals(1, numFailureEventsFired.get());
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
@@ -1012,7 +1010,7 @@ public class PutJobManagement_Test {
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
         try {
-            final IntValue numFailureEventsFired = new IntValue();
+            final AtomicInteger numFailureEventsFired = new AtomicInteger();
 
             final int maxNumObjectTransferAttempts = 1;
             final Ds3ClientHelpers.Job writeJob = createWriteJobWithObjectsReadyToTransfer(maxNumObjectTransferAttempts,
@@ -1021,7 +1019,7 @@ public class PutJobManagement_Test {
             final FailureEventListener failureEventListener = new FailureEventListener() {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
-                    numFailureEventsFired.increment();
+                    numFailureEventsFired.addAndGet(1);
                     assertEquals(FailureEvent.FailureActivity.PuttingObject, failureEvent.doingWhat());
                 }
             };
@@ -1031,7 +1029,7 @@ public class PutJobManagement_Test {
             try {
                 writeJob.transfer(new FileObjectPutter(tempDirectory));
             } catch (final RuntimeException e) {
-                assertEquals(1, numFailureEventsFired.getValue());
+                assertEquals(1, numFailureEventsFired.get());
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
