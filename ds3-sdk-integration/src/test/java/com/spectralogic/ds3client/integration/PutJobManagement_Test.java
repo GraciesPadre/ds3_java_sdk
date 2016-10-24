@@ -29,12 +29,15 @@ import com.spectralogic.ds3client.helpers.FileObjectPutter;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.options.WriteJobOptions;
+import com.spectralogic.ds3client.helpers.strategy.FileObjectInputStreamBuilder;
+import com.spectralogic.ds3client.helpers.strategy.UrlObjectInputStreamBuilder;
 import com.spectralogic.ds3client.integration.test.helpers.ABMTestHelper;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageIds;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageUtil;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.bulk.Ds3Object;
+import com.spectralogic.ds3client.models.multipart.CompleteMultipartUpload;
 import com.spectralogic.ds3client.networking.FailedRequestException;
 import com.spectralogic.ds3client.utils.ByteArraySeekableByteChannel;
 import com.spectralogic.ds3client.utils.ResourceUtils;
@@ -43,12 +46,22 @@ import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory.
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.http.util.ByteArrayBuffer;
 import org.junit.*;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -116,6 +129,157 @@ public class PutJobManagement_Test {
                     beowulfChannel, Files.size(beowulfPath)));
             assertThat(putObjectResponse.getStatusCode(), is(200));
         } finally {
+            deleteAllContents(client, BUCKET_NAME);
+        }
+    }
+
+    @Test
+    public void testPuttingObjectFromStream() throws IOException, URISyntaxException {
+        try {
+            final String fileName = "beowulf.txt";
+            final Path beowulfPath = ResourceUtils.loadFileResource(RESOURCE_BASE_NAME + fileName);
+            final File beowulfFile = beowulfPath.toFile();
+
+            final FileInputStream fileInputStream = new FileInputStream(beowulfFile);
+
+            try (final BufferedInputStream beowulfInputStream = new BufferedInputStream(fileInputStream)) {
+                final PutObjectRequest putObjectRequest = new PutObjectRequest(BUCKET_NAME, fileName,
+                        beowulfInputStream, Files.size(beowulfPath));
+                final PutObjectResponse putObjectResponse = client.putObject(putObjectRequest);
+                assertEquals(200, putObjectResponse.getStatusCode());
+            }
+        } finally {
+            deleteAllContents(client, BUCKET_NAME);
+        }
+    }
+
+    @Test
+    public void testPuttingObjectUsingFileInputStream() throws IOException {
+        final String fileName = "Gracie.txt";
+
+        final File file = new File(fileName);
+
+        try (final FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+            IOUtils.write("Gracie", fileOutputStream);
+        }
+
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+
+        try (final InputStream inputStream = new FileObjectInputStreamBuilder(Paths.get(System.getProperty("user.dir"))).buildObjectStream(fileName)) {
+            final PutObjectRequest putObjectRequest = new PutObjectRequest(BUCKET_NAME, fileName, inputStream, Files.size(file.toPath()));
+            final PutObjectResponse putObjectResponse = client.putObject(putObjectRequest);
+            assertEquals(200, putObjectResponse.getStatusCode());
+
+            final Ds3ClientHelpers.Job readJob = Ds3ClientHelpers.wrap(client, 1).startReadAllJob(BUCKET_NAME);
+            readJob.transfer(new FileObjectGetter(tempDirectory));
+
+            final File fileCopiedFromBP = Paths.get(tempDirectory.toString(), fileName).toFile();
+            assertTrue(FileUtils.contentEquals(file, fileCopiedFromBP));
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+            deleteAllContents(client, BUCKET_NAME);
+        }
+    }
+
+    @Test
+    public void testPuttingObjectUsingUrlInputStream() throws IOException {
+        final String url = "http://www.sonic.net/~doomer/";
+
+        final String fileName = "doomer.txt";
+
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+
+        final File file = new File(fileName);
+
+        try (final BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(file))) {
+            bufferedOutputStream.write(getUrlContents(url));
+        }
+
+        try (final InputStream inputStream = new UrlObjectInputStreamBuilder().buildObjectStream(url)) {
+            final int fileSize = 1257;
+            final PutObjectRequest putObjectRequest = new PutObjectRequest(BUCKET_NAME, fileName, inputStream, fileSize);
+            final PutObjectResponse putObjectResponse = client.putObject(putObjectRequest);
+            assertEquals(200, putObjectResponse.getStatusCode());
+
+            final int numChunkAllocationAttempts = 1;
+
+            final Ds3ClientHelpers.Job readJob = Ds3ClientHelpers.wrap(client, numChunkAllocationAttempts).startReadAllJob(BUCKET_NAME);
+            readJob.transfer(new FileObjectGetter(tempDirectory));
+
+            final File fileCopiedFromBP = Paths.get(tempDirectory.toString(), fileName).toFile();
+            assertTrue(FileUtils.contentEquals(file, fileCopiedFromBP));
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+            file.delete();
+            deleteAllContents(client, BUCKET_NAME);
+        }
+    }
+
+    private static byte[] getUrlContents(final String urlName) throws IOException {
+        final URL url = new URL(urlName);
+        final URLConnection urlConnection = url.openConnection();
+
+        final int buffSize = 1024 * 1024;
+
+        final ByteArrayBuffer byteArrayBuffer = new ByteArrayBuffer(buffSize);
+
+        final byte[] buffer = new byte[buffSize];
+
+        final int offset = 0;
+
+        try (final BufferedInputStream bufferedInputStream = new BufferedInputStream(urlConnection.getInputStream())) {
+            int numRead;
+
+            do {
+                numRead = bufferedInputStream.read(buffer);
+
+                if (numRead > 0) {
+                    byteArrayBuffer.append(buffer, offset, numRead);
+                }
+            } while (numRead >= 0);
+        }
+
+        return byteArrayBuffer.toByteArray();
+    }
+
+    @Test
+    public void testPuttingFileBiggerThanTransferBufferFromStream() throws IOException, URISyntaxException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+
+        try {
+            final String dirName = "largeFiles/";
+            final String fileName = "lesmis-copies.txt";
+            final Path filePath = ResourceUtils.loadFileResource(dirName + fileName);
+            final File lesmisFile = filePath.toFile();
+
+            try (final FileInputStream fileInputStream = new FileInputStream(lesmisFile)) {
+                final PutObjectRequest putObjectRequest = new PutObjectRequest(BUCKET_NAME, fileName,
+                        fileInputStream, Files.size(filePath));
+                final PutObjectResponse putObjectResponse = client.putObject(putObjectRequest);
+                assertEquals(200, putObjectResponse.getStatusCode());
+
+                final Ds3ClientHelpers.Job readJob = Ds3ClientHelpers.wrap(client, 1)
+                        .startReadAllJob(BUCKET_NAME);
+                readJob.attachObjectCompletedListener(new ObjectCompletedListener() {
+                    @Override
+                    public void objectCompleted(final String name) {
+                        try {
+                            final File originalFile = ResourceUtils.loadFileResource(dirName + fileName).toFile();
+                            final File fileCopiedFromBP = Paths.get(tempDirectory.toString(), fileName).toFile();
+                            assertTrue(FileUtils.contentEquals(originalFile, fileCopiedFromBP));
+                        } catch (final URISyntaxException | IOException e) {
+                            fail("Failure trying to compare file we wrote to file we read.");
+                        }
+                    }
+                });
+
+                readJob.transfer(new FileObjectGetter(tempDirectory));
+            }
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
             deleteAllContents(client, BUCKET_NAME);
         }
     }

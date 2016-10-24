@@ -28,6 +28,7 @@ import org.hamcrest.TypeSafeMatcher;
 import org.mockito.ArgumentMatcher;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
 import java.util.UUID;
@@ -161,7 +162,7 @@ public class RequestMatchers {
                         && item.getObjectName().equals(key)
                         && (item.getJob() == null ? jobId == null : UUID.fromString(item.getJob()).equals(jobId))
                         && item.getOffset() == offset
-                        && channelToString(item.getChannel()).equals(expectedContents);
+                        && readableStreamToString(item.getStream()).equals(expectedContents);
             }
 
             @Override
@@ -181,7 +182,7 @@ public class RequestMatchers {
                         mismatchDescription
                         )
                                 .appendText(", contents: ")
-                        .appendValue(channelToString(item.getChannel()));
+                        .appendValue(readableStreamToString(item.getStream()));
             }
         });
     }
@@ -207,6 +208,14 @@ public class RequestMatchers {
         try {
             channel.position(0);
             return IOUtils.toString(Channels.newReader(channel, "UTF-8"));
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String readableStreamToString(final InputStream inputStream) {
+        try {
+            return IOUtils.toString(inputStream, "UTF-8");
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }

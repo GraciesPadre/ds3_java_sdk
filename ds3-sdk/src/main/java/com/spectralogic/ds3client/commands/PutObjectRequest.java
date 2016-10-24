@@ -16,8 +16,13 @@
 // This code is auto-generated, do not modify
 package com.spectralogic.ds3client.commands;
 
+import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.networking.HttpVerb;
+
+import java.io.BufferedInputStream;
 import java.io.InputStream;
+import java.nio.channels.Channel;
+import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
 import com.spectralogic.ds3client.utils.SeekableByteChannelInputStream;
 import static com.spectralogic.ds3client.utils.Guard.isStringNullOrEmpty;
@@ -45,7 +50,7 @@ public class PutObjectRequest extends AbstractRequest {
     private String job;
 
     private long offset;
-    private SeekableByteChannel channel;
+    private Channel channel;
     private ChecksumType checksum = ChecksumType.none();
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
 
@@ -63,7 +68,16 @@ public class PutObjectRequest extends AbstractRequest {
 
     }
 
-    
+    /** @deprecated use {@link #PutObjectRequest(String, String, InputStream, String, long, long)} instead */
+    @Deprecated
+    public PutObjectRequest(final String bucketName, final String objectName, final InputStream inputStream, final long size) {
+        this.bucketName = bucketName;
+        this.objectName = objectName;
+        this.size = size;
+        this.channel = Channels.newChannel(inputStream);
+        this.stream = StrategyUtils.makeResettableInputStream(inputStream, (int)offset);
+    }
+
     public PutObjectRequest(final String bucketName, final String objectName, final SeekableByteChannel channel, final UUID job, final long offset, final long size) {
         this.bucketName = bucketName;
         this.objectName = objectName;
@@ -93,6 +107,18 @@ public class PutObjectRequest extends AbstractRequest {
 
     }
 
+    public PutObjectRequest(final String bucketName, final String objectName, final InputStream inputStream, final String job, final long offset, final long size) {
+        this.bucketName = bucketName;
+        this.objectName = objectName;
+        this.size = size;
+        this.job = job;
+        this.offset = offset;
+        this.channel = Channels.newChannel(inputStream);
+        this.stream = StrategyUtils.makeResettableInputStream(inputStream, (int)offset);
+
+        this.getQueryParams().put("job", UrlEscapers.urlFragmentEscaper().escape(job).replace("+", "%2B"));
+        this.getQueryParams().put("offset", Long.toString(offset));
+    }
     
     public PutObjectRequest(final String bucketName, final String objectName, final UUID job, final long offset, final long size, final InputStream stream) {
         this.bucketName = bucketName;
@@ -205,7 +231,7 @@ public class PutObjectRequest extends AbstractRequest {
     }
 
 
-    public SeekableByteChannel getChannel() {
+    public Channel getChannel() {
         return this.channel;
     }
 

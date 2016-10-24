@@ -21,9 +21,18 @@ import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.JobNode;
 import com.spectralogic.ds3client.models.Objects;
+import com.spectralogic.ds3client.models.bulk.Ds3Object;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
@@ -84,5 +93,27 @@ public final class StrategyUtils {
             }
         }
         return builder.build();
+    }
+
+    public static InputStream makeResettableInputStream(final InputStream inputStream, final int offset) {
+        final InputStream result = inputStream.markSupported() ? inputStream : new BufferedInputStream(inputStream);
+        result.mark(offset);
+        return result;
+    }
+
+    public static Path resolveForSymbolicLink(final Path path) throws IOException {
+        if (Files.isSymbolicLink(path)) {
+            final Path simLink = Files.readSymbolicLink(path);
+            if (!simLink.isAbsolute()) {
+                // Resolve the path such that the path is relative to the symbolically
+                // linked file's directory
+                final Path symLinkParent = path.toAbsolutePath().getParent();
+                return symLinkParent.resolve(simLink);
+            }
+
+            return simLink;
+        }
+
+        return path;
     }
 }
