@@ -13,7 +13,7 @@
  *  ****************************************************************************
  */
 
-package com.spectralogic.ds3client.helpers.strategy;
+package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.JobPart;

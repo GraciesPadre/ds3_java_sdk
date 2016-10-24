@@ -13,7 +13,7 @@
  *  ****************************************************************************
  */
 
-package com.spectralogic.ds3client.helpers.strategy;
+package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
@@ -23,6 +23,7 @@ import com.spectralogic.ds3client.commands.spectrads3.AllocateJobChunkSpectraS3R
 import com.spectralogic.ds3client.commands.spectrads3.AllocateJobChunkSpectraS3Response;
 import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.JobPart;
+import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.JobNode;
 import com.spectralogic.ds3client.models.MasterObjectList;
@@ -38,9 +39,9 @@ import java.util.UUID;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.buildNodeMap;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
 
-public class PutStreamerStrategy extends BlobStrategy {
+public class PutSequentialStrategy extends BlobStrategy {
 
-    private final static Logger LOG = LoggerFactory.getLogger(PutStreamerStrategy.class);
+    private final static Logger LOG = LoggerFactory.getLogger(PutSequentialStrategy.class);
 
     private final ImmutableMap<UUID, JobNode> uuidJobNodeImmutableMap;
     private final Iterator<Objects> filteredChunkIterator;
@@ -49,7 +50,7 @@ public class PutStreamerStrategy extends BlobStrategy {
 
 
 
-    public PutStreamerStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final ChunkEventHandler chunkEventHandler) {
+    public PutSequentialStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final ChunkEventHandler chunkEventHandler) {
         super(client, masterObjectList, retryAfter, retryDelay, chunkEventHandler);
         this.filteredChunkIterator = filterChunks(masterObjectList.getObjects()).iterator();
         this.uuidJobNodeImmutableMap = buildNodeMap(masterObjectList.getNodes());

@@ -23,8 +23,8 @@ import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
-import com.spectralogic.ds3client.helpers.strategy.BlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.GetStreamerStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialStrategy;
 import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.common.Range;
@@ -97,12 +97,12 @@ class ReadJobImpl extends JobImpl {
         try {
             running = true;
 
-            final BlobStrategy strategy = new GetStreamerStrategy(
+            final BlobStrategy strategy = new GetSequentialStrategy(
                     client,
                     this.masterObjectList,
                     retryAfter,
                     retryDelay,
-                    new GetStreamerStrategy.ChunkEventHandler() {
+                    new GetSequentialStrategy.ChunkEventHandler() {
                         @Override
                         public void emitWaitingForChunksEvents(final int secondsToDelay) {
                             ReadJobImpl.super.emitWaitingForChunksEvents(secondsToDelay);

@@ -13,11 +13,10 @@
  *  ****************************************************************************
  */
 
-package com.spectralogic.ds3client.helpers.strategy;
+package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
-import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -27,6 +26,7 @@ import com.spectralogic.ds3client.commands.spectrads3.GetJobChunksReadyForClient
 import com.spectralogic.ds3client.commands.spectrads3.GetJobChunksReadyForClientProcessingSpectraS3Response;
 import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.JobPart;
+import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.JobNode;
 import com.spectralogic.ds3client.models.MasterObjectList;
@@ -38,7 +38,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-public class GetStreamerStrategy extends BlobStrategy {
+public class GetSequentialStrategy extends BlobStrategy {
 
     private final Set<UUID> processedChunks;
 
@@ -46,7 +46,7 @@ public class GetStreamerStrategy extends BlobStrategy {
     private final Set<String> activeBlobs = new HashSet<>();
     private ImmutableList<JobPart> outstandingJobParts;
 
-    public GetStreamerStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final BlobStrategy.ChunkEventHandler chunkEventHandler) {
+    public GetSequentialStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final BlobStrategy.ChunkEventHandler chunkEventHandler) {
         super(client, masterObjectList, retryAfter, retryDelay, chunkEventHandler);
         this.processedChunks = new HashSet<>();
     }

@@ -21,7 +21,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.models.BulkObject;
-import com.spectralogic.ds3client.helpers.strategy.BlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
