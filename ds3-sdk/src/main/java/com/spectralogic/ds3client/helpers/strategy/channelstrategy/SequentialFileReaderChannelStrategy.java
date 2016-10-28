@@ -18,11 +18,12 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.BulkObjectList;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.channels.ByteChannel;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 public class SequentialFileReaderChannelStrategy extends AbstractSequentialFileStrategy {
     public SequentialFileReaderChannelStrategy(final Path directory) {
@@ -37,10 +38,10 @@ public class SequentialFileReaderChannelStrategy extends AbstractSequentialFileS
         for (final BulkObject blob : blobs.getObjects()) {
             try {
                 if ( ! blobChannelPairs.containsBlob(blob)) {
-                    final ByteChannel byteChannel = new FileInputStream(Paths.get(getDirectory().toString(), blob.getName()).toFile()).getChannel();
+                    final ByteChannel byteChannel = FileChannel.open(Paths.get(getDirectory().toString(), blob.getName()), StandardOpenOption.READ);
                     blobChannelPairs.addChannelForBlob(blob, byteChannel);
                 }
-            } catch (final FileNotFoundException e) {
+            } catch (final IOException e) {
                 if (channelAllocationFailureHandler != null) {
                     channelAllocationFailureHandler.onChannelAllocationFailure(blob.getName(), e);
                 }

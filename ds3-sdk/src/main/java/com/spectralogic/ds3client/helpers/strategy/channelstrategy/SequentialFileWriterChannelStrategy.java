@@ -18,12 +18,13 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.BulkObjectList;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +49,8 @@ public class SequentialFileWriterChannelStrategy extends AbstractSequentialFileS
                     final Path filePath = Paths.get(getDirectory().toString(), blob.getName());
                     createFile(filePath);
 
-                    final FileOutputStream fileOutputStream = new FileOutputStream(filePath.toFile());
-                    final ByteChannel byteChannel = fileOutputStream.getChannel();
+                    final ByteChannel byteChannel = FileChannel.open(filePath, StandardOpenOption.TRUNCATE_EXISTING,
+                            StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 
                     blobChannelPairs.addChannelForBlob(blob, byteChannel);
                 }
