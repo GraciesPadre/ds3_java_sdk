@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import java.lang.String;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+
 import java.util.UUID;
 import java.lang.Boolean;
 
@@ -175,5 +176,13 @@ public class BulkObject {
     @Override
     public String toString() {
         return String.format("name = %s, offset = %d, length %d", name, offset, length);
+    }
+
+    public String getUniqueName() {
+        final StringBuilder stringBuilder = new StringBuilder(getBucket() == null ? "" : getBucket());
+        stringBuilder.append("/");
+        stringBuilder.append(getName() == null ? "" : getName());
+
+        return stringBuilder.toString();
     }
 }

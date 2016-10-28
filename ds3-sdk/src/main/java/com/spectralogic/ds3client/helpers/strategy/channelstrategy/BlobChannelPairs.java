@@ -19,24 +19,84 @@ import com.google.common.collect.ImmutableMap;
 import com.spectralogic.ds3client.models.BulkObject;
 
 import java.nio.channels.ByteChannel;
+import java.util.HashSet;
+import java.util.Set;
 
 public class BlobChannelPairs {
-    private ImmutableMap.Builder<BulkObject, ByteChannel> mapBuilder;
-    private ImmutableMap<BulkObject, ByteChannel> blobChannelPairs;
+    private ImmutableMap<String, BlobChannelPair> blobChannelPairs;
 
-    public void prepare() {
-        mapBuilder = new ImmutableMap.Builder<BulkObject, ByteChannel>();
-    }
+    private BlobChannelPairsState blobChannelPairsState = new InitialState();
 
-    public void add(final BulkObject blob, final ByteChannel byteChannel) {
-        mapBuilder.put(blob, byteChannel);
-    }
-
-    public void commit() {
-        blobChannelPairs = mapBuilder.build();
+    public void addChannelForBlob(final BulkObject blob, final ByteChannel byteChannel) {
+        blobChannelPairsState.addChannelForBlob(blob, byteChannel);
     }
 
     public ByteChannel channelForBlob(final BulkObject blob) {
-        return blobChannelPairs.get(blob);
+        return blobChannelPairsState.channelForBlob(blob);
+    }
+
+    boolean containsBlob(final BulkObject blob) {
+        return blobChannelPairsState.containsBlob(blob);
+    }
+
+    private BlobChannelPairsState transitionToState(final BlobChannelPairsState nextState) {
+        blobChannelPairsState = nextState;
+        return blobChannelPairsState;
+    }
+
+    private interface BlobChannelPairsState {
+        void addChannelForBlob(final BulkObject blob, final ByteChannel byteChannel);
+        boolean containsBlob(final BulkObject blob);
+        ByteChannel channelForBlob(final BulkObject blob);
+    }
+
+    private class InitialState extends AbstractBlobChannelPairsState {
+        private final ImmutableMap.Builder<String, BlobChannelPair> mapBuilder = new ImmutableMap.Builder<>();
+        private final Set<String> blobNames = new HashSet<>();
+
+        @Override
+        public void addChannelForBlob(final BulkObject blob, final ByteChannel byteChannel) {
+            final String blobUniqueName = blob.getUniqueName();
+
+            if ( ! blobNames.contains(blobUniqueName)) {
+                blobNames.add(blobUniqueName);
+                mapBuilder.put(blobUniqueName, new BlobChannelPair(blob, byteChannel));
+            }
+        }
+
+        @Override
+        public boolean containsBlob(final BulkObject blob) {
+            return blobNames.contains(blob.getUniqueName());
+        }
+
+        @Override
+        public ByteChannel channelForBlob(final BulkObject blob) {
+            return transitionToState(new TerminalState(mapBuilder)).channelForBlob(blob);
+        }
+    }
+
+    private static abstract class AbstractBlobChannelPairsState implements BlobChannelPairsState {
+        @Override
+        public void addChannelForBlob(final BulkObject blob, final ByteChannel byteChannel) {
+            // Intentionally empty
+        }
+    }
+
+    private class TerminalState extends AbstractBlobChannelPairsState {
+        private TerminalState(final ImmutableMap.Builder<String, BlobChannelPair> mapBuilder) {
+            blobChannelPairs = mapBuilder.build();
+        }
+
+        @Override
+        public boolean containsBlob(final BulkObject blob) {
+            return blobChannelPairs.keySet().contains(blob.getUniqueName());
+        }
+
+        @Override
+        public ByteChannel channelForBlob(final BulkObject blob) {
+            final BlobChannelPair blobChannelPair = blobChannelPairs.get(blob.getUniqueName());
+
+            return blobChannelPair == null ? null : blobChannelPair.getChannel();
+        }
     }
 }

@@ -18,33 +18,54 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.BulkObjectList;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.channels.ByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class SequentialFileReaderChannelStrategy extends AbstractSequentialFileStrategy {
-    public SequentialFileReaderChannelStrategy(final Path directory) {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class SequentialFileWriterChannelStrategy extends AbstractSequentialFileStrategy {
+    private final static Logger LOG = LoggerFactory.getLogger(SequentialFileWriterChannelStrategy.class);
+
+    public SequentialFileWriterChannelStrategy(final Path directory) {
         super(directory);
     }
 
     @Override
     protected void populateBlobChannelPairs(final BulkObjectList blobs,
-                                          final ChannelAllocationFailureHandler channelAllocationFailureHandler,
-                                          final BlobChannelPairs blobChannelPairs)
+                                            final ChannelAllocationFailureHandler channelAllocationFailureHandler,
+                                            final BlobChannelPairs blobChannelPairs)
     {
         for (final BulkObject blob : blobs.getObjects()) {
             try {
                 if ( ! blobChannelPairs.containsBlob(blob)) {
-                    final ByteChannel byteChannel = new FileInputStream(Paths.get(getDirectory().toString(), blob.getName()).toFile()).getChannel();
+                    Files.createDirectories(getDirectory());
+
+                    final Path filePath = Paths.get(getDirectory().toString(), blob.getName());
+                    createFile(filePath);
+
+                    final FileOutputStream fileOutputStream = new FileOutputStream(filePath.toFile());
+                    final ByteChannel byteChannel = fileOutputStream.getChannel();
+
                     blobChannelPairs.addChannelForBlob(blob, byteChannel);
                 }
-            } catch (final FileNotFoundException e) {
+            } catch (final Throwable t) {
                 if (channelAllocationFailureHandler != null) {
-                    channelAllocationFailureHandler.onChannelAllocationFailure(blob.getName(), e);
+                    channelAllocationFailureHandler.onChannelAllocationFailure(blob.getName(), t);
                 }
             }
+        }
+    }
+
+    private void createFile(final Path filePath) {
+        try {
+            Files.createFile(filePath);
+        } catch (final IOException e) {
+            LOG.info("File already exists", e);
         }
     }
 }
