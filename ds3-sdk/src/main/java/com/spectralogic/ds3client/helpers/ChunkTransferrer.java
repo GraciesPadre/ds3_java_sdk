@@ -20,8 +20,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.spectralogic.ds3client.Ds3Client;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
+import com.spectralogic.ds3client.models.BulkObjectList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +43,7 @@ class ChunkTransferrer implements Closeable {
     private final ListeningExecutorService executor;
 
     public interface ItemTransferrer {
-        void transferItem(Ds3Client client, BulkObject ds3Object) throws IOException;
+        void transferItem(final JobPart jobPart, BulkObject ds3Object) throws IOException;
     }
 
     public ChunkTransferrer(
@@ -56,14 +58,20 @@ class ChunkTransferrer implements Closeable {
     }
 
     public void transferChunks(
-            final BlobStrategy blobStrategy)
-            throws IOException, InterruptedException {
+            final BlobStrategy blobStrategy,
+            final ChannelStrategy channelStrategy)
+            throws IOException, InterruptedException
+    {
         final List<ListenableFuture<?>> tasks = new ArrayList<>();
 
         final Iterable<JobPart> work = blobStrategy.getWork();
 
+        // TODO : Temporarily put the stuff that gets channels & does the transfer in here
+        // so I can see if the integration tests work with the channel implementation
+
         for (final JobPart jobPart : work) {
-            final BulkObject blob = jobPart.getBulkObject();
+            final JobPart transferableJobPart = new JobPart(jobPart, channelStrategy.channelForBlob(jobPart.getBulkObject()));
+            final BulkObject blob = transferableJobPart.getBulkObject();
             final ObjectPart part = new ObjectPart(blob.getOffset(), blob.getLength());
 
             if (this.partTracker.containsPart(blob.getName(), part)) {
@@ -72,7 +80,7 @@ class ChunkTransferrer implements Closeable {
                     @Override
                     public Object call() throws Exception {
                         LOG.debug("Processing {} offset {}", blob.getName(), blob.getOffset());
-                        ChunkTransferrer.this.itemTransferrer.transferItem(jobPart.getClient(), blob);
+                        ChunkTransferrer.this.itemTransferrer.transferItem(transferableJobPart, blob);
                         blobStrategy.blobCompleted(blob);
                         ChunkTransferrer.this.partTracker.completePart(blob.getName(), part);
                         return null;

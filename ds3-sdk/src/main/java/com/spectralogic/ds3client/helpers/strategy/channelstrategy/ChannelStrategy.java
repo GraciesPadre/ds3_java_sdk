@@ -16,10 +16,10 @@
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
 import com.spectralogic.ds3client.models.BulkObject;
-import com.spectralogic.ds3client.models.BulkObjectList;
+
+import java.io.IOException;
+import java.nio.channels.ByteChannel;
 
 public interface ChannelStrategy {
-    BlobChannelPairs channelsForBlobs(final BulkObjectList blobs, final ChannelAllocationFailureHandler channelAllocationFailureHandler);
-    void withBlobCompletionHandler(final BlobCompletionHandler blobCompletionHandler);
-    void completeBlob(final BulkObject blob);
+    ByteChannel channelForBlob(final BulkObject blob) throws IOException;
 }

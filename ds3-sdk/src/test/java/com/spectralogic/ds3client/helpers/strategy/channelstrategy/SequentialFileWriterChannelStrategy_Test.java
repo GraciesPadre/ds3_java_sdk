@@ -35,6 +35,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
 
 public class SequentialFileWriterChannelStrategy_Test {
+    /*
     @Test
     public void testThatMultipleBlobsWithTheSameBucketAndNameMapToTheSameChannel() {
         final String bucketName = "bucket";
@@ -129,4 +130,5 @@ public class SequentialFileWriterChannelStrategy_Test {
             file.delete();
         }
     }
+    */
 }

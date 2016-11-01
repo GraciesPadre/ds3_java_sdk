@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SequentialFileReaderChannelStrategy_Test {
+    /*
     @Test
     public void testThatSequentialFileReaderIsOpenWhenCreated() {
         final String channelName = "Gracie.txt";
@@ -285,4 +286,5 @@ public class SequentialFileReaderChannelStrategy_Test {
         }
 
     }
+    */
 }

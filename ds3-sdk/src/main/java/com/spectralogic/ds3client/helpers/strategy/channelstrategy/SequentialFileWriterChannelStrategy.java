@@ -16,7 +16,6 @@
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
 import com.spectralogic.ds3client.models.BulkObject;
-import com.spectralogic.ds3client.models.BulkObjectList;
 
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
@@ -29,37 +28,26 @@ import java.nio.file.StandardOpenOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SequentialFileWriterChannelStrategy extends AbstractSequentialFileStrategy {
-    private final static Logger LOG = LoggerFactory.getLogger(SequentialFileWriterChannelStrategy.class);
+public class SequentialFileWriterChannelStrategy implements ChannelStrategy {
+    private static final Logger LOG = LoggerFactory.getLogger(SequentialFileWriterChannelStrategy.class);
+
+    private final Path directory;
 
     public SequentialFileWriterChannelStrategy(final Path directory) {
-        super(directory);
+        this.directory = directory;
     }
 
     @Override
-    protected void populateBlobChannelPairs(final BulkObjectList blobs,
-                                            final ChannelAllocationFailureHandler channelAllocationFailureHandler,
-                                            final BlobChannelPairs blobChannelPairs)
-    {
-        for (final BulkObject blob : blobs.getObjects()) {
-            try {
-                if ( ! blobChannelPairs.containsBlob(blob)) {
-                    Files.createDirectories(getDirectory());
+    public ByteChannel channelForBlob(final BulkObject blob) throws IOException {
+        Files.createDirectories(directory);
 
-                    final Path filePath = Paths.get(getDirectory().toString(), blob.getName());
-                    createFile(filePath);
+        final Path filePath = Paths.get(directory.toString(), blob.getName());
+        createFile(filePath);
 
-                    final ByteChannel byteChannel = FileChannel.open(filePath, StandardOpenOption.TRUNCATE_EXISTING,
-                            StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-
-                    blobChannelPairs.addChannelForBlob(blob, byteChannel);
-                }
-            } catch (final Throwable t) {
-                if (channelAllocationFailureHandler != null) {
-                    channelAllocationFailureHandler.onChannelAllocationFailure(blob.getName(), t);
-                }
-            }
-        }
+        return FileChannel.open(filePath,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE);
     }
 
     private void createFile(final Path filePath) {

@@ -28,6 +28,8 @@ import org.hamcrest.TypeSafeMatcher;
 import org.mockito.ArgumentMatcher;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
 import java.util.UUID;
@@ -203,15 +205,19 @@ public class RequestMatchers {
             .appendValue(offset);
     }
 
-    private static String channelToString(final SeekableByteChannel channel) {
+    private static String channelToString(final ByteChannel channel) {
         try {
-            channel.position(0);
-            return IOUtils.toString(Channels.newReader(channel, "UTF-8"));
+            final InputStream inputStream = Channels.newInputStream(channel);
+            if (inputStream.markSupported()) {
+                inputStream.mark(0);
+                inputStream.reset();
+            }
+            return IOUtils.toString(inputStream, "UTF-8");
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
+
     public static GetBucketRequest getBucketHas(final String bucket, final String marker) {
         return argThat(new ArgumentMatcher<GetBucketRequest>() {
             @Override

@@ -90,6 +90,7 @@ abstract class JobImpl implements Job {
     }
 
     protected void transferItem(
+            final JobPart jobPart,
             final Ds3Client client,
             final BulkObject ds3Object,
             final ChunkTransferrer.ItemTransferrer itemTransferrer)
@@ -99,7 +100,7 @@ abstract class JobImpl implements Job {
 
         while(true) {
             try {
-                itemTransferrer.transferItem(client, ds3Object);
+                itemTransferrer.transferItem(jobPart, ds3Object);
                 break;
             } catch (final Throwable t) {
                 if (ExceptionClassifier.isUnrecoverableException(t) || ++objectTransfersAttempted >= objectTransferAttempts) {

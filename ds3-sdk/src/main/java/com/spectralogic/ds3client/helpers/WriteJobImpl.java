@@ -25,6 +25,8 @@ import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
@@ -34,9 +36,14 @@ import com.spectralogic.ds3client.utils.hashing.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.nio.channels.ByteChannel;
+import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Path;
 import java.util.*;
 
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
@@ -115,6 +122,16 @@ class WriteJobImpl extends JobImpl {
                         }
                     });
 
+            final FileObjectPutter fileObjectPutter = (FileObjectPutter)channelBuilder;
+            final Field rootField = fileObjectPutter.getClass().getDeclaredField("root");
+            rootField.setAccessible(true);
+            final Path directory = (Path)rootField.get(fileObjectPutter);
+
+            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(directory);
+
+            // TODO: Create Channel strategy here
+            // TODO: Create transfer strategy instance here -- sequential, random, etc.
+
             try (final JobState jobState = new JobState(
                     channelBuilder,
                     filteredChunks,
@@ -126,7 +143,7 @@ class WriteJobImpl extends JobImpl {
                         this.maxParallelRequests
                 )) {
                     while (jobState.hasObjects()) {
-                        chunkTransferrer.transferChunks(blobStrategy);
+                        chunkTransferrer.transferChunks(blobStrategy, channelStrategy);
                     }
                 }
 
@@ -137,7 +154,7 @@ class WriteJobImpl extends JobImpl {
             }
         } catch (final Throwable t) {
             emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.PuttingObject, t, masterObjectList.getObjects().get(0)));
-            throw t;
+            throw new RuntimeException(t);
         }
     }
 
@@ -165,8 +182,8 @@ class WriteJobImpl extends JobImpl {
         }
 
         @Override
-        public void transferItem(final Ds3Client client, final BulkObject ds3Object) throws IOException {
-            WriteJobImpl.this.transferItem(client, ds3Object, putObjectTransferrer);
+        public void transferItem(final JobPart jobPart, final BulkObject ds3Object) throws IOException {
+            WriteJobImpl.this.transferItem(jobPart, client, ds3Object, putObjectTransferrer);
         }
     }
 
@@ -178,18 +195,16 @@ class WriteJobImpl extends JobImpl {
         }
 
         @Override
-        public void transferItem(final Ds3Client client, final BulkObject ds3Object)
+        public void transferItem(final JobPart jobPart, final BulkObject ds3Object)
                 throws IOException {
-            client.putObject(createRequest(ds3Object));
+            client.putObject(createRequest(jobPart, ds3Object));
         }
 
-        private PutObjectRequest createRequest(final BulkObject ds3Object) throws IOException {
-            final SeekableByteChannel channel = jobState.getChannel(ds3Object.getName(), ds3Object.getOffset(), ds3Object.getLength());
-
+        private PutObjectRequest createRequest(final JobPart jobPart, final BulkObject ds3Object) throws IOException {
             final PutObjectRequest request = new PutObjectRequest(
                     WriteJobImpl.this.masterObjectList.getBucketName(),
                     ds3Object.getName(),
-                    jobState.getChannel(ds3Object.getName(), ds3Object.getOffset(), ds3Object.getLength()),
+                    jobPart.getChannel(),
                     WriteJobImpl.this.getJobId().toString(),
                     ds3Object.getOffset(),
                     ds3Object.getLength()
@@ -204,7 +219,7 @@ class WriteJobImpl extends JobImpl {
                 }
             }
 
-            final String checksum = calculateChecksum(ds3Object, channel);
+            final String checksum = calculateChecksum(ds3Object, jobPart.getChannel());
             if (checksum != null) {
                 request.withChecksum(ChecksumType.value(checksum), WriteJobImpl.this.checksumType);
                 emitChecksumEvents(ds3Object, WriteJobImpl.this.checksumType, checksum);
@@ -213,11 +228,11 @@ class WriteJobImpl extends JobImpl {
             return request;
         }
 
-        private String calculateChecksum(final BulkObject ds3Object, final SeekableByteChannel channel) throws IOException {
+        private String calculateChecksum(final BulkObject ds3Object, final ByteChannel channel) throws IOException {
             if (WriteJobImpl.this.checksumType != ChecksumType.Type.NONE) {
                 if (WriteJobImpl.this.checksumFunction == null) {
                     LOG.info("Calculating {} checksum for blob: {}", WriteJobImpl.this.checksumType.toString(), ds3Object.toString());
-                    final SeekableByteChannelInputStream dataStream = new SeekableByteChannelInputStream(channel);
+                    final InputStream dataStream = Channels.newInputStream(channel);
                     final Hasher hasher = getHasher(WriteJobImpl.this.checksumType);
                     final String checksum = hashInputStream(hasher, dataStream);
                     LOG.info("Computed checksum for blob: {}", checksum);

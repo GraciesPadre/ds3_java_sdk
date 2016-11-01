@@ -25,6 +25,9 @@ import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileWriterChannelStrategy;
 import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.common.Range;
@@ -32,6 +35,8 @@ import com.spectralogic.ds3client.networking.Metadata;
 import com.spectralogic.ds3client.utils.Guard;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
@@ -109,6 +114,13 @@ class ReadJobImpl extends JobImpl {
                         }
                     });
 
+            final FileObjectGetter fileObjectGetter = (FileObjectGetter)channelBuilder;
+            final Field rootField = fileObjectGetter.getClass().getDeclaredField("root");
+            rootField.setAccessible(true);
+            final Path directory = (Path)rootField.get(fileObjectGetter);
+
+            final ChannelStrategy channelStrategy = new SequentialFileWriterChannelStrategy(directory);
+
             try (final JobState jobState = new JobState(
                     channelBuilder,
                     this.masterObjectList.getObjects(),
@@ -119,7 +131,7 @@ class ReadJobImpl extends JobImpl {
                         this.maxParallelRequests
                 )) {
                     while (jobState.hasObjects()) {
-                        chunkTransferrer.transferChunks(strategy);
+                        chunkTransferrer.transferChunks(strategy, channelStrategy);
                     }
                 }
             } catch (final RuntimeException | IOException e) {
@@ -129,7 +141,7 @@ class ReadJobImpl extends JobImpl {
             }
         } catch (final Throwable t) {
             emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.GettingObject, t, masterObjectList.getObjects().get(0)));
-            throw t;
+            throw new RuntimeException(t);
         }
     }
 
@@ -151,8 +163,8 @@ class ReadJobImpl extends JobImpl {
         }
 
         @Override
-        public void transferItem(final Ds3Client client, final BulkObject ds3Object) throws IOException {
-            ReadJobImpl.this.transferItem(client, ds3Object, getObjectTransferrer);
+        public void transferItem(final JobPart jobPart, final BulkObject ds3Object) throws IOException {
+            ReadJobImpl.this.transferItem(jobPart, client, ds3Object, getObjectTransferrer);
         }
     }
 
@@ -164,7 +176,7 @@ class ReadJobImpl extends JobImpl {
         }
 
         @Override
-        public void transferItem(final Ds3Client client, final BulkObject ds3Object)
+        public void transferItem(final JobPart jobPart, final BulkObject ds3Object)
                 throws IOException {
 
             final ImmutableCollection<Range> ranges = getRangesForBlob(blobToRanges, ds3Object);

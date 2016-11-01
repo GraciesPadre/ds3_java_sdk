@@ -25,27 +25,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
-public class SequentialFileReaderChannelStrategy extends AbstractSequentialFileStrategy {
+public class SequentialFileReaderChannelStrategy implements ChannelStrategy {
+    private final Path directory;
+
     public SequentialFileReaderChannelStrategy(final Path directory) {
-        super(directory);
+        this.directory = directory;
     }
 
     @Override
-    protected void populateBlobChannelPairs(final BulkObjectList blobs,
-                                          final ChannelAllocationFailureHandler channelAllocationFailureHandler,
-                                          final BlobChannelPairs blobChannelPairs)
-    {
-        for (final BulkObject blob : blobs.getObjects()) {
-            try {
-                if ( ! blobChannelPairs.containsBlob(blob)) {
-                    final ByteChannel byteChannel = FileChannel.open(Paths.get(getDirectory().toString(), blob.getName()), StandardOpenOption.READ);
-                    blobChannelPairs.addChannelForBlob(blob, byteChannel);
-                }
-            } catch (final IOException e) {
-                if (channelAllocationFailureHandler != null) {
-                    channelAllocationFailureHandler.onChannelAllocationFailure(blob.getName(), e);
-                }
-            }
-        }
+    public ByteChannel channelForBlob(final BulkObject blob) throws IOException {
+        return FileChannel.open(Paths.get(directory.toString(), blob.getName()), StandardOpenOption.READ);
     }
 }
