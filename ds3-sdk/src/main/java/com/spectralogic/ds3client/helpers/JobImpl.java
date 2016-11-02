@@ -103,11 +103,15 @@ abstract class JobImpl implements Job {
                 itemTransferrer.transferItem(jobPart, ds3Object);
                 break;
             } catch (final Throwable t) {
-                if (ExceptionClassifier.isUnrecoverableException(t) || ++objectTransfersAttempted >= objectTransferAttempts) {
+                if (ExceptionClassifier.isUnrecoverableException(t) || ++objectTransfersAttempted >= getObjectTransferAttempts()) {
                     throw t;
                 }
             }
         }
+    }
+
+    protected int getObjectTransferAttempts() {
+        return objectTransferAttempts;
     }
 
     protected EventRunner getEventRunner() {

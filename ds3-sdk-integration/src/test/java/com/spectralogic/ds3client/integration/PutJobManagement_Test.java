@@ -824,6 +824,7 @@ public class PutJobManagement_Test {
                 new ObjectTransferExceptionHandler() {
                     @Override
                     public boolean handleException(final Throwable t) {
+                        t.printStackTrace();
                         fail("Got unexpected exception: " + t.getMessage());
                         return false;
                     }

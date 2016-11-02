@@ -27,6 +27,10 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MaxNumObjectTransferAttemptsBehavior;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.PutSequentialTransferStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
@@ -132,6 +136,15 @@ class WriteJobImpl extends JobImpl {
             // TODO: Create Channel strategy here
             // TODO: Create transfer strategy instance here -- sequential, random, etc.
 
+            final TransferStrategy transferStrategy = new TransferStrategyBuilder()
+                    .withBlobStrategy(blobStrategy)
+                    .withChannelStrategy(channelStrategy)
+                    .withBucketName(masterObjectList.getBucketName())
+                    .withJobId(getJobId().toString())
+                    .withJobPartTracker(getJobPartTracker())
+                    .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
+                    .makeSequentialTransferStrategy();
+
             try (final JobState jobState = new JobState(
                     channelBuilder,
                     filteredChunks,
@@ -143,7 +156,8 @@ class WriteJobImpl extends JobImpl {
                         this.maxParallelRequests
                 )) {
                     while (jobState.hasObjects()) {
-                        chunkTransferrer.transferChunks(blobStrategy, channelStrategy);
+                        // chunkTransferrer.transferChunks(blobStrategy, channelStrategy);
+                        transferStrategy.transfer();
                     }
                 }
 
