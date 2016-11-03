@@ -68,8 +68,7 @@ class ChunkTransferrer implements Closeable {
         // so I can see if the integration tests work with the channel implementation
 
         for (final JobPart jobPart : work) {
-            final JobPart transferableJobPart = new JobPart(jobPart, channelStrategy.acquireChannelForBlob(jobPart.getBulkObject()).getChannel());
-            final BulkObject blob = transferableJobPart.getBulkObject();
+            final BulkObject blob = jobPart.getBulkObject();
             final ObjectPart part = new ObjectPart(blob.getOffset(), blob.getLength());
 
             if (this.partTracker.containsPart(blob.getName(), part)) {
@@ -78,7 +77,7 @@ class ChunkTransferrer implements Closeable {
                     @Override
                     public Object call() throws Exception {
                         LOG.debug("Processing {} offset {}", blob.getName(), blob.getOffset());
-                        ChunkTransferrer.this.itemTransferrer.transferItem(transferableJobPart, blob);
+                        ChunkTransferrer.this.itemTransferrer.transferItem(jobPart, blob);
                         blobStrategy.blobCompleted(blob);
                         ChunkTransferrer.this.partTracker.completePart(blob.getName(), part);
                         return null;

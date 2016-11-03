@@ -18,23 +18,13 @@ package com.spectralogic.ds3client.helpers;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.models.BulkObject;
 
-import java.nio.channels.ByteChannel;
-
 public class JobPart {
     private final Ds3Client client;
     private final BulkObject bulkObject;
-    private final ByteChannel channel;
 
     public JobPart(final Ds3Client client, final BulkObject bulkObject) {
         this.client = client;
         this.bulkObject = bulkObject;
-        this.channel = null;
-    }
-
-    public JobPart(final JobPart jobPart, final ByteChannel channel) {
-        client = jobPart.getClient();
-        bulkObject = jobPart.getBulkObject();
-        this.channel = channel;
     }
 
     public Ds3Client getClient() {
@@ -43,9 +33,5 @@ public class JobPart {
 
     public BulkObject getBulkObject() {
         return bulkObject;
-    }
-
-    public ByteChannel getChannel() {
-        return channel;
     }
 }

@@ -215,7 +215,7 @@ class WriteJobImpl extends JobImpl {
             final PutObjectRequest request = new PutObjectRequest(
                     WriteJobImpl.this.masterObjectList.getBucketName(),
                     ds3Object.getName(),
-                    jobPart.getChannel(),
+                    this.jobState.getChannel(ds3Object.getName(), ds3Object.getOffset(), ds3Object.getLength()),
                     WriteJobImpl.this.getJobId().toString(),
                     ds3Object.getOffset(),
                     ds3Object.getLength()
@@ -230,7 +230,9 @@ class WriteJobImpl extends JobImpl {
                 }
             }
 
-            final String checksum = calculateChecksum(ds3Object, jobPart.getChannel());
+            final String checksum = calculateChecksum(ds3Object,
+                    this.jobState.getChannel(ds3Object.getName(), ds3Object.getOffset(), ds3Object.getLength()));
+
             if (checksum != null) {
                 request.withChecksum(ChecksumType.value(checksum), WriteJobImpl.this.checksumType);
                 emitChecksumEvents(ds3Object, WriteJobImpl.this.checksumType, checksum);

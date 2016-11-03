@@ -61,12 +61,10 @@ public class JobPartDataTransceiver implements DataTransceiver {
     private PutObjectRequest makePutObjectRequest(final BlobChannelPair blobChannelPair, final JobPart jobPart) {
         final BulkObject blob = jobPart.getBulkObject();
 
-        final JobPart transferableJobPart = new JobPart(jobPart, blobChannelPair.getChannel());
-
         return new PutObjectRequest(
                 bucketName,
                 blob.getName(),
-                transferableJobPart.getChannel(),
+                blobChannelPair.getChannel(),
                 jobId,
                 blob.getOffset(),
                 blob.getLength());
