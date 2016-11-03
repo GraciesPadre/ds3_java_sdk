@@ -18,9 +18,17 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 import java.io.IOException;
 
 public abstract class AbstractChannelStrategy implements ChannelStrategy {
+    private final Object lock = new Object();
+
     @Override
-    public BlobChannelPair relinquishChannelForJob(final BlobChannelPair blobChannelPair) throws IOException{
-        blobChannelPair.getChannel().close();
-        return new BlobChannelPair(blobChannelPair.getBlob(), null);
+    public BlobChannelPair releaseChannelForBlob(final BlobChannelPair blobChannelPair) throws IOException{
+        synchronized (lock) {
+            blobChannelPair.getChannel().close();
+            return new BlobChannelPair(blobChannelPair.getBlob(), null);
+        }
+    }
+
+    protected Object getLock() {
+        return lock;
     }
 }

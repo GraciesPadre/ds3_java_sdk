@@ -33,10 +33,12 @@ public class SequentialFileReaderChannelStrategy extends AbstractChannelStrategy
 
     @Override
     public BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException {
-        final Path path = directory.resolve(blob.getName());
+        synchronized (getLock()) {
+            final Path path = directory.resolve(blob.getName());
 
-        final ByteChannel channel = FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
+            final ByteChannel channel = FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
 
-        return new BlobChannelPair(blob, channel);
+            return new BlobChannelPair(blob, channel);
+        }
     }
 }

@@ -25,6 +25,8 @@ import java.nio.channels.ByteChannel;
 import java.util.Set;
 
 public class AggregatingChannelStrategy implements ChannelStrategy {
+    private final Object lock = new Object();
+
     private final SetMultimap<String, OffsetLengthChannelTriple> blobOffsetLengthMap =
             Multimaps.synchronizedSetMultimap(HashMultimap.<String, OffsetLengthChannelTriple>create());
 
@@ -36,7 +38,9 @@ public class AggregatingChannelStrategy implements ChannelStrategy {
 
     @Override
     public BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException {
-        return blobOffsetLengthMap.containsKey(blob.getName()) ? getExistingBlobChannelPair(blob) : makeNewBlobChannelPair(blob);
+        synchronized (lock) {
+            return blobOffsetLengthMap.containsKey(blob.getName()) ? getExistingBlobChannelPair(blob) : makeNewBlobChannelPair(blob);
+        }
     }
 
     private BlobChannelPair getExistingBlobChannelPair(final BulkObject blob) {
@@ -45,28 +49,41 @@ public class AggregatingChannelStrategy implements ChannelStrategy {
         final Set<OffsetLengthChannelTriple> offsetLengthChannelTriples = blobOffsetLengthMap.get(blobName);
         final ByteChannel channel = offsetLengthChannelTriples.iterator().next().getChannel();
         blobOffsetLengthMap.put(blobName, new OffsetLengthChannelTriple(blob.getOffset(), blob.getLength(), channel));
+
         return new BlobChannelPair(blob, channel);
     }
 
     private BlobChannelPair makeNewBlobChannelPair(final BulkObject blob) throws IOException {
         final BlobChannelPair blobChannelPair = channelStrategyDelegate.acquireChannelForBlob(blob);
-        blobOffsetLengthMap.put(blob.getName(), new OffsetLengthChannelTriple(blob.getOffset(), blob.getLength(),
-                blobChannelPair.getChannel()));
+
+        blobOffsetLengthMap.put(
+                blob.getName(),
+                new OffsetLengthChannelTriple(
+                        blob.getOffset(),
+                        blob.getLength(),
+                        blobChannelPair.getChannel()));
+
         return blobChannelPair;
     }
 
     @Override
-    public BlobChannelPair relinquishChannelForJob(final BlobChannelPair blobChannelPair) throws IOException {
-        final String blobName = blobChannelPair.getBlob().getName();
+    public BlobChannelPair releaseChannelForBlob(final BlobChannelPair blobChannelPair) throws IOException {
+        synchronized (lock) {
+            final String blobName = blobChannelPair.getBlob().getName();
 
-        blobOffsetLengthMap.remove(blobName, new OffsetLengthChannelTriple(blobChannelPair.getBlob().getOffset(),
-                blobChannelPair.getBlob().getLength(), blobChannelPair.getChannel()));
+            blobOffsetLengthMap.remove(
+                    blobName,
+                    new OffsetLengthChannelTriple(
+                            blobChannelPair.getBlob().getOffset(),
+                            blobChannelPair.getBlob().getLength(),
+                            blobChannelPair.getChannel()));
 
-        if (blobOffsetLengthMap.containsKey(blobName)) {
-            return new BlobChannelPair(blobChannelPair.getBlob(), blobChannelPair.getChannel());
+            if (blobOffsetLengthMap.containsKey(blobName)) {
+                return new BlobChannelPair(blobChannelPair.getBlob(), blobChannelPair.getChannel());
+            }
+
+            return channelStrategyDelegate.releaseChannelForBlob(blobChannelPair);
         }
-
-        return channelStrategyDelegate.relinquishChannelForJob(blobChannelPair);
     }
 
     private static final class OffsetLengthChannelTriple {

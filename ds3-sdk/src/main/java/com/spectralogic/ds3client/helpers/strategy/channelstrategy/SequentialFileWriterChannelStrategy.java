@@ -39,17 +39,19 @@ public class SequentialFileWriterChannelStrategy extends AbstractChannelStrategy
 
     @Override
     public BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException {
-        Files.createDirectories(directory);
+        synchronized (getLock()) {
+            Files.createDirectories(directory);
 
-        final Path filePath = Paths.get(directory.toString(), blob.getName());
-        createFile(filePath);
+            final Path filePath = Paths.get(directory.toString(), blob.getName());
+            createFile(filePath);
 
-        final ByteChannel channel =  FileChannel.open(filePath,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE);
+            final ByteChannel channel = FileChannel.open(filePath,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.WRITE);
 
-        return new BlobChannelPair(blob, channel);
+            return new BlobChannelPair(blob, channel);
+        }
     }
 
     private void createFile(final Path filePath) {
