@@ -16,14 +16,13 @@
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
 import com.spectralogic.ds3client.models.BulkObject;
-import com.spectralogic.ds3client.models.BulkObjectList;
-
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+
+import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.resolveForSymbolic;
 
 public class SequentialFileReaderChannelStrategy implements ChannelStrategy {
     private final Path directory;
@@ -34,6 +33,8 @@ public class SequentialFileReaderChannelStrategy implements ChannelStrategy {
 
     @Override
     public ByteChannel channelForBlob(final BulkObject blob) throws IOException {
-        return FileChannel.open(Paths.get(directory.toString(), blob.getName()), StandardOpenOption.READ);
+        final Path path = directory.resolve(blob.getName());
+
+        return FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
     }
 }

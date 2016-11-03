@@ -18,9 +18,6 @@ package com.spectralogic.ds3client.helpers.strategy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.spectralogic.ds3client.Ds3Client;
-import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
-import com.spectralogic.ds3client.helpers.FileObjectGetter;
-import com.spectralogic.ds3client.helpers.FileObjectPutter;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.JobNode;
 import com.spectralogic.ds3client.models.Objects;
@@ -28,10 +25,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
@@ -98,5 +95,20 @@ public final class StrategyUtils {
         final InputStream result = inputStream.markSupported() ? inputStream : new BufferedInputStream(inputStream);
         result.mark(offset);
         return result;
+    }
+
+    public static Path resolveForSymbolic(final Path path) throws IOException {
+        if (Files.isSymbolicLink(path)) {
+            final Path simLink = Files.readSymbolicLink(path);
+            if (!simLink.isAbsolute()) {
+                // Resolve the path such that the path is relative to the symbolically
+                // linked file's directory
+                final Path symLinkParent = path.toAbsolutePath().getParent();
+                return symLinkParent.resolve(simLink);
+            }
+
+            return simLink;
+        }
+        return path;
     }
 }
