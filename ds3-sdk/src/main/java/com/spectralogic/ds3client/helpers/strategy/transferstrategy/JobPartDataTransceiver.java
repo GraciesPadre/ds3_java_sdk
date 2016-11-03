@@ -20,6 +20,7 @@ import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.BlobChannelPair;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 
@@ -47,8 +48,12 @@ public class JobPartDataTransceiver implements DataTransceiver {
 
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
-        final JobPart transferableJobPart = new JobPart(jobPart, channelStrategy.channelForBlob(jobPart.getBulkObject()));
+        final BlobChannelPair blobChannelPair = channelStrategy.acquireChannelForBlob(jobPart.getBulkObject());
+
+        final JobPart transferableJobPart = new JobPart(jobPart, blobChannelPair.getChannel());
+
         final BulkObject blob = transferableJobPart.getBulkObject();
+
         final PutObjectRequest putObjectRequest = new PutObjectRequest(
                 bucketName,
                 blob.getName(),
@@ -57,7 +62,9 @@ public class JobPartDataTransceiver implements DataTransceiver {
                 blob.getOffset(),
                 blob.getLength());
         transferableJobPart.getClient().putObject(putObjectRequest);
+        
         blobStrategy.blobCompleted(blob);
         jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
+        channelStrategy.relinquishChannelForJob(blobChannelPair);
     }
 }

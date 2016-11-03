@@ -24,7 +24,7 @@ import java.nio.file.StandardOpenOption;
 
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.resolveForSymbolic;
 
-public class SequentialFileReaderChannelStrategy implements ChannelStrategy {
+public class SequentialFileReaderChannelStrategy extends AbstractChannelStrategy {
     private final Path directory;
 
     public SequentialFileReaderChannelStrategy(final Path directory) {
@@ -32,9 +32,11 @@ public class SequentialFileReaderChannelStrategy implements ChannelStrategy {
     }
 
     @Override
-    public ByteChannel channelForBlob(final BulkObject blob) throws IOException {
+    public BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException {
         final Path path = directory.resolve(blob.getName());
 
-        return FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
+        final ByteChannel channel = FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
+
+        return new BlobChannelPair(blob, channel);
     }
 }

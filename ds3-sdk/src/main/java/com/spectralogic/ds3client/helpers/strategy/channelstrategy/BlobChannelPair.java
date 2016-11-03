@@ -17,10 +17,38 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
 import com.spectralogic.ds3client.models.BulkObject;
 
-import java.io.IOException;
 import java.nio.channels.ByteChannel;
 
-public interface ChannelStrategy {
-    BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException;
-    BlobChannelPair relinquishChannelForJob(final BlobChannelPair blobChannelPair) throws IOException;
+public class BlobChannelPair {
+    private final BulkObject blob;
+    private final ByteChannel channel;
+
+    public BlobChannelPair(final BulkObject blob, final ByteChannel channel) {
+        this.blob = blob;
+        this.channel = channel;
+    }
+
+    public BulkObject getBlob() {
+        return blob;
+    }
+
+    public ByteChannel getChannel() {
+        return channel;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (!(o instanceof BlobChannelPair)) return false;
+
+        final BlobChannelPair that = (BlobChannelPair) o;
+
+        return getBlob() != null ? getBlob().equals(that.getBlob()) : that.getBlob() == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        return getBlob() != null ? getBlob().hashCode() : 0;
+    }
 }

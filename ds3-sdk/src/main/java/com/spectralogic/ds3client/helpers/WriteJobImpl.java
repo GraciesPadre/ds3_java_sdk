@@ -25,6 +25,7 @@ import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.AggregatingChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MaxNumObjectTransferAttemptsBehavior;
@@ -127,7 +128,7 @@ class WriteJobImpl extends JobImpl {
             rootField.setAccessible(true);
             final Path directory = (Path)rootField.get(fileObjectPutter);
 
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(directory);
+            final ChannelStrategy channelStrategy = new AggregatingChannelStrategy(new SequentialFileReaderChannelStrategy(directory));
 
             // TODO: Create Channel strategy here
             // TODO: Create transfer strategy instance here -- sequential, random, etc.

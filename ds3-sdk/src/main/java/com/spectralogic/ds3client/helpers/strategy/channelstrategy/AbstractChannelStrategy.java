@@ -15,12 +15,12 @@
 
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
-import com.spectralogic.ds3client.models.BulkObject;
-
 import java.io.IOException;
-import java.nio.channels.ByteChannel;
 
-public interface ChannelStrategy {
-    BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException;
-    BlobChannelPair relinquishChannelForJob(final BlobChannelPair blobChannelPair) throws IOException;
+public abstract class AbstractChannelStrategy implements ChannelStrategy {
+    @Override
+    public BlobChannelPair relinquishChannelForJob(final BlobChannelPair blobChannelPair) throws IOException{
+        blobChannelPair.getChannel().close();
+        return new BlobChannelPair(blobChannelPair.getBlob(), null);
+    }
 }

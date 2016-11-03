@@ -63,7 +63,7 @@ public class SequentialFileReaderChannelStrategy_Test {
                 }
             });
 
-            final ByteChannel byteChannel = blobChannelPairs.channelForBlob(blob);
+            final ByteChannel byteChannel = blobChannelPairs.acquireChannelForBlob(blob);
 
             assertTrue(byteChannel.isOpen());
 
@@ -117,7 +117,7 @@ public class SequentialFileReaderChannelStrategy_Test {
             channelStrategy.withBlobCompletionHandler(new BlobCompletionHandler() {
                 @Override
                 public void onBlobComplete(final BulkObject blob) {
-                    final ByteChannel byteChannel = blobChannelPairs.channelForBlob(blob);
+                    final ByteChannel byteChannel = blobChannelPairs.acquireChannelForBlob(blob);
                     try {
                         byteChannel.close();
                         channelClosed.set(true);
@@ -268,13 +268,13 @@ public class SequentialFileReaderChannelStrategy_Test {
 
             assertEquals(1, numChannelFailures.get());
 
-            ByteChannel channel = blobChannelPairs.channelForBlob(blobs.getObjects().get(0));
+            ByteChannel channel = blobChannelPairs.acquireChannelForBlob(blobs.getObjects().get(0));
             assertNotNull(channel);
 
-            channel = blobChannelPairs.channelForBlob(blobs.getObjects().get(1));
+            channel = blobChannelPairs.acquireChannelForBlob(blobs.getObjects().get(1));
             assertNull(channel);
 
-            channel = blobChannelPairs.channelForBlob(blobs.getObjects().get(2));
+            channel = blobChannelPairs.acquireChannelForBlob(blobs.getObjects().get(2));
             assertNotNull(channel);
         } catch (final Throwable t) {
             fail("Failure creating test files: " + t.getMessage());

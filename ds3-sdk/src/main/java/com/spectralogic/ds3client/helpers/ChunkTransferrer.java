@@ -19,11 +19,9 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
-import com.spectralogic.ds3client.models.BulkObjectList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +68,7 @@ class ChunkTransferrer implements Closeable {
         // so I can see if the integration tests work with the channel implementation
 
         for (final JobPart jobPart : work) {
-            final JobPart transferableJobPart = new JobPart(jobPart, channelStrategy.channelForBlob(jobPart.getBulkObject()));
+            final JobPart transferableJobPart = new JobPart(jobPart, channelStrategy.acquireChannelForBlob(jobPart.getBulkObject()).getChannel());
             final BulkObject blob = transferableJobPart.getBulkObject();
             final ObjectPart part = new ObjectPart(blob.getOffset(), blob.getLength());
 

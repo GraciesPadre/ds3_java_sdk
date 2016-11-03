@@ -28,7 +28,7 @@ import java.nio.file.StandardOpenOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SequentialFileWriterChannelStrategy implements ChannelStrategy {
+public class SequentialFileWriterChannelStrategy extends AbstractChannelStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(SequentialFileWriterChannelStrategy.class);
 
     private final Path directory;
@@ -38,16 +38,18 @@ public class SequentialFileWriterChannelStrategy implements ChannelStrategy {
     }
 
     @Override
-    public ByteChannel channelForBlob(final BulkObject blob) throws IOException {
+    public BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException {
         Files.createDirectories(directory);
 
         final Path filePath = Paths.get(directory.toString(), blob.getName());
         createFile(filePath);
 
-        return FileChannel.open(filePath,
+        final ByteChannel channel =  FileChannel.open(filePath,
                 StandardOpenOption.TRUNCATE_EXISTING,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.WRITE);
+
+        return new BlobChannelPair(blob, channel);
     }
 
     private void createFile(final Path filePath) {

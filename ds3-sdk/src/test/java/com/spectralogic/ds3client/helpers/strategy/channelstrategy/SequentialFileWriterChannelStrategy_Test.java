@@ -67,10 +67,10 @@ public class SequentialFileWriterChannelStrategy_Test {
                 }
             });
 
-            final ByteChannel channel1 = blobChannelPairs.channelForBlob(blob1);
+            final ByteChannel channel1 = blobChannelPairs.acquireChannelForBlob(blob1);
             assertNotNull(channel1);
 
-            final ByteChannel channel2 = blobChannelPairs.channelForBlob(blob2);
+            final ByteChannel channel2 = blobChannelPairs.acquireChannelForBlob(blob2);
             assertNotNull(channel2);
 
             assertTrue(channel1.equals(channel2));
@@ -106,7 +106,7 @@ public class SequentialFileWriterChannelStrategy_Test {
                 }
             });
 
-            final ByteChannel byteChannel = blobChannelPairs.channelForBlob(blob);
+            final ByteChannel byteChannel = blobChannelPairs.acquireChannelForBlob(blob);
 
             try {
                 final ByteBuffer writeBuffer = ByteBuffer.allocate(32);
