@@ -59,7 +59,7 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
-    public TransferStrategy makeSequentialTransferStrategy() {
+    public TransferStrategy makePutSequentialTransferStrategy() {
         Preconditions.checkNotNull(blobStrategy, "blobStrategy may not be null.");
         Preconditions.checkNotNull(channelStrategy, "channelStrategy may not be null.");
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");

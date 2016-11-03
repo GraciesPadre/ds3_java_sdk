@@ -49,7 +49,8 @@ public class JobPartDataTransceiver implements DataTransceiver {
     public void transferJobPart(final JobPart jobPart) throws IOException {
         final JobPart transferableJobPart = new JobPart(jobPart, channelStrategy.channelForBlob(jobPart.getBulkObject()));
         final BulkObject blob = transferableJobPart.getBulkObject();
-        final PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName,
+        final PutObjectRequest putObjectRequest = new PutObjectRequest(
+                bucketName,
                 blob.getName(),
                 transferableJobPart.getChannel(),
                 jobId,

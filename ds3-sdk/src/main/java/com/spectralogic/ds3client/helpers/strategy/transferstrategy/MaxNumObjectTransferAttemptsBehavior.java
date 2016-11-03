@@ -45,7 +45,7 @@ public class MaxNumObjectTransferAttemptsBehavior implements TransferRetryBehavi
                 dataTransceiverDelegate.transferJobPart(jobPart);
                 break;
             } catch (final Throwable t) {
-                if (ExceptionClassifier.isUnrecoverableException(t) || ++objectTransfersAttempted > maxNumObjectTransferAttempts) {
+                if (ExceptionClassifier.isUnrecoverableException(t) || ++objectTransfersAttempted >= maxNumObjectTransferAttempts) {
                     throw t;
                 }
             }

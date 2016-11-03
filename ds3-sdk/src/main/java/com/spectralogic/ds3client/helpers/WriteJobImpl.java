@@ -28,25 +28,21 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialStr
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MaxNumObjectTransferAttemptsBehavior;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.PutSequentialTransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.utils.Guard;
-import com.spectralogic.ds3client.utils.SeekableByteChannelInputStream;
 import com.spectralogic.ds3client.utils.hashing.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Channels;
-import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -143,7 +139,7 @@ class WriteJobImpl extends JobImpl {
                     .withJobId(getJobId().toString())
                     .withJobPartTracker(getJobPartTracker())
                     .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
-                    .makeSequentialTransferStrategy();
+                    .makePutSequentialTransferStrategy();
 
             try (final JobState jobState = new JobState(
                     channelBuilder,
