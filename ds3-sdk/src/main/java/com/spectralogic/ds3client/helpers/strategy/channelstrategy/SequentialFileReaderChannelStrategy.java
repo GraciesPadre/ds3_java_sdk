@@ -17,7 +17,6 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
 import com.spectralogic.ds3client.models.BulkObject;
 import java.io.IOException;
-import java.nio.channels.ByteChannel;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -36,7 +35,8 @@ public class SequentialFileReaderChannelStrategy extends AbstractChannelStrategy
         synchronized (getLock()) {
             final Path path = directory.resolve(blob.getName());
 
-            final ByteChannel channel = FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
+            final FileChannel channel = FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
+            channel.position(blob.getOffset());
 
             return new BlobChannelPair(blob, channel);
         }

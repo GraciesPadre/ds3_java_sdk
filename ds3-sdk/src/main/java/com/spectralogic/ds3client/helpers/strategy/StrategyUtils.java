@@ -21,14 +21,19 @@ import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.JobNode;
 import com.spectralogic.ds3client.models.Objects;
+import com.spectralogic.ds3client.utils.ResourceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
@@ -110,5 +115,48 @@ public final class StrategyUtils {
             return simLink;
         }
         return path;
+    }
+
+    public static Path extractPath(final Object anObject) {
+        Path result = Paths.get(".");
+
+        Object fieldValue = getFieldValue(anObject, "path");
+        if (fieldValue != null) {
+            result = (Path)fieldValue;
+        } else {
+            fieldValue = getFieldValue(anObject, "basePath");
+            if (fieldValue != null) {
+                final String fieldValueString = (String)fieldValue;
+                final URL resourceUrl = ResourceUtils.class.getClassLoader().getResource(fieldValueString);
+
+                try {
+                    result = Paths.get(resourceUrl.toURI());
+                } catch (final URISyntaxException e) {
+                    LOG.info("Could not build path to resource.", e);
+                }
+            } else {
+                fieldValue = getFieldValue(anObject, "root");
+                if (fieldValue != null) {
+                    result = (Path)fieldValue;
+                }
+
+            }
+        }
+
+        return result;
+    }
+
+    private static Object getFieldValue(final Object anObject, final String fieldName) {
+        Object result = null;
+
+        try {
+            final Field field = anObject.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            result = field.get(anObject);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            LOG.info("Could not get field info.", e);
+        }
+
+        return result;
     }
 }

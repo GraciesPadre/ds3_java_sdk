@@ -16,9 +16,11 @@
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
+import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
+import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.utils.Guard;
 
 public final class TransferStrategyBuilder {
@@ -28,6 +30,8 @@ public final class TransferStrategyBuilder {
     private String jobId;
     private JobPartTracker jobPartTracker;
     private TransferRetryBehavior transferRetryBehavior;
+    private ChecksumFunction checksumFunction;
+    private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
 
     public TransferStrategyBuilder withBlobStrategy(final BlobStrategy blobStrategy) {
         this.blobStrategy = blobStrategy;
@@ -59,6 +63,16 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
+    public TransferStrategyBuilder withChecksumFunction(final ChecksumFunction checksumFunction) {
+        this.checksumFunction = checksumFunction;
+        return this;
+    }
+
+    public TransferStrategyBuilder withChecksumType(final ChecksumType.Type checksumType) {
+        this.checksumType = checksumType;
+        return this;
+    }
+
     public TransferStrategy makePutSequentialTransferStrategy() {
         Preconditions.checkNotNull(blobStrategy, "blobStrategy may not be null.");
         Preconditions.checkNotNull(channelStrategy, "channelStrategy may not be null.");
@@ -73,7 +87,7 @@ public final class TransferStrategyBuilder {
 
     private DataTransceiver makeDataTransceiver() {
         final DataTransceiver dataTransceiver = new JobPartDataTransceiver(channelStrategy, blobStrategy, bucketName,
-                jobId, jobPartTracker);
+                jobId, jobPartTracker, checksumFunction, checksumType);
 
         if (transferRetryBehavior != null) {
             return transferRetryBehavior.wrap(dataTransceiver);

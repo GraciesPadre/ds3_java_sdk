@@ -23,6 +23,7 @@ import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
+import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.AggregatingChannelStrategy;
@@ -39,12 +40,13 @@ import com.spectralogic.ds3client.utils.hashing.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Channels;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
@@ -123,24 +125,52 @@ class WriteJobImpl extends JobImpl {
                         }
                     });
 
-            final FileObjectPutter fileObjectPutter = (FileObjectPutter)channelBuilder;
-            final Field rootField = fileObjectPutter.getClass().getDeclaredField("root");
-            rootField.setAccessible(true);
-            final Path directory = (Path)rootField.get(fileObjectPutter);
+            final Path directory = StrategyUtils.extractPath(channelBuilder);
 
             final ChannelStrategy channelStrategy = new AggregatingChannelStrategy(new SequentialFileReaderChannelStrategy(directory));
 
             // TODO: Create Channel strategy here
             // TODO: Create transfer strategy instance here -- sequential, random, etc.
 
-            final TransferStrategy transferStrategy = new TransferStrategyBuilder()
+            final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                     .withBlobStrategy(blobStrategy)
                     .withChannelStrategy(channelStrategy)
                     .withBucketName(masterObjectList.getBucketName())
                     .withJobId(getJobId().toString())
                     .withJobPartTracker(getJobPartTracker())
                     .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
-                    .makePutSequentialTransferStrategy();
+                    .withChecksumType(checksumType);
+
+            if (checksumType != ChecksumType.Type.NONE) {
+                if (checksumFunction == null) {
+                    transferStrategyBuilder.withChecksumFunction(new ChecksumFunction() {
+                        @Override
+                        public String compute(final BulkObject obj, final ByteChannel channel) {
+                            String checksum = null;
+
+                            try (final InputStream dataStream = new FileInputStream(Paths.get(directory.toString(),
+                                    obj.getName()).toFile()))
+                            {
+                                final Hasher hasher = ChecksumUtils.getHasher(checksumType);
+
+                                checksum = ChecksumUtils.hashInputStream(hasher, dataStream);
+
+                                LOG.info("Computed checksum for blob: {}", checksum);
+
+                            } catch (final IOException e) {
+                                // TODO Add a filure event for this
+                                LOG.error("Error computing checksum.", e);
+                            }
+
+                            return checksum;
+                        }
+                    });
+                } else {
+                    transferStrategyBuilder.withChecksumFunction(checksumFunction);
+                }
+            }
+
+            final TransferStrategy transferStrategy = transferStrategyBuilder.makePutSequentialTransferStrategy();
 
             try (final JobState jobState = new JobState(
                     channelBuilder,
