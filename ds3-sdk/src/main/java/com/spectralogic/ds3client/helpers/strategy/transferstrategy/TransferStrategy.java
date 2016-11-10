@@ -15,8 +15,16 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
+import com.spectralogic.ds3client.helpers.ChecksumListener;
+import com.spectralogic.ds3client.models.BulkObject;
+import com.spectralogic.ds3client.models.ChecksumType;
+
 import java.io.IOException;
 
-public interface TransferStrategy {
+public interface TransferStrategy extends EventRegistrar {
     void transfer() throws IOException, InterruptedException;
+
+    void attachChecksumListener(final ChecksumListener listener);
+    void removeChecksumListener(final ChecksumListener listener);
+    void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type type, final String checksum);
 }

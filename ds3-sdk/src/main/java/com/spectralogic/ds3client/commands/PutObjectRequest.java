@@ -105,7 +105,7 @@ public class PutObjectRequest extends AbstractRequest {
         this.job = job;
         this.offset = offset;
         this.channel = channel;
-        this.stream = StrategyUtils.makeResettableInputStream(new BufferedInputStream(Channels.newInputStream(channel)), (int)offset);
+        this.stream = StrategyUtils.makeResettableInputStream(Channels.newInputStream(channel));
 
         this.getQueryParams().put("job", UrlEscapers.urlFragmentEscaper().escape(job).replace("+", "%2B"));
         this.getQueryParams().put("offset", Long.toString(offset));

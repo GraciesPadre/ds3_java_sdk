@@ -15,11 +15,12 @@
 
 package com.spectralogic.ds3client.helpers;
 
-import com.google.common.collect.Sets;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.Job;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventRegistrar;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventRegistrarImpl;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.models.MasterObjectList;
@@ -30,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 import static com.spectralogic.ds3client.helpers.ReadJobImpl.getAllBlobApiBeans;
@@ -43,11 +43,12 @@ abstract class JobImpl implements Job {
     protected boolean running = false;
     protected int maxParallelRequests = 10;
     private final int objectTransferAttempts;
-    private final JobPartTrackerDecorator jobPartTracker;
+
+    // TODO Get rid of this when transfer strategy completely replaces transferer
     private final EventRunner eventRunner;
-    private final Set<FailureEventListener> failureEventListeners;
-    private final Set<WaitingForChunksListener> waitingForChunksListeners;
-    private final Set<ChecksumListener> checksumListeners;
+
+    private final JobPartTracker jobPartTracker;
+    private final EventRegistrar eventRegistrar;
 
     public JobImpl(final Ds3Client client,
                    final MasterObjectList masterObjectList,
@@ -57,10 +58,10 @@ abstract class JobImpl implements Job {
         this.masterObjectList = masterObjectList;
         this.objectTransferAttempts = objectTransferAttempts;
         this.eventRunner = eventRunner;
-        this.failureEventListeners = Sets.newIdentityHashSet();
-        this.waitingForChunksListeners = Sets.newIdentityHashSet();
-        this.checksumListeners = Sets.newIdentityHashSet();
-        this.jobPartTracker = makeJobPartTracker(getChunks(masterObjectList), eventRunner);
+
+        jobPartTracker = makeJobPartTracker(getChunks(masterObjectList), eventRunner);
+
+        eventRegistrar = new EventRegistrarImpl(eventRunner, jobPartTracker);
     }
     
     @Override
@@ -114,79 +115,68 @@ abstract class JobImpl implements Job {
         return objectTransferAttempts;
     }
 
-    protected EventRunner getEventRunner() {
-        return eventRunner;
-    }
-
     @Override
     public void attachChecksumListener(final ChecksumListener listener) {
         checkRunning();
-        this.checksumListeners.add(listener);
+        eventRegistrar.attachChecksumListener(listener);
     }
 
     @Override
     public void removeChecksumListener(final ChecksumListener listener) {
         checkRunning();
-        this.checksumListeners.remove(listener);
+        eventRegistrar.removeChecksumListener(listener);
     }
 
     @Override
     public void attachWaitingForChunksListener(final WaitingForChunksListener listener) {
         checkRunning();
-        this.waitingForChunksListeners.add(listener);
+        eventRegistrar.attachWaitingForChunksListener(listener);
     }
 
     @Override
     public void removeWaitingForChunksListener(final WaitingForChunksListener listener) {
         checkRunning();
-        this.waitingForChunksListeners.remove(listener);
+        eventRegistrar.removeWaitingForChunksListener(listener);
     }
 
     @Override
     public void attachFailureEventListener(final FailureEventListener listener) {
         checkRunning();
-        this.failureEventListeners.add(listener);
+        eventRegistrar.attachFailureEventListener(listener);
     }
 
     @Override
     public void removeFailureEventListener(final FailureEventListener listener) {
         checkRunning();
-        this.failureEventListeners.remove(listener);
+        eventRegistrar.removeFailureEventListener(listener);
     }
 
     @Override
     public void attachDataTransferredListener(final DataTransferredListener listener) {
         checkRunning();
-        getJobPartTracker().attachDataTransferredListener(listener);
+        eventRegistrar.attachDataTransferredListener(listener);
     }
 
     @Override
     public void removeDataTransferredListener(final DataTransferredListener listener) {
         checkRunning();
-        getJobPartTracker().removeDataTransferredListener(listener);
+        eventRegistrar.removeDataTransferredListener(listener);
     }
 
     @Override
     public void attachObjectCompletedListener(final ObjectCompletedListener listener) {
         checkRunning();
-        getJobPartTracker().attachClientObjectCompletedListener(listener);
+        eventRegistrar.attachObjectCompletedListener(listener);
     }
 
     @Override
     public void removeObjectCompletedListener(final ObjectCompletedListener listener) {
         checkRunning();
-        getJobPartTracker().removeClientObjectCompletedListener(listener);
+        eventRegistrar.removeObjectCompletedListener(listener);
     }
 
     protected void emitFailureEvent(final FailureEvent failureEvent) {
-        for (final FailureEventListener failureEventListener : failureEventListeners) {
-            eventRunner.emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    failureEventListener.onFailure(failureEvent);
-                }
-            });
-        }
+        eventRegistrar.emitFailureEvent(failureEvent);
     }
 
     protected FailureEvent makeFailureEvent(final FailureEvent.FailureActivity failureActivity,
@@ -211,34 +201,16 @@ abstract class JobImpl implements Job {
         return "unnamed object";
     }
 
-    protected void emitWaitingForChunksEvents(final int retryAfter) {
-        for (final WaitingForChunksListener waitingForChunksListener : waitingForChunksListeners) {
-            eventRunner.emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    waitingForChunksListener.waiting(retryAfter);
-                }
-            });
-        }
+    protected void emitWaitingForChunksEvents(final int secondsToDelay) {
+        eventRegistrar.emitWaitingForChunksEvents(secondsToDelay);
     }
 
-    protected void emitChecksumEvents(final BulkObject bulkObject, final ChecksumType.Type type, final String checksum) {
-        for (final ChecksumListener listener : checksumListeners) {
-            getEventRunner().emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    listener.value(bulkObject, type, checksum);
-                }
-            });
-        }
+    protected void emitChecksumEvents(final BulkObject bulkObject, final ChecksumType.Type checksumType, final String checksum) {
+        eventRegistrar.emitChecksumEvent(bulkObject, checksumType, checksum);
     }
 
     protected abstract List<Objects> getChunks(final MasterObjectList masterObjectList);
     protected abstract JobPartTrackerDecorator makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner);
-
-    protected JobPartTrackerDecorator getJobPartTracker() {
-        return jobPartTracker;
-    }
 
     protected static class JobPartTrackerDecorator implements JobPartTracker {
         private final JobPartTracker clientJobPartTracker;
@@ -291,5 +263,17 @@ abstract class JobImpl implements Job {
         protected void removeClientObjectCompletedListener(final ObjectCompletedListener listener) {
             clientJobPartTracker.removeObjectCompletedListener(listener);
         }
+    }
+
+    protected EventRegistrar getEventRegistrar() {
+        return eventRegistrar;
+    }
+
+    protected EventRunner getEventRunner() {
+        return eventRunner;
+    }
+
+    protected JobPartTracker getJobPartTracker() {
+        return jobPartTracker;
     }
 }

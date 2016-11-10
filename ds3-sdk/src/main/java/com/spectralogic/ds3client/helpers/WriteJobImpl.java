@@ -129,16 +129,14 @@ class WriteJobImpl extends JobImpl {
 
             final ChannelStrategy channelStrategy = new AggregatingChannelStrategy(new SequentialFileReaderChannelStrategy(directory));
 
-            // TODO: Create Channel strategy here
-            // TODO: Create transfer strategy instance here -- sequential, random, etc.
-
             final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                     .withBlobStrategy(blobStrategy)
                     .withChannelStrategy(channelStrategy)
                     .withBucketName(masterObjectList.getBucketName())
                     .withJobId(getJobId().toString())
-                    .withJobPartTracker(getJobPartTracker())
                     .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
+                    .withJobPartTracker(getJobPartTracker())
+                    .withEventRegistrar(getEventRegistrar())
                     .withChecksumType(checksumType);
 
             if (checksumType != ChecksumType.Type.NONE) {
@@ -156,7 +154,6 @@ class WriteJobImpl extends JobImpl {
                                 checksum = ChecksumUtils.hashInputStream(hasher, dataStream);
 
                                 LOG.info("Computed checksum for blob: {}", checksum);
-
                             } catch (final IOException e) {
                                 // TODO Add a filure event for this
                                 LOG.error("Error computing checksum.", e);

@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 public class JobPartDataTransceiver implements DataTransceiver {
     private static final Logger LOG = LoggerFactory.getLogger(JobPartDataTransceiver.class);
 
+    private final TransferStrategy transferStrategy;
     private final ChannelStrategy channelStrategy;
     private final BlobStrategy blobStrategy;
     private final String bucketName;
@@ -43,7 +44,8 @@ public class JobPartDataTransceiver implements DataTransceiver {
     private final ChecksumFunction checksumFunction;
     private final ChecksumType.Type checksumType;
 
-    public JobPartDataTransceiver(final ChannelStrategy channelStrategy,
+    public JobPartDataTransceiver(final TransferStrategy transferStrategy,
+                                  final ChannelStrategy channelStrategy,
                                   final BlobStrategy blobStrategy,
                                   final String bucketName,
                                   final String jobId,
@@ -51,6 +53,7 @@ public class JobPartDataTransceiver implements DataTransceiver {
                                   final ChecksumFunction checksumFunction,
                                   final ChecksumType.Type checksumType)
     {
+        this.transferStrategy = transferStrategy;
         this.channelStrategy = channelStrategy;
         this.blobStrategy = blobStrategy;
         this.bucketName = bucketName;
@@ -100,6 +103,7 @@ public class JobPartDataTransceiver implements DataTransceiver {
 
                 if (checksum != null) {
                     putObjectRequest.withChecksum(ChecksumType.value(checksum), checksumType);
+                    transferStrategy.emitChecksumEvent(blob, checksumType, checksum);
                 }
             }  catch (final IOException e) {
                 LOG.info("Failure creating channel to calculate checksum.", e);

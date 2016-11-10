@@ -18,6 +18,7 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
+import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.ChecksumType;
@@ -28,10 +29,11 @@ public final class TransferStrategyBuilder {
     private ChannelStrategy channelStrategy;
     private String bucketName;
     private String jobId;
-    private JobPartTracker jobPartTracker;
     private TransferRetryBehavior transferRetryBehavior;
     private ChecksumFunction checksumFunction;
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
+    private EventRegistrar eventRegistrar;
+    private JobPartTracker jobPartTracker;
 
     public TransferStrategyBuilder withBlobStrategy(final BlobStrategy blobStrategy) {
         this.blobStrategy = blobStrategy;
@@ -58,11 +60,6 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
-    public TransferStrategyBuilder withJobPartTracker(final JobPartTracker jobPartTracker) {
-        this.jobPartTracker = jobPartTracker;
-        return this;
-    }
-
     public TransferStrategyBuilder withChecksumFunction(final ChecksumFunction checksumFunction) {
         this.checksumFunction = checksumFunction;
         return this;
@@ -73,21 +70,34 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
+    public TransferStrategyBuilder withEventRegistrar(final EventRegistrar eventRegistrar) {
+        this.eventRegistrar = eventRegistrar;
+        return this;
+    }
+
+    public TransferStrategyBuilder withJobPartTracker(final JobPartTracker jobPartTracker) {
+        this.jobPartTracker = jobPartTracker;
+        return this;
+    }
+
     public TransferStrategy makePutSequentialTransferStrategy() {
         Preconditions.checkNotNull(blobStrategy, "blobStrategy may not be null.");
         Preconditions.checkNotNull(channelStrategy, "channelStrategy may not be null.");
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
         Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
-        Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
+        Preconditions.checkNotNull(eventRegistrar, "eventRegistrar may not be null.");
 
-        return new PutSequentialTransferStrategy(channelStrategy, blobStrategy, bucketName, jobId,
-                jobPartTracker, makeDataTransceiver());
+        final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(
+                channelStrategy, blobStrategy, bucketName, jobId, eventRegistrar);
 
+        return putSequentialTransferStrategy.withDataTransceiver(makeDataTransceiver(putSequentialTransferStrategy));
     }
 
-    private DataTransceiver makeDataTransceiver() {
-        final DataTransceiver dataTransceiver = new JobPartDataTransceiver(channelStrategy, blobStrategy, bucketName,
-                jobId, jobPartTracker, checksumFunction, checksumType);
+    private DataTransceiver makeDataTransceiver(final TransferStrategy transferStrategy) {
+        Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
+
+        final DataTransceiver dataTransceiver = new JobPartDataTransceiver(transferStrategy, channelStrategy,
+                blobStrategy, bucketName, jobId, jobPartTracker, checksumFunction, checksumType);
 
         if (transferRetryBehavior != null) {
             return transferRetryBehavior.wrap(dataTransceiver);

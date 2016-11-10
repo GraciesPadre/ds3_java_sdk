@@ -96,9 +96,9 @@ public final class StrategyUtils {
         return builder.build();
     }
 
-    public static InputStream makeResettableInputStream(final InputStream inputStream, final int offset) {
+    public static InputStream makeResettableInputStream(final InputStream inputStream) {
         final InputStream result = inputStream.markSupported() ? inputStream : new BufferedInputStream(inputStream);
-        result.mark(offset);
+        result.mark(Integer.MAX_VALUE);
         return result;
     }
 
