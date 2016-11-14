@@ -834,7 +834,7 @@ public class PutJobManagement_Test {
     private void transferAndCheckFileContent(final int maxNumObjectTransferAttempts,
                                              final ObjectTransferExceptionHandler objectTransferExceptionHandler)
             throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException, URISyntaxException {
-        final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl) client);
+        // final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl) client);
 
         final String tempPathPrefix = null;
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
@@ -857,7 +857,7 @@ public class PutJobManagement_Test {
             }
 
             final int maxNumBlockAllocationRetries = 1;
-            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(ds3ClientShim,
+            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(client, //ds3ClientShim,
                     maxNumBlockAllocationRetries,
                     maxNumObjectTransferAttempts);
 
@@ -889,7 +889,8 @@ public class PutJobManagement_Test {
 
             assertEquals(1, intValue.getValue());
 
-            final GetBucketResponse request = ds3ClientShim.getBucket(new GetBucketRequest(BUCKET_NAME));
+            // final GetBucketResponse request = ds3ClientShim.getBucket(new GetBucketRequest(BUCKET_NAME));
+            final GetBucketResponse request = client.getBucket(new GetBucketRequest(BUCKET_NAME));
             final ListBucketResult result = request.getListBucketResult();
 
             assertEquals(bookTitles.size(), result.getObjects().size());
@@ -898,7 +899,7 @@ public class PutJobManagement_Test {
                 assertTrue(bookTitles.contains(contents.getKey()));
             }
 
-            final Ds3ClientHelpers.Job readJob = Ds3ClientHelpers.wrap(ds3ClientShim, 1)
+            final Ds3ClientHelpers.Job readJob = Ds3ClientHelpers.wrap(client /*ds3ClientShim*/, 1)
                     .startReadAllJob(BUCKET_NAME);
             readJob.attachObjectCompletedListener(new ObjectCompletedListener() {
                 @Override
@@ -918,7 +919,7 @@ public class PutJobManagement_Test {
             readJob.transfer(new FileObjectGetter(tempDirectory));
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
-            deleteAllContents(ds3ClientShim, BUCKET_NAME);
+            deleteAllContents(client /*ds3ClientShim*/, BUCKET_NAME);
         }
     }
 

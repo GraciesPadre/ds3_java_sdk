@@ -18,7 +18,9 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.channels.ByteChannel;
+import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,7 +40,7 @@ public class SequentialFileWriterChannelStrategy extends AbstractChannelStrategy
     }
 
     @Override
-    public BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException {
+    public BlobChannelStreamQuad acquireChannelForBlob(final BulkObject blob) throws IOException {
         synchronized (getLock()) {
             Files.createDirectories(directory);
 
@@ -50,7 +52,12 @@ public class SequentialFileWriterChannelStrategy extends AbstractChannelStrategy
                     StandardOpenOption.CREATE,
                     StandardOpenOption.WRITE);
 
-            return new BlobChannelPair(blob, channel);
+            final OutputStream outputStream = Channels.newOutputStream(channel);
+
+            return new BlobChannelStreamQuad.Builder(blob)
+                    .withChannel(channel)
+                    .withOutputStream(outputStream)
+                    .build();
         }
     }
 

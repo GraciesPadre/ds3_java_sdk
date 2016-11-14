@@ -26,7 +26,7 @@ import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.AggregatingChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialAggregatingChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MaxNumObjectTransferAttemptsBehavior;
@@ -127,14 +127,14 @@ class WriteJobImpl extends JobImpl {
 
             final Path directory = StrategyUtils.extractPath(channelBuilder);
 
-            final ChannelStrategy channelStrategy = new AggregatingChannelStrategy(new SequentialFileReaderChannelStrategy(directory));
+            final ChannelStrategy channelStrategy = new SequentialAggregatingChannelStrategy(new SequentialFileReaderChannelStrategy(directory));
 
             final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                     .withBlobStrategy(blobStrategy)
                     .withChannelStrategy(channelStrategy)
                     .withBucketName(masterObjectList.getBucketName())
                     .withJobId(getJobId().toString())
-                    .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
+                    // .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
                     .withJobPartTracker(getJobPartTracker())
                     .withEventRegistrar(getEventRegistrar())
                     .withChecksumType(checksumType);
@@ -146,14 +146,17 @@ class WriteJobImpl extends JobImpl {
                         public String compute(final BulkObject obj, final ByteChannel channel) {
                             String checksum = null;
 
-                            try (final InputStream dataStream = new FileInputStream(Paths.get(directory.toString(),
-                                    obj.getName()).toFile()))
+                            try
                             {
+                                final InputStream dataStream = channelStrategy.acquireChannelForBlob(obj).getInputStream();
+
                                 final Hasher hasher = ChecksumUtils.getHasher(checksumType);
 
                                 checksum = ChecksumUtils.hashInputStream(hasher, dataStream);
 
                                 LOG.info("Computed checksum for blob: {}", checksum);
+
+                                dataStream.reset();
                             } catch (final IOException e) {
                                 // TODO Add a filure event for this
                                 LOG.error("Error computing checksum.", e);

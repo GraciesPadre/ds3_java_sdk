@@ -20,6 +20,6 @@ import com.spectralogic.ds3client.models.BulkObject;
 import java.io.IOException;
 
 public interface ChannelStrategy {
-    BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException;
-    BlobChannelPair releaseChannelForBlob(final BlobChannelPair blobChannelPair) throws IOException;
+    BlobChannelStreamQuad acquireChannelForBlob(final BulkObject blob) throws IOException;
+    BlobChannelStreamQuad releaseChannelForBlob(final BlobChannelStreamQuad blobChannelStreamQuad) throws IOException;
 }

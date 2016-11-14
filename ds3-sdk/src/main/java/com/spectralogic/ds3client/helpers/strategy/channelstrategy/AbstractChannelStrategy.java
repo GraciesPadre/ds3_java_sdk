@@ -16,15 +16,22 @@
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 public abstract class AbstractChannelStrategy implements ChannelStrategy {
     private final Object lock = new Object();
 
     @Override
-    public BlobChannelPair releaseChannelForBlob(final BlobChannelPair blobChannelPair) throws IOException{
+    public BlobChannelStreamQuad releaseChannelForBlob(final BlobChannelStreamQuad blobChannelStreamQuad) throws IOException{
         synchronized (lock) {
-            blobChannelPair.getChannel().close();
-            return new BlobChannelPair(blobChannelPair.getBlob(), null);
+            if (blobChannelStreamQuad.getInputStream() != null) {
+                blobChannelStreamQuad.getInputStream().close();
+            } else if (blobChannelStreamQuad.getOutputStream() != null) {
+                blobChannelStreamQuad.getOutputStream().close();
+            }
+
+            return new BlobChannelStreamQuad.Builder(blobChannelStreamQuad.getBlob())
+                    .build();
         }
     }
 

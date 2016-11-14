@@ -21,7 +21,7 @@ import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.BlobChannelPair;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.BlobChannelStreamQuad;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
@@ -65,23 +65,24 @@ public class JobPartDataTransceiver implements DataTransceiver {
 
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
-        final BlobChannelPair blobChannelPair = channelStrategy.acquireChannelForBlob(jobPart.getBulkObject());
+        final BlobChannelStreamQuad blobChannelStreamQuad = channelStrategy.acquireChannelForBlob(jobPart.getBulkObject());
 
-        jobPart.getClient().putObject(makePutObjectRequest(blobChannelPair, jobPart));
+        jobPart.getClient().putObject(makePutObjectRequest(blobChannelStreamQuad, jobPart));
 
         final BulkObject blob = jobPart.getBulkObject();
         blobStrategy.blobCompleted(blob);
-        channelStrategy.releaseChannelForBlob(blobChannelPair);
+        channelStrategy.releaseChannelForBlob(blobChannelStreamQuad);
         jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
     }
 
-    private PutObjectRequest makePutObjectRequest(final BlobChannelPair blobChannelPair, final JobPart jobPart) {
+    private PutObjectRequest makePutObjectRequest(final BlobChannelStreamQuad blobChannelStreamQuad, final JobPart jobPart) {
         final BulkObject blob = jobPart.getBulkObject();
 
         final PutObjectRequest putObjectRequest = new PutObjectRequest(
                 bucketName,
                 blob.getName(),
-                blobChannelPair.getChannel(),
+                blobChannelStreamQuad.getChannel(),
+                blobChannelStreamQuad.getInputStream(),
                 jobId,
                 blob.getOffset(),
                 blob.getLength());
@@ -106,6 +107,7 @@ public class JobPartDataTransceiver implements DataTransceiver {
                     transferStrategy.emitChecksumEvent(blob, checksumType, checksum);
                 }
             }  catch (final IOException e) {
+                // TODO Emit a failure event here
                 LOG.info("Failure creating channel to calculate checksum.", e);
             }
         }

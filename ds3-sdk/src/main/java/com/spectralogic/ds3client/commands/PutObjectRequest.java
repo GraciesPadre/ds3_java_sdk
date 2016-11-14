@@ -98,14 +98,14 @@ public class PutObjectRequest extends AbstractRequest {
 
     }
 
-    public PutObjectRequest(final String bucketName, final String objectName, final ByteChannel channel, final String job, final long offset, final long size) {
+    public PutObjectRequest(final String bucketName, final String objectName, final ByteChannel channel, final InputStream inputStream, final String job, final long offset, final long size) {
         this.bucketName = bucketName;
         this.objectName = objectName;
         this.size = size;
         this.job = job;
         this.offset = offset;
         this.channel = channel;
-        this.stream = StrategyUtils.makeResettableInputStream(Channels.newInputStream(channel));
+        this.stream = inputStream;
 
         this.getQueryParams().put("job", UrlEscapers.urlFragmentEscaper().escape(job).replace("+", "%2B"));
         this.getQueryParams().put("offset", Long.toString(offset));

@@ -17,10 +17,14 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
 import com.spectralogic.ds3client.models.BulkObject;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
+import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
+import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.makeResettableInputStream;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.resolveForSymbolic;
 
 public class SequentialFileReaderChannelStrategy extends AbstractChannelStrategy {
@@ -31,14 +35,19 @@ public class SequentialFileReaderChannelStrategy extends AbstractChannelStrategy
     }
 
     @Override
-    public BlobChannelPair acquireChannelForBlob(final BulkObject blob) throws IOException {
+    public BlobChannelStreamQuad acquireChannelForBlob(final BulkObject blob) throws IOException {
         synchronized (getLock()) {
             final Path path = directory.resolve(blob.getName());
 
             final FileChannel channel = FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
             channel.position(blob.getOffset());
 
-            return new BlobChannelPair(blob, channel);
+            final InputStream inputStream = makeResettableInputStream(Channels.newInputStream(channel));
+
+            return new BlobChannelStreamQuad.Builder(blob)
+                    .withChannel(channel)
+                    .withInputStream(inputStream)
+                    .build();
         }
     }
 }
