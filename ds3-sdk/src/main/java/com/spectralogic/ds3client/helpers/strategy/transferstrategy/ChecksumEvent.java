@@ -18,12 +18,26 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 
-import java.io.IOException;
+public class ChecksumEvent {
+    private final BulkObject blob;
+    private final ChecksumType.Type checksumType;
+    private final String checksum;
 
-public interface TransferStrategy extends EventDispatcher {
-    void transfer() throws IOException, InterruptedException;
+    public ChecksumEvent(final BulkObject blob, final ChecksumType.Type checksumType, final String checksum) {
+        this.blob = blob;
+        this.checksumType = checksumType;
+        this.checksum = checksum;
+    }
 
-    void attachChecksumObserver(final ChecksumObserver checksumObserver);
-    void removeChecksumObserver(final ChecksumObserver checksumObserver);
-    void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type type, final String checksum);
+    public BulkObject getBlob() {
+        return blob;
+    }
+
+    public ChecksumType.Type getChecksumType() {
+        return checksumType;
+    }
+
+    public String getChecksum() {
+        return checksum;
+    }
 }

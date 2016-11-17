@@ -18,7 +18,6 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
-import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.ChecksumType;
@@ -32,7 +31,7 @@ public final class TransferStrategyBuilder {
     private TransferRetryBehavior transferRetryBehavior;
     private ChecksumFunction checksumFunction;
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
-    private EventRegistrar eventRegistrar;
+    private EventDispatcher eventDispatcher;
     private JobPartTracker jobPartTracker;
 
     public TransferStrategyBuilder withBlobStrategy(final BlobStrategy blobStrategy) {
@@ -70,8 +69,8 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
-    public TransferStrategyBuilder withEventRegistrar(final EventRegistrar eventRegistrar) {
-        this.eventRegistrar = eventRegistrar;
+    public TransferStrategyBuilder withEventRegistrar(final EventDispatcher eventDispatcher) {
+        this.eventDispatcher = eventDispatcher;
         return this;
     }
 
@@ -85,10 +84,10 @@ public final class TransferStrategyBuilder {
         Preconditions.checkNotNull(channelStrategy, "channelStrategy may not be null.");
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
         Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
-        Preconditions.checkNotNull(eventRegistrar, "eventRegistrar may not be null.");
+        Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
 
         final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(
-                channelStrategy, blobStrategy, bucketName, jobId, eventRegistrar);
+                channelStrategy, blobStrategy, bucketName, jobId, eventDispatcher);
 
         return putSequentialTransferStrategy.withDataTransceiver(makeDataTransceiver(putSequentialTransferStrategy));
     }

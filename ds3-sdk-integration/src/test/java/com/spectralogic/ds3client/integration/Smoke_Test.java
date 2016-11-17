@@ -1048,6 +1048,8 @@ public class Smoke_Test {
 
             job.attachObjectCompletedListener(transferredListener);
             job.attachDataTransferredListener(transferredListener);
+            job.removeDataTransferredListener(transferredListener);
+            job.attachDataTransferredListener(transferredListener);
 
             job.transfer(new ResourceObjectPutter(RESOURCE_BASE_NAME));
 

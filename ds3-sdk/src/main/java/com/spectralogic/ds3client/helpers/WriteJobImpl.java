@@ -40,13 +40,11 @@ import com.spectralogic.ds3client.utils.hashing.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Channels;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
@@ -136,7 +134,7 @@ class WriteJobImpl extends JobImpl {
                     .withJobId(getJobId().toString())
                     // .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
                     .withJobPartTracker(getJobPartTracker())
-                    .withEventRegistrar(getEventRegistrar())
+                    .withEventRegistrar(getEventDispatcher())
                     .withChecksumType(checksumType);
 
             if (checksumType != ChecksumType.Type.NONE) {
@@ -195,7 +193,7 @@ class WriteJobImpl extends JobImpl {
             }
         } catch (final Throwable t) {
             emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.PuttingObject, t, masterObjectList.getObjects().get(0)));
-            throw new RuntimeException(t);
+            throw t;
         }
     }
 

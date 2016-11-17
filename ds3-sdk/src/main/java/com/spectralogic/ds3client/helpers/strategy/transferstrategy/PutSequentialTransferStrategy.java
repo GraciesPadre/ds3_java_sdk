@@ -15,11 +15,8 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
-import com.spectralogic.ds3client.helpers.ChecksumListener;
-import com.spectralogic.ds3client.helpers.DataTransferredListener;
 import com.spectralogic.ds3client.helpers.FailureEventListener;
 import com.spectralogic.ds3client.helpers.JobPart;
-import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
@@ -34,7 +31,7 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     private final BlobStrategy blobStrategy;
     private final String bucketName;
     private final String jobId;
-    private final EventRegistrar eventRegistrar;
+    private final EventDispatcher eventDispatcher;
 
     private DataTransceiver dataTransceiver;
 
@@ -42,13 +39,13 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
                                          final BlobStrategy blobStrategy,
                                          final String bucketName,
                                          final String jobId,
-                                         final EventRegistrar eventRegistrar)
+                                         final EventDispatcher eventDispatcher)
     {
         this.channelStrategy = channelStrategy;
         this.blobStrategy = blobStrategy;
         this.bucketName = bucketName;
         this.jobId = jobId;
-        this.eventRegistrar = eventRegistrar;
+        this.eventDispatcher = eventDispatcher;
     }
 
     public PutSequentialTransferStrategy withDataTransceiver(final DataTransceiver dataTranceiver) {
@@ -66,67 +63,79 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     }
 
     @Override
-    public void attachChecksumListener(final ChecksumListener listener) {
-        eventRegistrar.attachChecksumListener(listener);
+    public void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
+        eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
     }
 
     @Override
-    public void removeChecksumListener(final ChecksumListener listener) {
-        eventRegistrar.removeChecksumListener(listener);
+    public void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
+        eventDispatcher.removeDataTransferredObserver(dataTransferredObserver);
+    }
+
+    /*
+    @Override
+    public void attachObjectCompletedObserver(final ObjectCompletedListener listener) {
+        eventDispatcher.attachObjectCompletedObserver(listener);
     }
 
     @Override
-    public void attachDataTransferredListener(final DataTransferredListener listener) {
-        eventRegistrar.attachDataTransferredListener(listener);
+    public void removeObjectCompletedObserver(final ObjectCompletedListener listener) {
+        eventDispatcher.removeObjectCompletedObserver(listener);
+    }
+    */
+
+    @Override
+    public void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
+        eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
     }
 
     @Override
-    public void removeDataTransferredListener(final DataTransferredListener listener) {
-        eventRegistrar.removeDataTransferredListener(listener);
+    public void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
+        eventDispatcher.removeObjectCompletedObserver(objectCompletedObserver);
     }
 
     @Override
-    public void attachObjectCompletedListener(final ObjectCompletedListener listener) {
-        eventRegistrar.attachObjectCompletedListener(listener);
+    public void attachChecksumObserver(final ChecksumObserver checksumObserver) {
+        eventDispatcher.attachChecksumObserver(checksumObserver);
     }
 
     @Override
-    public void removeObjectCompletedListener(final ObjectCompletedListener listener) {
-        eventRegistrar.removeObjectCompletedListener(listener);
+    public void removeChecksumObserver(final ChecksumObserver checksumObserver) {
+        eventDispatcher.removeChecksumObserver(checksumObserver);
     }
 
     @Override
-    public void attachWaitingForChunksListener(final WaitingForChunksListener listener) {
-        eventRegistrar.attachWaitingForChunksListener(listener);
+    public void attachWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
+        eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
     }
 
     @Override
-    public void removeWaitingForChunksListener(final WaitingForChunksListener listener) {
-        eventRegistrar.removeWaitingForChunksListener(listener);
+    public void removeWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
+        eventDispatcher.removeWaitingForChunksObserver(waitingForChunksObserver);
     }
 
     @Override
-    public void attachFailureEventListener(final FailureEventListener listener) {
-        eventRegistrar.attachFailureEventListener(listener);
+    public void attachFailureEventObserver(final FailureEventObserver failureEventObserver) {
+        eventDispatcher.attachFailureEventObserver(failureEventObserver);
     }
 
     @Override
-    public void removeFailureEventListener(final FailureEventListener listener) {
-        eventRegistrar.removeFailureEventListener(listener);
+    public void removeFailureEventObserver(final FailureEventObserver failureEventObserver) {
+        eventDispatcher.removeFailureEventObserver(failureEventObserver);
     }
 
     @Override
     public void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type checksumType, final String checksum) {
-        eventRegistrar.emitChecksumEvent(blob, checksumType, checksum);
+        eventDispatcher.emitChecksumEvent(blob, checksumType, checksum);
     }
 
     @Override
     public void emitFailureEvent(final FailureEvent failureEvent) {
-        eventRegistrar.emitFailureEvent(failureEvent);
+        eventDispatcher.emitFailureEvent(failureEvent);
     }
 
     @Override
     public void emitWaitingForChunksEvents(final int secondsToDelay) {
-        eventRegistrar.emitWaitingForChunksEvents(secondsToDelay);
+        eventDispatcher.emitWaitingForChunksEvents(secondsToDelay);
     }
 }

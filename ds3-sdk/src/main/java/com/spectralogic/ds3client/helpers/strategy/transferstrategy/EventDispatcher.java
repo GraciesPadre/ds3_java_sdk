@@ -15,48 +15,43 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
-import com.spectralogic.ds3client.helpers.ChecksumListener;
-import com.spectralogic.ds3client.helpers.DataTransferredListener;
-import com.spectralogic.ds3client.helpers.FailureEventListener;
-import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
-import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 
-public interface EventRegistrar {
+public interface EventDispatcher {
     /**
      * Attaches an event handler that is invoked when a blob is successfully
      * transferred to Spectra S3.
      */
-    void attachDataTransferredListener(final DataTransferredListener listener);
-    void removeDataTransferredListener(final DataTransferredListener listener);
+    void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver);
+    void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver);
 
     /**
      * Attaches an event handler that is invoked when a full object is
      * successfully transferred to Spectra S3.
      */
-    void attachObjectCompletedListener(final ObjectCompletedListener listener);
-    void removeObjectCompletedListener(final ObjectCompletedListener listener);
+    void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver);
+    void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver);
 
     /**
      * Attaches an event handler that is invoked when an object checksum is received.
      */
-    void attachChecksumListener(final ChecksumListener listener);
-    void removeChecksumListener(final ChecksumListener listener);
+    void attachChecksumObserver(final ChecksumObserver checksumObserver);
+    void removeChecksumObserver(final ChecksumObserver checksumObserver);
 
     /**
      * Attaches an event handler that will be invoked only when there are no chunks available
      * for processing.
      */
-    void attachWaitingForChunksListener(final WaitingForChunksListener listener);
-    void removeWaitingForChunksListener(final WaitingForChunksListener listener);
+    void attachWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver);
+    void removeWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver);
 
     /**
      * Attaches an event handler when an object transfer fails
      */
-    void attachFailureEventListener(final FailureEventListener listener);
-    void removeFailureEventListener(final FailureEventListener listener);
+    void attachFailureEventObserver(final FailureEventObserver failureEventObserver);
+    void removeFailureEventObserver(final FailureEventObserver failureEventObserver);
 
     void emitFailureEvent(final FailureEvent failureEvent);
     void emitWaitingForChunksEvents(final int secondsToDelay);

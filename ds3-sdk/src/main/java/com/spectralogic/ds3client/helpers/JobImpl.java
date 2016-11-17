@@ -19,8 +19,13 @@ import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.Job;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventRegistrar;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventRegistrarImpl;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.ChecksumObserver;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.DataTransferredObserver;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcherImpl;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.FailureEventObserver;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.ObjectCompletedObserver;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.WaitingForChunksObserver;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.models.MasterObjectList;
@@ -48,7 +53,7 @@ abstract class JobImpl implements Job {
     private final EventRunner eventRunner;
 
     private final JobPartTracker jobPartTracker;
-    private final EventRegistrar eventRegistrar;
+    private final EventDispatcher eventDispatcher;
 
     public JobImpl(final Ds3Client client,
                    final MasterObjectList masterObjectList,
@@ -61,7 +66,7 @@ abstract class JobImpl implements Job {
 
         jobPartTracker = makeJobPartTracker(getChunks(masterObjectList), eventRunner);
 
-        eventRegistrar = new EventRegistrarImpl(eventRunner, jobPartTracker);
+        eventDispatcher = new EventDispatcherImpl(eventRunner, jobPartTracker);
     }
     
     @Override
@@ -118,65 +123,65 @@ abstract class JobImpl implements Job {
     @Override
     public void attachChecksumListener(final ChecksumListener listener) {
         checkRunning();
-        eventRegistrar.attachChecksumListener(listener);
+        eventDispatcher.attachChecksumObserver(new ChecksumObserver(listener));
     }
 
     @Override
     public void removeChecksumListener(final ChecksumListener listener) {
         checkRunning();
-        eventRegistrar.removeChecksumListener(listener);
+        eventDispatcher.removeChecksumObserver(new ChecksumObserver(listener));
     }
 
     @Override
     public void attachWaitingForChunksListener(final WaitingForChunksListener listener) {
         checkRunning();
-        eventRegistrar.attachWaitingForChunksListener(listener);
+        eventDispatcher.attachWaitingForChunksObserver(new WaitingForChunksObserver(listener));
     }
 
     @Override
     public void removeWaitingForChunksListener(final WaitingForChunksListener listener) {
         checkRunning();
-        eventRegistrar.removeWaitingForChunksListener(listener);
+        eventDispatcher.removeWaitingForChunksObserver(new WaitingForChunksObserver(listener));
     }
 
     @Override
     public void attachFailureEventListener(final FailureEventListener listener) {
         checkRunning();
-        eventRegistrar.attachFailureEventListener(listener);
+        eventDispatcher.attachFailureEventObserver(new FailureEventObserver(listener));
     }
 
     @Override
     public void removeFailureEventListener(final FailureEventListener listener) {
         checkRunning();
-        eventRegistrar.removeFailureEventListener(listener);
+        eventDispatcher.removeFailureEventObserver(new FailureEventObserver(listener));
     }
 
     @Override
     public void attachDataTransferredListener(final DataTransferredListener listener) {
         checkRunning();
-        eventRegistrar.attachDataTransferredListener(listener);
+        eventDispatcher.attachDataTransferredObserver(new DataTransferredObserver(listener));
     }
 
     @Override
     public void removeDataTransferredListener(final DataTransferredListener listener) {
         checkRunning();
-        eventRegistrar.removeDataTransferredListener(listener);
+        eventDispatcher.removeDataTransferredObserver(new DataTransferredObserver(listener));
     }
 
     @Override
     public void attachObjectCompletedListener(final ObjectCompletedListener listener) {
         checkRunning();
-        eventRegistrar.attachObjectCompletedListener(listener);
+        eventDispatcher.attachObjectCompletedObserver(new ObjectCompletedObserver(listener));
     }
 
     @Override
     public void removeObjectCompletedListener(final ObjectCompletedListener listener) {
         checkRunning();
-        eventRegistrar.removeObjectCompletedListener(listener);
+        eventDispatcher.removeObjectCompletedObserver(new ObjectCompletedObserver(listener));
     }
 
     protected void emitFailureEvent(final FailureEvent failureEvent) {
-        eventRegistrar.emitFailureEvent(failureEvent);
+        eventDispatcher.emitFailureEvent(failureEvent);
     }
 
     protected FailureEvent makeFailureEvent(final FailureEvent.FailureActivity failureActivity,
@@ -202,11 +207,11 @@ abstract class JobImpl implements Job {
     }
 
     protected void emitWaitingForChunksEvents(final int secondsToDelay) {
-        eventRegistrar.emitWaitingForChunksEvents(secondsToDelay);
+        eventDispatcher.emitWaitingForChunksEvents(secondsToDelay);
     }
 
     protected void emitChecksumEvents(final BulkObject bulkObject, final ChecksumType.Type checksumType, final String checksum) {
-        eventRegistrar.emitChecksumEvent(bulkObject, checksumType, checksum);
+        eventDispatcher.emitChecksumEvent(bulkObject, checksumType, checksum);
     }
 
     protected abstract List<Objects> getChunks(final MasterObjectList masterObjectList);
@@ -265,8 +270,8 @@ abstract class JobImpl implements Job {
         }
     }
 
-    protected EventRegistrar getEventRegistrar() {
-        return eventRegistrar;
+    protected EventDispatcher getEventDispatcher() {
+        return eventDispatcher;
     }
 
     protected EventRunner getEventRunner() {
