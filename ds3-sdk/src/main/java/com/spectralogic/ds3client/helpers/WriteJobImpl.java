@@ -36,6 +36,7 @@ import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.utils.Guard;
+import com.spectralogic.ds3client.utils.SeekableByteChannelInputStream;
 import com.spectralogic.ds3client.utils.hashing.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,7 +147,8 @@ class WriteJobImpl extends JobImpl {
 
                             try
                             {
-                                final InputStream dataStream = channelStrategy.acquireChannelForBlob(obj).getInputStream();
+                                // final InputStream dataStream = channelStrategy.acquireChannelForBlob(obj).getInputStream();
+                                final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj));
 
                                 final Hasher hasher = ChecksumUtils.getHasher(checksumType);
 

@@ -18,8 +18,9 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 
 import java.io.IOException;
+import java.nio.channels.SeekableByteChannel;
 
 public interface ChannelStrategy {
-    BlobChannelStreamQuad acquireChannelForBlob(final BulkObject blob) throws IOException;
-    BlobChannelStreamQuad releaseChannelForBlob(final BlobChannelStreamQuad blobChannelStreamQuad) throws IOException;
+    SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException;
+    void releaseChannelForBlob(final SeekableByteChannel seekableByteChannel, final BulkObject blob) throws IOException;
 }

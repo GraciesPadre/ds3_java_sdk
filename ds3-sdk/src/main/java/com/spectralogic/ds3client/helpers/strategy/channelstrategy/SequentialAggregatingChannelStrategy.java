@@ -20,6 +20,7 @@ import com.google.common.collect.SetMultimap;
 import com.spectralogic.ds3client.models.BulkObject;
 
 import java.io.IOException;
+import java.nio.channels.SeekableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,7 +28,7 @@ public class SequentialAggregatingChannelStrategy implements ChannelStrategy {
     private final Object lock = new Object();
 
     private final SetMultimap<String, Long> blobNameOffsetMap = HashMultimap.create();
-    private final Map<String, BlobChannelStreamQuad> blobNameChannelMap = new HashMap<>();
+    private final Map<String, SeekableByteChannel> blobNameChannelMap = new HashMap<>();
 
     private final ChannelStrategy channelStrategyDelegate;
 
@@ -36,46 +37,41 @@ public class SequentialAggregatingChannelStrategy implements ChannelStrategy {
     }
 
     @Override
-    public BlobChannelStreamQuad acquireChannelForBlob(final BulkObject blob) throws IOException {
+    public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
         synchronized (lock) {
             final String blobName = blob.getName();
 
             blobNameOffsetMap.put(blobName, blob.getOffset());
 
-            final BlobChannelStreamQuad blobChannelStreamQuad = blobNameChannelMap.get(blobName);
+            final SeekableByteChannel seekableByteChannel = blobNameChannelMap.get(blobName);
 
-            if (blobChannelStreamQuad != null) {
-                return new BlobChannelStreamQuad.Builder(blob)
-                        .withChannel(blobChannelStreamQuad.getChannel())
-                        .withInputStream(blobChannelStreamQuad.getInputStream())
-                        .build();
+            if (seekableByteChannel != null) {
+                return seekableByteChannel;
             }
 
-            return makeNewBlobChanneQuad(blob);
+            return makeNewChannel(blob);
         }
     }
 
-    private BlobChannelStreamQuad makeNewBlobChanneQuad(final BulkObject blob) throws IOException {
-        final BlobChannelStreamQuad blobChannelStreamQuad = channelStrategyDelegate.acquireChannelForBlob(blob);
+    private SeekableByteChannel makeNewChannel(final BulkObject blob) throws IOException {
+        final SeekableByteChannel seekableByteChannel = channelStrategyDelegate.acquireChannelForBlob(blob);
 
-        blobNameChannelMap.put(blob.getName(), blobChannelStreamQuad);
+        blobNameChannelMap.put(blob.getName(), seekableByteChannel);
 
-        return blobChannelStreamQuad;
+        return seekableByteChannel;
     }
 
     @Override
-    public BlobChannelStreamQuad releaseChannelForBlob(final BlobChannelStreamQuad blobChannelStreamQuad) throws IOException {
+    public void releaseChannelForBlob(final SeekableByteChannel seekableByteChannel, final BulkObject blob) throws IOException {
         synchronized (lock) {
-            final String blobName = blobChannelStreamQuad.getBlob().getName();
+            final String blobName = blob.getName();
 
-            blobNameOffsetMap.remove(blobName, blobChannelStreamQuad.getBlob().getOffset());
+            blobNameOffsetMap.remove(blobName, blob.getOffset());
 
             if (blobNameOffsetMap.get(blobName).size() == 0) {
                 blobNameChannelMap.remove(blobName);
-                return channelStrategyDelegate.releaseChannelForBlob(blobChannelStreamQuad);
+                channelStrategyDelegate.releaseChannelForBlob(seekableByteChannel, blob);
             }
-
-            return blobChannelStreamQuad;
         }
     }
 }

@@ -18,10 +18,8 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.channels.ByteChannel;
-import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,9 +28,10 @@ import java.nio.file.StandardOpenOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SequentialFileWriterChannelStrategy extends AbstractChannelStrategy {
+public class SequentialFileWriterChannelStrategy implements ChannelStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(SequentialFileWriterChannelStrategy.class);
 
+    private final Object lock = new Object();
     private final Path directory;
 
     public SequentialFileWriterChannelStrategy(final Path directory) {
@@ -40,24 +39,17 @@ public class SequentialFileWriterChannelStrategy extends AbstractChannelStrategy
     }
 
     @Override
-    public BlobChannelStreamQuad acquireChannelForBlob(final BulkObject blob) throws IOException {
-        synchronized (getLock()) {
+    public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
+        synchronized (lock) {
             Files.createDirectories(directory);
 
             final Path filePath = Paths.get(directory.toString(), blob.getName());
             createFile(filePath);
 
-            final ByteChannel channel = FileChannel.open(filePath,
+            return FileChannel.open(filePath,
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.CREATE,
                     StandardOpenOption.WRITE);
-
-            final OutputStream outputStream = Channels.newOutputStream(channel);
-
-            return new BlobChannelStreamQuad.Builder(blob)
-                    .withChannel(channel)
-                    .withOutputStream(outputStream)
-                    .build();
         }
     }
 
@@ -66,6 +58,13 @@ public class SequentialFileWriterChannelStrategy extends AbstractChannelStrategy
             Files.createFile(filePath);
         } catch (final IOException e) {
             LOG.info("File already exists", e);
+        }
+    }
+
+    @Override
+    public void releaseChannelForBlob(final SeekableByteChannel seekableByteChannel, final BulkObject blob) throws IOException {
+        synchronized (lock) {
+            seekableByteChannel.close();
         }
     }
 }

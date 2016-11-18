@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
@@ -27,7 +28,8 @@ import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterCh
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.makeResettableInputStream;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.resolveForSymbolic;
 
-public class SequentialFileReaderChannelStrategy extends AbstractChannelStrategy {
+public class SequentialFileReaderChannelStrategy implements ChannelStrategy {
+    private final Object lock = new Object();
     private final Path directory;
 
     public SequentialFileReaderChannelStrategy(final Path directory) {
@@ -35,19 +37,18 @@ public class SequentialFileReaderChannelStrategy extends AbstractChannelStrategy
     }
 
     @Override
-    public BlobChannelStreamQuad acquireChannelForBlob(final BulkObject blob) throws IOException {
-        synchronized (getLock()) {
+    public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
+        synchronized (lock) {
             final Path path = directory.resolve(blob.getName());
 
-            final FileChannel channel = FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
-            channel.position(blob.getOffset());
+            return FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
+        }
+    }
 
-            final InputStream inputStream = makeResettableInputStream(Channels.newInputStream(channel));
-
-            return new BlobChannelStreamQuad.Builder(blob)
-                    .withChannel(channel)
-                    .withInputStream(inputStream)
-                    .build();
+    @Override
+    public void releaseChannelForBlob(final SeekableByteChannel seekableByteChannel, final BulkObject blob) throws IOException {
+        synchronized (lock) {
+            seekableByteChannel.close();
         }
     }
 }

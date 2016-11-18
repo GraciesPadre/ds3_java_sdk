@@ -21,13 +21,13 @@ import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.BlobChannelStreamQuad;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
+import java.nio.channels.SeekableByteChannel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,24 +65,23 @@ public class JobPartDataTransceiver implements DataTransceiver {
 
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
-        final BlobChannelStreamQuad blobChannelStreamQuad = channelStrategy.acquireChannelForBlob(jobPart.getBulkObject());
+        final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(jobPart.getBulkObject());
 
-        jobPart.getClient().putObject(makePutObjectRequest(blobChannelStreamQuad, jobPart));
+        jobPart.getClient().putObject(makePutObjectRequest(seekableByteChannel, jobPart));
 
         final BulkObject blob = jobPart.getBulkObject();
         blobStrategy.blobCompleted(blob);
-        channelStrategy.releaseChannelForBlob(blobChannelStreamQuad);
+        channelStrategy.releaseChannelForBlob(seekableByteChannel, blob);
         jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
     }
 
-    private PutObjectRequest makePutObjectRequest(final BlobChannelStreamQuad blobChannelStreamQuad, final JobPart jobPart) {
+    private PutObjectRequest makePutObjectRequest(final SeekableByteChannel seekableByteChannel, final JobPart jobPart) {
         final BulkObject blob = jobPart.getBulkObject();
 
         final PutObjectRequest putObjectRequest = new PutObjectRequest(
                 bucketName,
                 blob.getName(),
-                blobChannelStreamQuad.getChannel(),
-                blobChannelStreamQuad.getInputStream(),
+                seekableByteChannel,
                 jobId,
                 blob.getOffset(),
                 blob.getLength());
@@ -99,7 +98,7 @@ public class JobPartDataTransceiver implements DataTransceiver {
             final String checksum;
 
             try {
-                final ByteChannel byteChannel = channelStrategy.acquireChannelForBlob(blob).getChannel();
+                final ByteChannel byteChannel = channelStrategy.acquireChannelForBlob(blob);
                 checksum = checksumFunction.compute(blob, byteChannel);
 
                 if (checksum != null) {
