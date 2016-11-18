@@ -15,9 +15,7 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
-import com.spectralogic.ds3client.helpers.FailureEventListener;
 import com.spectralogic.ds3client.helpers.JobPart;
-import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
@@ -33,7 +31,7 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     private final String jobId;
     private final EventDispatcher eventDispatcher;
 
-    private DataTransceiver dataTransceiver;
+    private TransferMethod transferMethod;
 
     public PutSequentialTransferStrategy(final ChannelStrategy channelStrategy,
                                          final BlobStrategy blobStrategy,
@@ -48,8 +46,8 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
         this.eventDispatcher = eventDispatcher;
     }
 
-    public PutSequentialTransferStrategy withDataTransceiver(final DataTransceiver dataTranceiver) {
-        this.dataTransceiver = dataTranceiver;
+    public PutSequentialTransferStrategy withDataTransceiver(final TransferMethod dataTranceiver) {
+        this.transferMethod = dataTranceiver;
         return this;
     }
 
@@ -58,7 +56,7 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
         final Iterable<JobPart> workQueue = blobStrategy.getWork();
 
         for (final JobPart jobPart : workQueue) {
-            dataTransceiver.transferJobPart(jobPart);
+            transferMethod.transferJobPart(jobPart);
         }
     }
 

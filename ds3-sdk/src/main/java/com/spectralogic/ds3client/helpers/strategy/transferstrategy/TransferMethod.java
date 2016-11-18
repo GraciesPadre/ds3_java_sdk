@@ -19,6 +19,6 @@ import com.spectralogic.ds3client.helpers.JobPart;
 
 import java.io.IOException;
 
-public interface DataTransceiver {
+public interface TransferMethod {
     void transferJobPart(final JobPart jobPart) throws IOException;
 }

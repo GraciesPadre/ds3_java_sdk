@@ -92,16 +92,16 @@ public final class TransferStrategyBuilder {
         return putSequentialTransferStrategy.withDataTransceiver(makeDataTransceiver(putSequentialTransferStrategy));
     }
 
-    private DataTransceiver makeDataTransceiver(final TransferStrategy transferStrategy) {
+    private TransferMethod makeDataTransceiver(final TransferStrategy transferStrategy) {
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
 
-        final DataTransceiver dataTransceiver = new JobPartDataTransceiver(transferStrategy, channelStrategy,
+        final TransferMethod transferMethod = new PutJobTransferMethod(transferStrategy, channelStrategy,
                 blobStrategy, bucketName, jobId, jobPartTracker, checksumFunction, checksumType);
 
         if (transferRetryBehavior != null) {
-            return transferRetryBehavior.wrap(dataTransceiver);
+            return transferRetryBehavior.wrap(transferMethod);
         }
 
-        return dataTransceiver;
+        return transferMethod;
     }
 }

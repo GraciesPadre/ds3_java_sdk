@@ -23,16 +23,16 @@ import java.io.IOException;
 
 public class MaxNumObjectTransferAttemptsBehavior implements TransferRetryBehavior {
     private final int maxNumObjectTransferAttempts;
-    private DataTransceiver dataTransceiverDelegate;
+    private TransferMethod transferMethodDelegate;
 
     public MaxNumObjectTransferAttemptsBehavior(final int maxNumObjectTransferAttempts) {
         this.maxNumObjectTransferAttempts = maxNumObjectTransferAttempts;
     }
 
     @Override
-    public DataTransceiver wrap(final DataTransceiver dataTransceiver) {
-        Preconditions.checkNotNull(dataTransceiver, "dataTransceiver may not be null.");
-        dataTransceiverDelegate = dataTransceiver;
+    public TransferMethod wrap(final TransferMethod transferMethod) {
+        Preconditions.checkNotNull(transferMethod, "transferMethod may not be null.");
+        transferMethodDelegate = transferMethod;
         return this;
     }
 
@@ -42,7 +42,7 @@ public class MaxNumObjectTransferAttemptsBehavior implements TransferRetryBehavi
 
         while(true) {
             try {
-                dataTransceiverDelegate.transferJobPart(jobPart);
+                transferMethodDelegate.transferJobPart(jobPart);
                 break;
             } catch (final Throwable t) {
                 if (ExceptionClassifier.isUnrecoverableException(t) || ++objectTransfersAttempted >= maxNumObjectTransferAttempts) {

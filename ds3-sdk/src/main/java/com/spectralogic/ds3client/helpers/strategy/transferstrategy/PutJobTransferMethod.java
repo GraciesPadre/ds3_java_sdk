@@ -32,8 +32,8 @@ import java.nio.channels.SeekableByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JobPartDataTransceiver implements DataTransceiver {
-    private static final Logger LOG = LoggerFactory.getLogger(JobPartDataTransceiver.class);
+public class PutJobTransferMethod implements TransferMethod {
+    private static final Logger LOG = LoggerFactory.getLogger(PutJobTransferMethod.class);
 
     private final TransferStrategy transferStrategy;
     private final ChannelStrategy channelStrategy;
@@ -44,14 +44,14 @@ public class JobPartDataTransceiver implements DataTransceiver {
     private final ChecksumFunction checksumFunction;
     private final ChecksumType.Type checksumType;
 
-    public JobPartDataTransceiver(final TransferStrategy transferStrategy,
-                                  final ChannelStrategy channelStrategy,
-                                  final BlobStrategy blobStrategy,
-                                  final String bucketName,
-                                  final String jobId,
-                                  final JobPartTracker jobPartTracker,
-                                  final ChecksumFunction checksumFunction,
-                                  final ChecksumType.Type checksumType)
+    public PutJobTransferMethod(final TransferStrategy transferStrategy,
+                                final ChannelStrategy channelStrategy,
+                                final BlobStrategy blobStrategy,
+                                final String bucketName,
+                                final String jobId,
+                                final JobPartTracker jobPartTracker,
+                                final ChecksumFunction checksumFunction,
+                                final ChecksumType.Type checksumType)
     {
         this.transferStrategy = transferStrategy;
         this.channelStrategy = channelStrategy;

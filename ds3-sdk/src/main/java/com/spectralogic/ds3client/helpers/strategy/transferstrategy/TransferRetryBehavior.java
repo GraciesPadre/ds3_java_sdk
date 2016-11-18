@@ -15,6 +15,6 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
-public interface TransferRetryBehavior extends DataTransceiver {
-    DataTransceiver wrap(final DataTransceiver dataTransceiver);
+public interface TransferRetryBehavior extends TransferMethod {
+    TransferMethod wrap(final TransferMethod transferMethod);
 }
