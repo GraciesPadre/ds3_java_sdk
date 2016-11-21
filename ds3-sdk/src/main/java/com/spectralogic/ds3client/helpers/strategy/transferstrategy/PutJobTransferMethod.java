@@ -40,7 +40,7 @@ public class PutJobTransferMethod implements TransferMethod {
     private final BlobStrategy blobStrategy;
     private final String bucketName;
     private final String jobId;
-    private final JobPartTracker jobPartTracker;
+    private final EventDispatcher eventDispatcher;
     private final ChecksumFunction checksumFunction;
     private final ChecksumType.Type checksumType;
 
@@ -49,7 +49,7 @@ public class PutJobTransferMethod implements TransferMethod {
                                 final BlobStrategy blobStrategy,
                                 final String bucketName,
                                 final String jobId,
-                                final JobPartTracker jobPartTracker,
+                                final EventDispatcher eventDispatcher,
                                 final ChecksumFunction checksumFunction,
                                 final ChecksumType.Type checksumType)
     {
@@ -58,7 +58,7 @@ public class PutJobTransferMethod implements TransferMethod {
         this.blobStrategy = blobStrategy;
         this.bucketName = bucketName;
         this.jobId = jobId;
-        this.jobPartTracker = jobPartTracker;
+        this.eventDispatcher = eventDispatcher;
         this.checksumFunction = checksumFunction;
         this.checksumType = checksumType;
     }
@@ -72,7 +72,8 @@ public class PutJobTransferMethod implements TransferMethod {
         final BulkObject blob = jobPart.getBulkObject();
         blobStrategy.blobCompleted(blob);
         channelStrategy.releaseChannelForBlob(seekableByteChannel, blob);
-        jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
+        // jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
+        eventDispatcher.emitDataTransferredEvent(blob);
     }
 
     private PutObjectRequest makePutObjectRequest(final SeekableByteChannel seekableByteChannel, final JobPart jobPart) {

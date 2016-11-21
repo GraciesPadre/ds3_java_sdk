@@ -136,4 +136,14 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     public void emitWaitingForChunksEvents(final int secondsToDelay) {
         eventDispatcher.emitWaitingForChunksEvents(secondsToDelay);
     }
+
+    @Override
+    public void emitDataTransferredEvent(final BulkObject blob) {
+        eventDispatcher.emitDataTransferredEvent(blob);
+    }
+
+    @Override
+    public void emitObjectTransferredEvent(final BulkObject blob) {
+        eventDispatcher.emitObjectTransferredEvent(blob);
+    }
 }

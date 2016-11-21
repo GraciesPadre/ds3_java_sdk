@@ -17,6 +17,7 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
+import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.models.BulkObject;
@@ -128,5 +129,15 @@ public class EventDispatcherImpl implements EventDispatcher {
                 }
             });
         }
+    }
+
+    @Override
+    public void emitDataTransferredEvent(final BulkObject blob) {
+        jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
+    }
+
+    @Override
+    public void emitObjectTransferredEvent(final BulkObject blob) {
+        emitDataTransferredEvent(blob);
     }
 }

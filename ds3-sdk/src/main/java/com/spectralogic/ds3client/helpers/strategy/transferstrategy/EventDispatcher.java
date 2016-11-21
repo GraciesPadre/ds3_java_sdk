@@ -55,5 +55,7 @@ public interface EventDispatcher {
 
     void emitFailureEvent(final FailureEvent failureEvent);
     void emitWaitingForChunksEvents(final int secondsToDelay);
-    void emitChecksumEvent(final BulkObject bulkObject, final ChecksumType.Type type, final String checksum);
+    void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type type, final String checksum);
+    void emitDataTransferredEvent(final BulkObject blob);
+    void emitObjectTransferredEvent(final BulkObject blob);
 }
