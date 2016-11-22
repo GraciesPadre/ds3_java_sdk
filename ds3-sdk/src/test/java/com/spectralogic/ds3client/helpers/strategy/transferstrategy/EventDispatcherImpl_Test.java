@@ -15,6 +15,7 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
+import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
 import com.spectralogic.ds3client.helpers.ChecksumListener;
 import com.spectralogic.ds3client.helpers.DataTransferredListener;
@@ -273,5 +274,58 @@ public class EventDispatcherImpl_Test {
         public void removeObjectCompletedListener(final ObjectCompletedListener listener) {
             objectCompletedListeners.remove(listener);
         }
+    }
+
+    @Test
+    public void testAddingUserDefinedChecksumObserverEventDispatcher() {
+        final JobPartTracker jobPartTracker = new MockJobPartTracker();
+
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner(), jobPartTracker);
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final String checksumValue = "checksun";
+
+        final ChecksumObserver checksumObserver = new ChecksumObserver(new UpdateStrategy<ChecksumEvent>() {
+            @Override
+            public void update(final ChecksumEvent eventData) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(checksumValue, eventData.getChecksum());
+            }
+        });
+
+        eventDispatcher.attachChecksumObserver(checksumObserver);
+        eventDispatcher.attachChecksumObserver(checksumObserver);
+
+        eventDispatcher.emitChecksumEvent(new BulkObject(), ChecksumType.Type.MD5, checksumValue);
+
+        assertEquals(1, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testAddingUserDefinedDataTransferredObserverEventDispatcher() {
+        final JobPartTracker jobPartTracker = new MockJobPartTracker();
+
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner(), jobPartTracker);
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final Long dataTransferredLength = 85L;
+
+        final DataTransferredObserver dataTransferredObserver = new DataTransferredObserver(new UpdateStrategy<Long>() {
+            @Override
+            public void update(final Long eventData) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(dataTransferredLength, eventData);
+            }
+        });
+
+        eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
+        eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
+
+        final BulkObject blob = new BulkObject();
+        blob.setLength(dataTransferredLength);
+
+        eventDispatcher.emitDataTransferredEvent(new BulkObject());
     }
 }

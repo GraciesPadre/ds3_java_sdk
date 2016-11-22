@@ -19,31 +19,49 @@ import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.ChecksumListener;
 
 public class ChecksumObserver implements Observer<ChecksumEvent> {
-    private final ChecksumListener checksumListener;
+    private  ChecksumListener checksumListener;
+    private final UpdateStrategy<ChecksumEvent> updateStrategy;
 
     public ChecksumObserver(final ChecksumListener checksumListener) {
         Preconditions.checkNotNull(checksumListener, "checksumListener may not be null.");
 
         this.checksumListener = checksumListener;
+
+        updateStrategy = new UpdateStrategy<ChecksumEvent>() {
+            @Override
+            public void update(final ChecksumEvent eventData) {
+                checksumListener.value(eventData.getBlob(), eventData.getChecksumType(), eventData.getChecksum());
+            }
+        };
+    }
+
+    public ChecksumObserver(final UpdateStrategy<ChecksumEvent> updateStrategy) {
+        Preconditions.checkNotNull(updateStrategy, "updateStrategy may not be null.");
+        this.updateStrategy = updateStrategy;
     }
 
     @Override
     public void update(final ChecksumEvent eventData) {
-        checksumListener.value(eventData.getBlob(), eventData.getChecksumType(), eventData.getChecksum());
+        updateStrategy.update(eventData);
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ChecksumObserver)) return false;
 
         final ChecksumObserver that = (ChecksumObserver) o;
 
-        return checksumListener.equals(that.checksumListener);
+        if (checksumListener != null ? !checksumListener.equals(that.checksumListener) : that.checksumListener != null)
+            return false;
+        return updateStrategy.equals(that.updateStrategy);
+
     }
 
     @Override
     public int hashCode() {
-        return checksumListener.hashCode();
+        int result = checksumListener != null ? checksumListener.hashCode() : 0;
+        result = 31 * result + updateStrategy.hashCode();
+        return result;
     }
 }
