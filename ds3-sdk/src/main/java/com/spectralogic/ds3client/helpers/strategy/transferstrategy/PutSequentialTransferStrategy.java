@@ -143,7 +143,7 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     }
 
     @Override
-    public void emitObjectTransferredEvent(final BulkObject blob) {
-        eventDispatcher.emitObjectTransferredEvent(blob);
+    public void emitObjectCompletedEvent(final BulkObject blob) {
+        eventDispatcher.emitObjectCompletedEvent(blob);
     }
 }

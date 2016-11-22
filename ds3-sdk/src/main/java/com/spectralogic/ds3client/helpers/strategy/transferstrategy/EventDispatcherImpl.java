@@ -27,42 +27,139 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class EventDispatcherImpl implements EventDispatcher {
-    private final EventRunner eventRunner;
-    private final JobPartTracker jobPartTracker;
-    private final Set<FailureEventObserver> failureEventObservers;
-    private final Set<WaitingForChunksObserver> waitingForChunksObservers;
-    private final Set<ChecksumObserver> checksumObservers;
+    private EventRunner eventRunner;
+
+    private Set<FailureEventObserver> failureEventObservers;
+    private Set<WaitingForChunksObserver> waitingForChunksObservers;
+    private Set<ChecksumObserver> checksumObservers;
+
+    private Set<DataTransferredObserver> dataTransferredObservers;
+    private Set<ObjectCompletedObserver> objectCompletedObservers;
+
+    private final EventDispatcherStrategy eventDispatcherStrategy;
 
     public EventDispatcherImpl(final EventRunner eventRunner, final JobPartTracker jobPartTracker) {
         Preconditions.checkNotNull(eventRunner, "eventRunner must not be null.");
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker must not be null.");
 
+        init(eventRunner);
+
+        eventDispatcherStrategy = new EventDispatcherStrategy() {
+            @Override
+            public void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
+                jobPartTracker.attachDataTransferredListener(dataTransferredObserver.getDataTransferredListener());
+            }
+
+            @Override
+            public void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
+                jobPartTracker.removeDataTransferredListener(dataTransferredObserver.getDataTransferredListener());
+            }
+
+            @Override
+            public void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
+                jobPartTracker.attachObjectCompletedListener(objectCompletedObserver.getObjectCompletedListener());
+            }
+
+            @Override
+            public void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
+                jobPartTracker.removeObjectCompletedListener(objectCompletedObserver.getObjectCompletedListener());
+            }
+
+            @Override
+            public void emitDataTransferredEvent(final BulkObject blob) {
+                jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
+            }
+
+            @Override
+            public void emitObjectCompletedEvent(final BulkObject blob) {
+                emitDataTransferredEvent(blob);
+            }
+        };
+    }
+
+    private void init(final EventRunner eventRunner) {
         this.eventRunner = eventRunner;
-        this.jobPartTracker = jobPartTracker;
 
         this.failureEventObservers = new HashSet<>();
         this.waitingForChunksObservers = new HashSet<>();
         this.checksumObservers = new HashSet<>();
     }
 
+    public EventDispatcherImpl(final EventRunner eventRunner) {
+        Preconditions.checkNotNull(eventRunner, "eventRunner must not be null.");
+
+        this.eventRunner = eventRunner;
+
+        init(eventRunner);
+
+        dataTransferredObservers = new HashSet<>();
+        objectCompletedObservers = new HashSet<>();
+
+        eventDispatcherStrategy = new EventDispatcherStrategy() {
+            @Override
+            public void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
+                dataTransferredObservers.add(dataTransferredObserver);
+            }
+
+            @Override
+            public void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
+                dataTransferredObservers.remove(dataTransferredObserver);
+            }
+
+            @Override
+            public void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
+                objectCompletedObservers.add(objectCompletedObserver);
+            }
+
+            @Override
+            public void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
+                objectCompletedObservers.remove(objectCompletedObserver);
+            }
+
+            @Override
+            public void emitDataTransferredEvent(final BulkObject blob) {
+                for (final DataTransferredObserver dataTransferredObserver : dataTransferredObservers) {
+                    eventRunner.emitEvent(new Runnable() {
+                        @Override
+                        public void run() {
+                            dataTransferredObserver.update(blob.getLength());
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void emitObjectCompletedEvent(final BulkObject blob) {
+                for (final ObjectCompletedObserver objectCompletedObserver : objectCompletedObservers) {
+                    eventRunner.emitEvent(new Runnable() {
+                        @Override
+                        public void run() {
+                            objectCompletedObserver.update(blob.getName());
+                        }
+                    });
+                }
+            }
+        };
+    }
+
     @Override
     public void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-        jobPartTracker.attachDataTransferredListener(dataTransferredObserver.getDataTransferredListener());
+        eventDispatcherStrategy.attachDataTransferredObserver(dataTransferredObserver);
     }
 
     @Override
     public void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-        jobPartTracker.removeDataTransferredListener(dataTransferredObserver.getDataTransferredListener());
+        eventDispatcherStrategy.removeDataTransferredObserver(dataTransferredObserver);
     }
 
     @Override
     public void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-        jobPartTracker.attachObjectCompletedListener(objectCompletedObserver.getObjectCompletedListener());
+        eventDispatcherStrategy.attachObjectCompletedObserver(objectCompletedObserver);
     }
 
     @Override
     public void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-        jobPartTracker.removeObjectCompletedListener(objectCompletedObserver.getObjectCompletedListener());
+        eventDispatcherStrategy.removeObjectCompletedObserver(objectCompletedObserver);
     }
 
     @Override
@@ -133,11 +230,11 @@ public class EventDispatcherImpl implements EventDispatcher {
 
     @Override
     public void emitDataTransferredEvent(final BulkObject blob) {
-        jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
+        eventDispatcherStrategy.emitDataTransferredEvent(blob);
     }
 
     @Override
-    public void emitObjectTransferredEvent(final BulkObject blob) {
-        emitDataTransferredEvent(blob);
+    public void emitObjectCompletedEvent(final BulkObject blob) {
+        eventDispatcherStrategy.emitObjectCompletedEvent(blob);
     }
 }

@@ -278,9 +278,7 @@ public class EventDispatcherImpl_Test {
 
     @Test
     public void testAddingUserDefinedChecksumObserverEventDispatcher() {
-        final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
-        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner(), jobPartTracker);
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
 
@@ -304,9 +302,7 @@ public class EventDispatcherImpl_Test {
 
     @Test
     public void testAddingUserDefinedDataTransferredObserverEventDispatcher() {
-        final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
-        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner(), jobPartTracker);
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
 
@@ -326,6 +322,6 @@ public class EventDispatcherImpl_Test {
         final BulkObject blob = new BulkObject();
         blob.setLength(dataTransferredLength);
 
-        eventDispatcher.emitDataTransferredEvent(new BulkObject());
+        eventDispatcher.emitDataTransferredEvent(blob);
     }
 }
