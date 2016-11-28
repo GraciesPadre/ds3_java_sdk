@@ -47,8 +47,8 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
         this.eventDispatcher = eventDispatcher;
     }
 
-    public PutSequentialTransferStrategy withDataTransceiver(final TransferMethod dataTranceiver) {
-        this.transferMethod = dataTranceiver;
+    public PutSequentialTransferStrategy withTransferMethod(final TransferMethod transferMethod) {
+        this.transferMethod = transferMethod;
         return this;
     }
 

@@ -89,7 +89,7 @@ public final class TransferStrategyBuilder {
         final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(
                 channelStrategy, blobStrategy, bucketName, jobId, eventDispatcher);
 
-        return putSequentialTransferStrategy.withDataTransceiver(makeDataTransceiver(putSequentialTransferStrategy));
+        return putSequentialTransferStrategy.withTransferMethod(makeDataTransceiver(putSequentialTransferStrategy));
     }
 
     private TransferMethod makeDataTransceiver(final TransferStrategy transferStrategy) {

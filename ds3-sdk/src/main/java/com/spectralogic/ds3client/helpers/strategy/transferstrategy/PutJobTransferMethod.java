@@ -72,7 +72,6 @@ public class PutJobTransferMethod implements TransferMethod {
         final BulkObject blob = jobPart.getBulkObject();
         blobStrategy.blobCompleted(blob);
         channelStrategy.releaseChannelForBlob(seekableByteChannel, blob);
-        // jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
         eventDispatcher.emitDataTransferredEvent(blob);
     }
 
