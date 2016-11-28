@@ -18,6 +18,7 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
+import com.spectralogic.ds3client.networking.Metadata;
 
 public interface EventDispatcher {
     /**
@@ -53,9 +54,13 @@ public interface EventDispatcher {
     void attachFailureEventObserver(final FailureEventObserver failureEventObserver);
     void removeFailureEventObserver(final FailureEventObserver failureEventObserver);
 
+    void attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver);
+    void removeMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver);
+
     void emitFailureEvent(final FailureEvent failureEvent);
     void emitWaitingForChunksEvents(final int secondsToDelay);
     void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type type, final String checksum);
     void emitDataTransferredEvent(final BulkObject blob);
     void emitObjectCompletedEvent(final BulkObject blob);
+    void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata);
 }

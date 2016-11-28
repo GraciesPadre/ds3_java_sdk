@@ -18,50 +18,42 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.ChecksumListener;
 
-public class ChecksumObserver implements Observer<ChecksumEvent> {
+public class ChecksumObserver extends AbstractObserver<ChecksumEvent> {
     private  ChecksumListener checksumListener;
-    private final UpdateStrategy<ChecksumEvent> updateStrategy;
 
     public ChecksumObserver(final ChecksumListener checksumListener) {
+        super(new UpdateStrategy<ChecksumEvent>() {
+                  @Override
+                  public void update(final ChecksumEvent eventData) {
+                      checksumListener.value(eventData.getBlob(), eventData.getChecksumType(), eventData.getChecksum());
+                  }
+              });
+
         Preconditions.checkNotNull(checksumListener, "checksumListener may not be null.");
 
         this.checksumListener = checksumListener;
-
-        updateStrategy = new UpdateStrategy<ChecksumEvent>() {
-            @Override
-            public void update(final ChecksumEvent eventData) {
-                checksumListener.value(eventData.getBlob(), eventData.getChecksumType(), eventData.getChecksum());
-            }
-        };
     }
 
     public ChecksumObserver(final UpdateStrategy<ChecksumEvent> updateStrategy) {
-        Preconditions.checkNotNull(updateStrategy, "updateStrategy may not be null.");
-        this.updateStrategy = updateStrategy;
+        super(updateStrategy);
     }
 
     @Override
-    public void update(final ChecksumEvent eventData) {
-        updateStrategy.update(eventData);
-    }
-
-    @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (!(o instanceof ChecksumObserver)) return false;
+        if (!super.equals(o)) return false;
 
         final ChecksumObserver that = (ChecksumObserver) o;
 
-        if (checksumListener != null ? !checksumListener.equals(that.checksumListener) : that.checksumListener != null)
-            return false;
-        return updateStrategy.equals(that.updateStrategy);
+        return checksumListener != null ? checksumListener.equals(that.checksumListener) : that.checksumListener == null;
 
     }
 
     @Override
     public int hashCode() {
-        int result = checksumListener != null ? checksumListener.hashCode() : 0;
-        result = 31 * result + updateStrategy.hashCode();
+        int result = super.hashCode();
+        result = 31 * result + (checksumListener != null ? checksumListener.hashCode() : 0);
         return result;
     }
 }

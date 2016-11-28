@@ -17,27 +17,26 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.DataTransferredListener;
+import org.slf4j.Logger;
 
-public class DataTransferredObserver implements Observer<Long> {
+public class DataTransferredObserver extends AbstractObserver<Long> {
     private DataTransferredListener dataTransferredListener;
-    private final UpdateStrategy<Long> updateStrategy;
 
     public DataTransferredObserver(final DataTransferredListener dataTransferredListener) {
-        Preconditions.checkNotNull(dataTransferredListener, "dataTransferredListener may not be null.");
-
-        this.dataTransferredListener = dataTransferredListener;
-
-        updateStrategy = new UpdateStrategy<Long>() {
+        super(new UpdateStrategy<Long>() {
             @Override
             public void update(final Long eventData) {
                 dataTransferredListener.dataTransferred(eventData);
             }
-        };
+        });
+
+        Preconditions.checkNotNull(dataTransferredListener, "dataTransferredListener may not be null.");
+
+        this.dataTransferredListener = dataTransferredListener;
     }
 
     public DataTransferredObserver(final UpdateStrategy<Long> updateStrategy) {
-        Preconditions.checkNotNull(updateStrategy, "updateStrategy may not be null.");
-        this.updateStrategy = updateStrategy;
+        super(updateStrategy);
     }
 
     public DataTransferredListener getDataTransferredListener() {
@@ -45,27 +44,21 @@ public class DataTransferredObserver implements Observer<Long> {
     }
 
     @Override
-    public void update(final Long eventData) {
-        updateStrategy.update(eventData);
-    }
-
-    @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (!(o instanceof DataTransferredObserver)) return false;
+        if (!super.equals(o)) return false;
 
         final DataTransferredObserver that = (DataTransferredObserver) o;
 
-        if (getDataTransferredListener() != null ? !getDataTransferredListener().equals(that.getDataTransferredListener()) : that.getDataTransferredListener() != null)
-            return false;
-        return updateStrategy.equals(that.updateStrategy);
+        return getDataTransferredListener() != null ? getDataTransferredListener().equals(that.getDataTransferredListener()) : that.getDataTransferredListener() == null;
 
     }
 
     @Override
     public int hashCode() {
-        int result = getDataTransferredListener() != null ? getDataTransferredListener().hashCode() : 0;
-        result = 31 * result + updateStrategy.hashCode();
+        int result = super.hashCode();
+        result = 31 * result + (getDataTransferredListener() != null ? getDataTransferredListener().hashCode() : 0);
         return result;
     }
 }

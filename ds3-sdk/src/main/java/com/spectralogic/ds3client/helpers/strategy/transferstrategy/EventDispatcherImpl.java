@@ -20,8 +20,10 @@ import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
+import com.spectralogic.ds3client.helpers.events.MetadataEvent;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
+import com.spectralogic.ds3client.networking.Metadata;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -32,6 +34,7 @@ public class EventDispatcherImpl implements EventDispatcher {
     private Set<FailureEventObserver> failureEventObservers;
     private Set<WaitingForChunksObserver> waitingForChunksObservers;
     private Set<ChecksumObserver> checksumObservers;
+    private Set<MetaDataReceivedObserver> metaDataReceivedObservers;
 
     private Set<DataTransferredObserver> dataTransferredObservers;
     private Set<ObjectCompletedObserver> objectCompletedObservers;
@@ -80,9 +83,10 @@ public class EventDispatcherImpl implements EventDispatcher {
     private void init(final EventRunner eventRunner) {
         this.eventRunner = eventRunner;
 
-        this.failureEventObservers = new HashSet<>();
-        this.waitingForChunksObservers = new HashSet<>();
-        this.checksumObservers = new HashSet<>();
+        failureEventObservers = new HashSet<>();
+        waitingForChunksObservers = new HashSet<>();
+        checksumObservers = new HashSet<>();
+        metaDataReceivedObservers = new HashSet<>();
     }
 
     public EventDispatcherImpl(final EventRunner eventRunner) {
@@ -193,6 +197,16 @@ public class EventDispatcherImpl implements EventDispatcher {
     }
 
     @Override
+    public void attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
+        metaDataReceivedObservers.add(metaDataReceivedObserver);
+    }
+
+    @Override
+    public void removeMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
+        metaDataReceivedObservers.remove(metaDataReceivedObserver);
+    }
+
+    @Override
     public void emitFailureEvent(final FailureEvent failureEvent) {
         for (final FailureEventObserver failureEventObserver : failureEventObservers) {
             eventRunner.emitEvent(new Runnable() {
@@ -218,11 +232,11 @@ public class EventDispatcherImpl implements EventDispatcher {
 
     @Override
     public void emitChecksumEvent(final BulkObject bulkObject, final ChecksumType.Type type, final String checksum) {
-        for (final ChecksumObserver observer : checksumObservers) {
+        for (final ChecksumObserver checksumObserver : checksumObservers) {
             eventRunner.emitEvent(new Runnable() {
                 @Override
                 public void run() {
-                    observer.update(new ChecksumEvent(bulkObject, type, checksum));
+                    checksumObserver.update(new ChecksumEvent(bulkObject, type, checksum));
                 }
             });
         }
@@ -236,5 +250,17 @@ public class EventDispatcherImpl implements EventDispatcher {
     @Override
     public void emitObjectCompletedEvent(final BulkObject blob) {
         eventDispatcherStrategy.emitObjectCompletedEvent(blob);
+    }
+
+    @Override
+    public void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata) {
+        for (final MetaDataReceivedObserver metaDataReceivedObserver : metaDataReceivedObservers) {
+            eventRunner.emitEvent(new Runnable() {
+                @Override
+                public void run() {
+                    metaDataReceivedObserver.update(new MetadataEvent(objectName, metadata));
+                }
+            });
+        }
     }
 }

@@ -18,13 +18,24 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 
-public class ObjectCompletedObserver implements Observer<String> {
-    private final ObjectCompletedListener objectCompletedListener;
+public class ObjectCompletedObserver extends AbstractObserver<String> {
+    private ObjectCompletedListener objectCompletedListener;
 
     public ObjectCompletedObserver(final ObjectCompletedListener objectCompletedListener) {
+        super(new UpdateStrategy<String>() {
+            @Override
+            public void update(final String eventData) {
+                objectCompletedListener.objectCompleted(eventData);
+            }
+        });
+
         Preconditions.checkNotNull(objectCompletedListener, "objectCompletedListener may not be null");
 
         this.objectCompletedListener = objectCompletedListener;
+    }
+
+    public ObjectCompletedObserver(final UpdateStrategy<String> updateStrategy) {
+        super(updateStrategy);
     }
 
     public ObjectCompletedListener getObjectCompletedListener() {
@@ -32,23 +43,21 @@ public class ObjectCompletedObserver implements Observer<String> {
     }
 
     @Override
-    public void update(final String eventData) {
-        objectCompletedListener.objectCompleted(eventData);
-    }
-
-    @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (!(o instanceof ObjectCompletedObserver)) return false;
+        if (!super.equals(o)) return false;
 
         final ObjectCompletedObserver that = (ObjectCompletedObserver) o;
 
-        return getObjectCompletedListener().equals(that.getObjectCompletedListener());
+        return getObjectCompletedListener() != null ? getObjectCompletedListener().equals(that.getObjectCompletedListener()) : that.getObjectCompletedListener() == null;
 
     }
 
     @Override
     public int hashCode() {
-        return getObjectCompletedListener().hashCode();
+        int result = super.hashCode();
+        result = 31 * result + (getObjectCompletedListener() != null ? getObjectCompletedListener().hashCode() : 0);
+        return result;
     }
 }

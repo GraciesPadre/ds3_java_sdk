@@ -21,6 +21,7 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
+import com.spectralogic.ds3client.networking.Metadata;
 
 import java.io.IOException;
 
@@ -70,18 +71,6 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
         eventDispatcher.removeDataTransferredObserver(dataTransferredObserver);
     }
 
-    /*
-    @Override
-    public void attachObjectCompletedObserver(final ObjectCompletedListener listener) {
-        eventDispatcher.attachObjectCompletedObserver(listener);
-    }
-
-    @Override
-    public void removeObjectCompletedObserver(final ObjectCompletedListener listener) {
-        eventDispatcher.removeObjectCompletedObserver(listener);
-    }
-    */
-
     @Override
     public void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
         eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
@@ -123,6 +112,16 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     }
 
     @Override
+    public void attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
+        eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
+    }
+
+    @Override
+    public void removeMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
+        eventDispatcher.removeMetadataReceivedEventObserver(metaDataReceivedObserver);
+    }
+
+    @Override
     public void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type checksumType, final String checksum) {
         eventDispatcher.emitChecksumEvent(blob, checksumType, checksum);
     }
@@ -145,5 +144,10 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     @Override
     public void emitObjectCompletedEvent(final BulkObject blob) {
         eventDispatcher.emitObjectCompletedEvent(blob);
+    }
+
+    @Override
+    public void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata) {
+        eventDispatcher.emitMetaDataReceivedEvent(objectName, metadata);
     }
 }

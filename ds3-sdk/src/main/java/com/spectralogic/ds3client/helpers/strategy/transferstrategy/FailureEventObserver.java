@@ -19,18 +19,24 @@ import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.FailureEventListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 
-public class FailureEventObserver implements Observer<FailureEvent> {
-    private final FailureEventListener failureEventListener;
+public class FailureEventObserver extends AbstractObserver<FailureEvent> {
+    private FailureEventListener failureEventListener;
 
     public FailureEventObserver(final FailureEventListener failureEventListener) {
+        super(new UpdateStrategy<FailureEvent>() {
+            @Override
+            public void update(final FailureEvent eventData) {
+                failureEventListener.onFailure(eventData);
+            }
+        });
+
         Preconditions.checkNotNull(failureEventListener, "failureEventListener may not be null.");
 
         this.failureEventListener = failureEventListener;
     }
 
-    @Override
-    public void update(final FailureEvent eventData) {
-        failureEventListener.onFailure(eventData);
+    public FailureEventObserver(final UpdateStrategy<FailureEvent> updateStrategy) {
+        super(updateStrategy);
     }
 
     @Override

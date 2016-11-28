@@ -18,33 +18,42 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 
-public class WaitingForChunksObserver implements Observer<Integer> {
-    private final WaitingForChunksListener waitingForChunksListener;
+public class WaitingForChunksObserver extends AbstractObserver<Integer> {
+    private WaitingForChunksListener waitingForChunksListener;
 
     public WaitingForChunksObserver(final WaitingForChunksListener waitingForChunksListener) {
+        super(new UpdateStrategy<Integer>() {
+            @Override
+            public void update(final Integer eventData) {
+                waitingForChunksListener.waiting(eventData);
+            }
+        });
+
         Preconditions.checkNotNull(waitingForChunksListener, "waitingForChunksListener may not be null.");
 
         this.waitingForChunksListener = waitingForChunksListener;
     }
 
-    @Override
-    public void update(final Integer eventData) {
-        waitingForChunksListener.waiting(eventData);
+    public WaitingForChunksObserver(final UpdateStrategy<Integer> updateStrategy) {
+        super(updateStrategy);
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof WaitingForChunksObserver)) return false;
+        if (!super.equals(o)) return false;
 
-        final WaitingForChunksObserver that = (WaitingForChunksObserver) o;
+        WaitingForChunksObserver that = (WaitingForChunksObserver) o;
 
-        return waitingForChunksListener.equals(that.waitingForChunksListener);
+        return waitingForChunksListener != null ? waitingForChunksListener.equals(that.waitingForChunksListener) : that.waitingForChunksListener == null;
 
     }
 
     @Override
     public int hashCode() {
-        return waitingForChunksListener.hashCode();
+        int result = super.hashCode();
+        result = 31 * result + (waitingForChunksListener != null ? waitingForChunksListener.hashCode() : 0);
+        return result;
     }
 }
