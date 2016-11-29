@@ -69,7 +69,7 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
-    public TransferStrategyBuilder withEventRegistrar(final EventDispatcher eventDispatcher) {
+    public TransferStrategyBuilder withEventDispatcher(final EventDispatcher eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
         return this;
     }
@@ -89,14 +89,14 @@ public final class TransferStrategyBuilder {
         final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(
                 channelStrategy, blobStrategy, bucketName, jobId, eventDispatcher);
 
-        return putSequentialTransferStrategy.withTransferMethod(makeDataTransceiver(putSequentialTransferStrategy));
+        return putSequentialTransferStrategy.withTransferMethod(makeTransferMethod(putSequentialTransferStrategy));
     }
 
-    private TransferMethod makeDataTransceiver(final TransferStrategy transferStrategy) {
+    private TransferMethod makeTransferMethod(final TransferStrategy transferStrategy) {
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
 
         final TransferMethod transferMethod = new PutJobTransferMethod(transferStrategy, channelStrategy,
-                blobStrategy, bucketName, jobId, eventDispatcher, checksumFunction, checksumType);
+                bucketName, jobId, eventDispatcher, checksumFunction, checksumType);
 
         if (transferRetryBehavior != null) {
             return transferRetryBehavior.wrap(transferMethod);

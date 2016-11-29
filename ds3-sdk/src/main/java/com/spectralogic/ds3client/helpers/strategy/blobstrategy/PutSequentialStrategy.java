@@ -24,6 +24,7 @@ import com.spectralogic.ds3client.commands.spectrads3.AllocateJobChunkSpectraS3R
 import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.JobNode;
 import com.spectralogic.ds3client.models.MasterObjectList;
@@ -48,10 +49,8 @@ public class PutSequentialStrategy extends BlobStrategy {
 
     private int retryAfterLeft;
 
-
-
-    public PutSequentialStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final ChunkEventHandler chunkEventHandler) {
-        super(client, masterObjectList, retryAfter, retryDelay, chunkEventHandler);
+    public PutSequentialStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final EventDispatcher eventDispatcher) {
+        super(client, masterObjectList, retryAfter, retryDelay, eventDispatcher);
         this.filteredChunkIterator = filterChunks(masterObjectList.getObjects()).iterator();
         this.uuidJobNodeImmutableMap = buildNodeMap(masterObjectList.getNodes());
     }
@@ -101,7 +100,7 @@ public class PutSequentialStrategy extends BlobStrategy {
                 retryAfterLeft--;
 
                 final int retryDelay = computeDelay(response.getRetryAfterSeconds());
-                getChunkEventHandler().emitWaitingForChunksEvents(retryDelay);
+                getEventDispatcher().emitWaitingForChunksEvents(retryDelay);
 
                 LOG.debug("Will retry allocate chunk call after {} seconds", retryDelay);
                 Thread.sleep(retryDelay * 1000);

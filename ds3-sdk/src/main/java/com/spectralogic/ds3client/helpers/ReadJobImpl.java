@@ -101,7 +101,7 @@ class ReadJobImpl extends JobImpl {
             throws IOException {
         try {
             running = true;
-
+/*
             final BlobStrategy strategy = new GetSequentialStrategy(
                     client,
                     this.masterObjectList,
@@ -113,6 +113,15 @@ class ReadJobImpl extends JobImpl {
                             ReadJobImpl.super.emitWaitingForChunksEvents(secondsToDelay);
                         }
                     });
+*/
+
+            final BlobStrategy strategy = new GetSequentialStrategy(
+                    client,
+                    this.masterObjectList,
+                    retryAfter,
+                    retryDelay,
+                    getEventDispatcher()
+            );
 
             final FileObjectGetter fileObjectGetter = (FileObjectGetter)channelBuilder;
             final Field rootField = fileObjectGetter.getClass().getDeclaredField("root");

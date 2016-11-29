@@ -113,6 +113,7 @@ class WriteJobImpl extends JobImpl {
                 return;
             }
 
+            /*
             final BlobStrategy blobStrategy = new PutSequentialStrategy(client,
                     this.masterObjectList,
                     retryAfter,
@@ -123,6 +124,15 @@ class WriteJobImpl extends JobImpl {
                             WriteJobImpl.super.emitWaitingForChunksEvents(secondsToDelay);
                         }
                     });
+                    */
+
+            final BlobStrategy blobStrategy = new PutSequentialStrategy(
+                    client,
+                    this.masterObjectList,
+                    retryAfter,
+                    retryDelay,
+                    getEventDispatcher()
+            );
 
             final Path directory = StrategyUtils.extractPath(channelBuilder);
 
@@ -135,7 +145,7 @@ class WriteJobImpl extends JobImpl {
                     .withJobId(getJobId().toString())
                     // .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
                     .withJobPartTracker(getJobPartTracker())
-                    .withEventRegistrar(getEventDispatcher())
+                    .withEventDispatcher(getEventDispatcher())
                     .withChecksumType(checksumType);
 
             if (checksumType != ChecksumType.Type.NONE) {

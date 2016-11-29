@@ -37,7 +37,6 @@ public class PutJobTransferMethod implements TransferMethod {
 
     private final TransferStrategy transferStrategy;
     private final ChannelStrategy channelStrategy;
-    private final BlobStrategy blobStrategy;
     private final String bucketName;
     private final String jobId;
     private final EventDispatcher eventDispatcher;
@@ -46,7 +45,6 @@ public class PutJobTransferMethod implements TransferMethod {
 
     public PutJobTransferMethod(final TransferStrategy transferStrategy,
                                 final ChannelStrategy channelStrategy,
-                                final BlobStrategy blobStrategy,
                                 final String bucketName,
                                 final String jobId,
                                 final EventDispatcher eventDispatcher,
@@ -55,7 +53,6 @@ public class PutJobTransferMethod implements TransferMethod {
     {
         this.transferStrategy = transferStrategy;
         this.channelStrategy = channelStrategy;
-        this.blobStrategy = blobStrategy;
         this.bucketName = bucketName;
         this.jobId = jobId;
         this.eventDispatcher = eventDispatcher;
@@ -70,8 +67,8 @@ public class PutJobTransferMethod implements TransferMethod {
         jobPart.getClient().putObject(makePutObjectRequest(seekableByteChannel, jobPart));
 
         final BulkObject blob = jobPart.getBulkObject();
-        blobStrategy.blobCompleted(blob);
         channelStrategy.releaseChannelForBlob(seekableByteChannel, blob);
+        eventDispatcher.emitBlobTransferredEvent(blob);
         eventDispatcher.emitDataTransferredEvent(blob);
     }
 

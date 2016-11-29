@@ -17,6 +17,9 @@ package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.JobPart;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.BlobTransferredEventObserver;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.UpdateStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.MasterObjectList;
 
@@ -28,14 +31,21 @@ public abstract class BlobStrategy {
     private final MasterObjectList masterObjectList;
     private final int retryAfter;
     private final int retryDelay;
-    private final BlobStrategy.ChunkEventHandler chunkEventHandler;
+    private final EventDispatcher eventDispatcher;
 
-    public BlobStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final BlobStrategy.ChunkEventHandler chunkEventHandler) {
+    public BlobStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final EventDispatcher eventDispatcher) {
         this.client = client;
         this.masterObjectList = masterObjectList;
         this.retryAfter = retryAfter;
         this.retryDelay = retryDelay;
-        this.chunkEventHandler = chunkEventHandler;
+        this.eventDispatcher = eventDispatcher;
+
+        eventDispatcher.attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
+            @Override
+            public void update(final BulkObject eventData) {
+                blobCompleted(eventData);
+            }
+        }));
     }
 
     public abstract Iterable<JobPart> getWork() throws IOException, InterruptedException;
@@ -53,8 +63,8 @@ public abstract class BlobStrategy {
         return retryDelay;
     }
 
-    public BlobStrategy.ChunkEventHandler getChunkEventHandler() {
-        return chunkEventHandler;
+    public EventDispatcher getEventDispatcher() {
+        return eventDispatcher;
     }
 
     public MasterObjectList getMasterObjectList() {
@@ -68,9 +78,5 @@ public abstract class BlobStrategy {
         } else {
             return retryDelay;
         }
-    }
-
-    public interface ChunkEventHandler {
-        void emitWaitingForChunksEvents(final int secondsToDelay);
     }
 }
