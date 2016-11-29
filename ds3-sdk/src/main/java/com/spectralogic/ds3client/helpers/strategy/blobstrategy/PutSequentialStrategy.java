@@ -53,6 +53,7 @@ public class PutSequentialStrategy extends BlobStrategy {
         super(client, masterObjectList, retryAfter, retryDelay, eventDispatcher);
         this.filteredChunkIterator = filterChunks(masterObjectList.getObjects()).iterator();
         this.uuidJobNodeImmutableMap = buildNodeMap(masterObjectList.getNodes());
+        retryAfterLeft = retryAfter;
     }
 
     @Override

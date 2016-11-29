@@ -29,6 +29,7 @@ import com.spectralogic.ds3client.helpers.FailureEventListener;
 import com.spectralogic.ds3client.helpers.FileObjectGetter;
 import com.spectralogic.ds3client.helpers.FileObjectPutter;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
+import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.options.WriteJobOptions;
 import com.spectralogic.ds3client.integration.test.helpers.ABMTestHelper;
@@ -964,7 +965,7 @@ public class PutJobManagement_Test {
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
         try {
-            final IntValue numFailureEventsFired = new IntValue();
+            final AtomicInteger numFailureEventsFired = new AtomicInteger(0);
 
             final int maxNumObjectTransferAttempts = 1;
             final Ds3ClientHelpers.Job writeJob = createWriteJobWithObjectsReadyToTransfer(maxNumObjectTransferAttempts,
@@ -973,7 +974,7 @@ public class PutJobManagement_Test {
             final FailureEventListener failureEventListener = new FailureEventListener() {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
-                    numFailureEventsFired.increment();
+                    numFailureEventsFired.getAndIncrement();
                     assertEquals(FailureEvent.FailureActivity.PuttingObject, failureEvent.doingWhat());
                 }
             };
@@ -983,7 +984,7 @@ public class PutJobManagement_Test {
             try {
                 writeJob.transfer(new FileObjectPutter(tempDirectory));
             } catch (final Ds3NoMoreRetriesException e) {
-                assertEquals(1, numFailureEventsFired.getValue());
+                assertEquals(1, numFailureEventsFired.get());
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
@@ -1018,6 +1019,50 @@ public class PutJobManagement_Test {
         final Ds3ClientHelpers.Job writeJob = ds3ClientHelpers.startWriteJob(BUCKET_NAME, objects);
 
         return writeJob;
+    }
+
+    @Test
+    public void testFiringWaitingForChunksEventWithFailedChunkAllocation()
+            throws IOException, URISyntaxException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+
+        try {
+            final AtomicInteger numFailureEventsFired = new AtomicInteger(0);
+            final AtomicInteger numWaitingForChunksEventsFired = new AtomicInteger(0);
+
+            final int maxNumObjectTransferAttempts = 3;
+            final Ds3ClientHelpers.Job writeJob = createWriteJobWithObjectsReadyToTransfer(maxNumObjectTransferAttempts,
+                    ClientFailureType.ChunkAllocation);
+
+            final FailureEventListener failureEventListener = new FailureEventListener() {
+                @Override
+                public void onFailure(final FailureEvent failureEvent) {
+                    numFailureEventsFired.getAndIncrement();
+                    assertEquals(FailureEvent.FailureActivity.PuttingObject, failureEvent.doingWhat());
+                }
+            };
+
+            writeJob.attachFailureEventListener(failureEventListener);
+
+            writeJob.attachWaitingForChunksListener(new WaitingForChunksListener() {
+                @Override
+                public void waiting(final int secondsToWait) {
+                    numWaitingForChunksEventsFired.getAndIncrement();
+                }
+            });
+
+            try {
+                writeJob.transfer(new FileObjectPutter(tempDirectory));
+            } catch (final Ds3NoMoreRetriesException e) {
+                assertEquals(1, numFailureEventsFired.get());
+            }
+
+            assertEquals(maxNumObjectTransferAttempts, numWaitingForChunksEventsFired.get());
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+            deleteAllContents(client, BUCKET_NAME);
+        }
     }
 
     @Test
