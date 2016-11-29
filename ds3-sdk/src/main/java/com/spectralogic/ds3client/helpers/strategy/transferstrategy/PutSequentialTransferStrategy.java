@@ -122,6 +122,16 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     }
 
     @Override
+    public void attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
+        eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
+    }
+
+    @Override
+    public void removeBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
+        eventDispatcher.removeBlobTransferredEventObserver(blobTransferredEventObserver);
+    }
+
+    @Override
     public void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type checksumType, final String checksum) {
         eventDispatcher.emitChecksumEvent(blob, checksumType, checksum);
     }
@@ -149,5 +159,10 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     @Override
     public void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata) {
         eventDispatcher.emitMetaDataReceivedEvent(objectName, metadata);
+    }
+
+    @Override
+    public void emitBlobTransferredEvent(final BulkObject blob) {
+        eventDispatcher.emitBlobTransferredEvent(blob);
     }
 }

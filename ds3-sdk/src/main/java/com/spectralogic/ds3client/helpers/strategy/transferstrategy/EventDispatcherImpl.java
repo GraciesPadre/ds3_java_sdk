@@ -16,6 +16,7 @@
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
@@ -25,19 +26,20 @@ import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.networking.Metadata;
 
-import java.util.HashSet;
 import java.util.Set;
 
 public class EventDispatcherImpl implements EventDispatcher {
-    private EventRunner eventRunner;
+    private final EventRunner eventRunner;
 
-    private Set<FailureEventObserver> failureEventObservers;
-    private Set<WaitingForChunksObserver> waitingForChunksObservers;
-    private Set<ChecksumObserver> checksumObservers;
-    private Set<MetaDataReceivedObserver> metaDataReceivedObservers;
+    private final Set<FailureEventObserver> failureEventObservers = Sets.newIdentityHashSet();
+    private final Set<WaitingForChunksObserver> waitingForChunksObservers = Sets.newIdentityHashSet();
+    private final Set<ChecksumObserver> checksumObservers = Sets.newIdentityHashSet();
+    private final Set<MetaDataReceivedObserver> metaDataReceivedObservers = Sets.newIdentityHashSet();
 
     private Set<DataTransferredObserver> dataTransferredObservers;
     private Set<ObjectCompletedObserver> objectCompletedObservers;
+
+    private final Set<BlobTransferredEventObserver> blobTransferredEventObservers = Sets.newIdentityHashSet();
 
     private final EventDispatcherStrategy eventDispatcherStrategy;
 
@@ -45,7 +47,7 @@ public class EventDispatcherImpl implements EventDispatcher {
         Preconditions.checkNotNull(eventRunner, "eventRunner must not be null.");
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker must not be null.");
 
-        init(eventRunner);
+        this.eventRunner = eventRunner;
 
         eventDispatcherStrategy = new EventDispatcherStrategy() {
             @Override
@@ -80,24 +82,13 @@ public class EventDispatcherImpl implements EventDispatcher {
         };
     }
 
-    private void init(final EventRunner eventRunner) {
-        this.eventRunner = eventRunner;
-
-        failureEventObservers = new HashSet<>();
-        waitingForChunksObservers = new HashSet<>();
-        checksumObservers = new HashSet<>();
-        metaDataReceivedObservers = new HashSet<>();
-    }
-
     public EventDispatcherImpl(final EventRunner eventRunner) {
         Preconditions.checkNotNull(eventRunner, "eventRunner must not be null.");
 
         this.eventRunner = eventRunner;
 
-        init(eventRunner);
-
-        dataTransferredObservers = new HashSet<>();
-        objectCompletedObservers = new HashSet<>();
+        dataTransferredObservers = Sets.newIdentityHashSet();
+        objectCompletedObservers = Sets.newIdentityHashSet();
 
         eventDispatcherStrategy = new EventDispatcherStrategy() {
             @Override
@@ -207,6 +198,16 @@ public class EventDispatcherImpl implements EventDispatcher {
     }
 
     @Override
+    public void attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
+        blobTransferredEventObservers.add(blobTransferredEventObserver);
+    }
+
+    @Override
+    public void removeBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
+        blobTransferredEventObservers.remove(blobTransferredEventObserver);
+    }
+
+    @Override
     public void emitFailureEvent(final FailureEvent failureEvent) {
         for (final FailureEventObserver failureEventObserver : failureEventObservers) {
             eventRunner.emitEvent(new Runnable() {
@@ -259,6 +260,18 @@ public class EventDispatcherImpl implements EventDispatcher {
                 @Override
                 public void run() {
                     metaDataReceivedObserver.update(new MetadataEvent(objectName, metadata));
+                }
+            });
+        }
+    }
+
+    @Override
+    public void emitBlobTransferredEvent(final BulkObject blob) {
+        for (final BlobTransferredEventObserver blobTransferredEventObserver : blobTransferredEventObservers) {
+            eventRunner.emitEvent(new Runnable() {
+                @Override
+                public void run() {
+                    blobTransferredEventObserver.update(blob);
                 }
             });
         }

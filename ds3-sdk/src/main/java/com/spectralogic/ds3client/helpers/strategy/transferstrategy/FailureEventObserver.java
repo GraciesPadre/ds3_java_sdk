@@ -43,15 +43,18 @@ public class FailureEventObserver extends AbstractObserver<FailureEvent> {
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (!(o instanceof FailureEventObserver)) return false;
+        if (!super.equals(o)) return false;
 
         final FailureEventObserver that = (FailureEventObserver) o;
 
-        return failureEventListener.equals(that.failureEventListener);
+        return failureEventListener != null ? failureEventListener.equals(that.failureEventListener) : that.failureEventListener == null;
 
     }
 
     @Override
     public int hashCode() {
-        return failureEventListener.hashCode();
+        int result = super.hashCode();
+        result = 31 * result + (failureEventListener != null ? failureEventListener.hashCode() : 0);
+        return result;
     }
 }

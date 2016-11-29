@@ -729,4 +729,59 @@ public class EventDispatcherImpl_Test {
 
         assertEquals(0, numTimesHandlerCalled.get());
     }
+
+    @Test
+    public void testAddingUserDefinedBlobTransferredEventObserver() {
+        final String blobName = "Gracie";
+
+        final BulkObject blob = new BulkObject();
+        blob.setName(blobName);
+
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final BlobTransferredEventObserver blobTransferredEventObserver = new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
+            @Override
+            public void update(final BulkObject eventData) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(blobName, eventData.getName());
+            }
+        });
+
+        eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
+        eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
+
+        eventDispatcher.emitBlobTransferredEvent(blob);
+
+        assertEquals(1, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testRemovingUserDefinedBlobTransferredEventObserver() {
+        final String blobName = "Gracie";
+
+        final BulkObject blob = new BulkObject();
+        blob.setName(blobName);
+
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final BlobTransferredEventObserver blobTransferredEventObserver = new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
+            @Override
+            public void update(final BulkObject eventData) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(blobName, eventData.getName());
+            }
+        });
+
+        eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
+        eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
+        eventDispatcher.removeBlobTransferredEventObserver(blobTransferredEventObserver);
+
+        eventDispatcher.emitBlobTransferredEvent(blob);
+
+        assertEquals(0, numTimesHandlerCalled.get());
+    }
 }
