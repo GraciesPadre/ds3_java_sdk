@@ -512,13 +512,13 @@ public class EventDispatcherImpl_Test {
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
 
-        final FailureEventObserver failureEventObserver = new FailureEventObserver(new FailureEventListener() {
+        final FailureEventObserver failureEventObserver = new FailureEventObserver(new UpdateStrategy<FailureEvent>() {
             @Override
-            public void onFailure(final FailureEvent failureEvent) {
+            public void update(final FailureEvent eventData) {
                 numTimesHandlerCalled.getAndIncrement();
-                assertNotNull(failureEvent.getCausalException());
-                assertNotNull(failureEvent.doingWhat());
-                assertNotNull(failureEvent.withObjectNamed());
+                assertNotNull(eventData.getCausalException());
+                assertNotNull(eventData.doingWhat());
+                assertNotNull(eventData.withObjectNamed());
             }
         });
 
@@ -541,13 +541,13 @@ public class EventDispatcherImpl_Test {
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
 
-        final FailureEventObserver failureEventObserver = new FailureEventObserver(new FailureEventListener() {
+        final FailureEventObserver failureEventObserver = new FailureEventObserver(new UpdateStrategy<FailureEvent>() {
             @Override
-            public void onFailure(final FailureEvent failureEvent) {
+            public void update(final FailureEvent eventData) {
                 numTimesHandlerCalled.getAndIncrement();
-                assertNotNull(failureEvent.getCausalException());
-                assertNotNull(failureEvent.doingWhat());
-                assertNotNull(failureEvent.withObjectNamed());
+                assertNotNull(eventData.getCausalException());
+                assertNotNull(eventData.doingWhat());
+                assertNotNull(eventData.withObjectNamed());
             }
         });
 
@@ -573,11 +573,11 @@ public class EventDispatcherImpl_Test {
 
         final String blobName = "Blobby";
 
-        final ObjectCompletedObserver objectCompletedObserver = new ObjectCompletedObserver(new ObjectCompletedListener() {
+        final ObjectCompletedObserver objectCompletedObserver = new ObjectCompletedObserver(new UpdateStrategy<String>() {
             @Override
-            public void objectCompleted(final String name) {
+            public void update(final String eventData) {
                 numTimesHandlerCalled.getAndIncrement();
-                assertEquals(name, blobName);
+                assertEquals(eventData, blobName);
             }
         });
 
@@ -600,11 +600,11 @@ public class EventDispatcherImpl_Test {
 
         final String blobName = "Blobby";
 
-        final ObjectCompletedObserver objectCompletedObserver = new ObjectCompletedObserver(new ObjectCompletedListener() {
+        final ObjectCompletedObserver objectCompletedObserver = new ObjectCompletedObserver(new UpdateStrategy<String>() {
             @Override
-            public void objectCompleted(final String name) {
+            public void update(final String eventData) {
                 numTimesHandlerCalled.getAndIncrement();
-                assertEquals(name, blobName);
+                assertEquals(eventData, blobName);
             }
         });
 

@@ -23,6 +23,7 @@ import com.spectralogic.ds3client.commands.*;
 import com.spectralogic.ds3client.commands.spectrads3.*;
 import com.spectralogic.ds3client.commands.spectrads3.notifications.*;
 import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
+import com.spectralogic.ds3client.helpers.DataTransferredListener;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.helpers.FailureEventListener;
 import com.spectralogic.ds3client.helpers.FileObjectGetter;
@@ -62,6 +63,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShim;
 
 import static com.spectralogic.ds3client.integration.Util.RESOURCE_BASE_NAME;
@@ -861,7 +864,8 @@ public class PutJobManagement_Test {
                     maxNumBlockAllocationRetries,
                     maxNumObjectTransferAttempts);
 
-            final IntValue intValue = new IntValue();
+            final AtomicInteger numTimesObjectCompletedEventCalled = new AtomicInteger(0);
+            final AtomicInteger numTimesDataTransferredEventCalled = new AtomicInteger(0);
 
             final Ds3ClientHelpers.Job writeJob = ds3ClientHelpers.startWriteJob(BUCKET_NAME, objects);
             writeJob.attachObjectCompletedListener(new ObjectCompletedListener() {
@@ -871,7 +875,15 @@ public class PutJobManagement_Test {
                 public void objectCompleted(final String name) {
                     assertTrue(bookTitles.contains(name));
                     assertEquals(1, ++numCompletedObjects);
-                    intValue.increment();
+                    numTimesObjectCompletedEventCalled.getAndIncrement();
+                }
+            });
+
+            writeJob.attachDataTransferredListener(new DataTransferredListener() {
+                @Override
+                public void dataTransferred(final long size) {
+                    assertEquals(objects.get(0).getSize(), size);
+                    numTimesDataTransferredEventCalled.getAndIncrement();
                 }
             });
 
@@ -887,7 +899,8 @@ public class PutJobManagement_Test {
                 return;
             }
 
-            assertEquals(1, intValue.getValue());
+            assertEquals(1, numTimesObjectCompletedEventCalled.get());
+            assertEquals(1, numTimesDataTransferredEventCalled.get());
 
             // final GetBucketResponse request = ds3ClientShim.getBucket(new GetBucketRequest(BUCKET_NAME));
             final GetBucketResponse request = client.getBucket(new GetBucketRequest(BUCKET_NAME));
