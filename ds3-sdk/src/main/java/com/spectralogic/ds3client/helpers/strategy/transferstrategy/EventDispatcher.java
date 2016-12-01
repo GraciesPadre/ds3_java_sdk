@@ -31,40 +31,40 @@ public interface EventDispatcher {
      * Attaches an event handler that is invoked when a blob is successfully
      * transferred to Spectra S3.
      */
-    String attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver);
-    void removeDataTransferredObserver(final String dataTransferredObserverId);
+    DataTransferredObserver attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver);
+    void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver);
 
     /**
      * Attaches an event handler that is invoked when a full object is
      * successfully transferred to Spectra S3.
      */
-    String attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver);
-    void removeObjectCompletedObserver(final String objectCompletedObserverId);
+    ObjectCompletedObserver attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver);
+    void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver);
 
     /**
      * Attaches an event handler that is invoked when an object checksum is received.
      */
-    String attachChecksumObserver(final ChecksumObserver checksumObserver);
-    void removeChecksumObserver(final String checksumObserverId);
+    ChecksumObserver attachChecksumObserver(final ChecksumObserver checksumObserver);
+    void removeChecksumObserver(final ChecksumObserver checksumObserver);
 
     /**
      * Attaches an event handler that will be invoked only when there are no chunks available
      * for processing.
      */
-    String attachWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver);
-    void removeWaitingForChunksObserver(final String waitingForChunksObserverId);
+    WaitingForChunksObserver attachWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver);
+    void removeWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver);
 
     /**
      * Attaches an event handler when an object transfer fails
      */
-    String attachFailureEventObserver(final FailureEventObserver failureEventObserver);
-    void removeFailureEventObserver(final String failureEventObserverId);
+    FailureEventObserver attachFailureEventObserver(final FailureEventObserver failureEventObserver);
+    void removeFailureEventObserver(final FailureEventObserver failureEventObserver);
 
-    String attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver);
-    void removeMetadataReceivedEventObserver(final String metaDataReceivedObserverId);
+    MetaDataReceivedObserver attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver);
+    void removeMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver);
 
-    String attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver);
-    void removeBlobTransferredEventObserver(final String blobTransferredEventObserverId);
+    BlobTransferredEventObserver attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver);
+    void removeBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver);
 
     void emitFailureEvent(final FailureEvent failureEvent);
     void emitWaitingForChunksEvents(final int secondsToDelay);

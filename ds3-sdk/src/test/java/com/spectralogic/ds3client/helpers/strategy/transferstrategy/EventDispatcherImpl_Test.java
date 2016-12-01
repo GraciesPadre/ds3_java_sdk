@@ -81,8 +81,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String checksumObserverId = eventDispatcher.attachChecksumObserver(checksumObserver);
-        final String checksumObserverId2 = eventDispatcher.attachChecksumObserver(checksumObserver);
+        final ChecksumObserver checksumObserverId = eventDispatcher.attachChecksumObserver(checksumObserver);
+        final ChecksumObserver checksumObserverId2 = eventDispatcher.attachChecksumObserver(checksumObserver);
 
         assertEquals(checksumObserverId, checksumObserverId2);
 
@@ -113,7 +113,7 @@ public class EventDispatcherImpl_Test {
 
         // jobPartTracker.completePart("key", new ObjectPart(0, 0));
 
-        eventDispatcher.emitDataTransferredEvent(null);
+        eventDispatcher.emitDataTransferredEvent(new BulkObject());
 
         assertEquals(1, numTimesHandlerCalled.get());
     }
@@ -133,8 +133,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String dataTransferredObserverId =  eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
-        final String dataTransferredObserverId2 = eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
+        final DataTransferredObserver dataTransferredObserverId =  eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
+        final DataTransferredObserver dataTransferredObserverId2 = eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
 
         assertEquals(dataTransferredObserverId, dataTransferredObserverId2);
 
@@ -142,7 +142,7 @@ public class EventDispatcherImpl_Test {
 
         // jobPartTracker.completePart("key", new ObjectPart(0, 0));
 
-        eventDispatcher.emitDataTransferredEvent(null);
+        eventDispatcher.emitDataTransferredEvent(new BulkObject());
 
         assertEquals(0, numTimesHandlerCalled.get());
     }
@@ -162,8 +162,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String failureEventObserverId = eventDispatcher.attachFailureEventObserver(failureEventObserver);
-        final String failureEventObserverId2 = eventDispatcher.attachFailureEventObserver(failureEventObserver);
+        final FailureEventObserver failureEventObserverId = eventDispatcher.attachFailureEventObserver(failureEventObserver);
+        final FailureEventObserver failureEventObserverId2 = eventDispatcher.attachFailureEventObserver(failureEventObserver);
 
         assertEquals(failureEventObserverId, failureEventObserverId2);
 
@@ -192,8 +192,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String failureEventObserverId = eventDispatcher.attachFailureEventObserver(failureEventObserver);
-        final String failureEventObserverId2 = eventDispatcher.attachFailureEventObserver(failureEventObserver);
+        final FailureEventObserver failureEventObserverId = eventDispatcher.attachFailureEventObserver(failureEventObserver);
+        final FailureEventObserver failureEventObserverId2 = eventDispatcher.attachFailureEventObserver(failureEventObserver);
 
         assertEquals(failureEventObserverId, failureEventObserverId2);
 
@@ -229,7 +229,7 @@ public class EventDispatcherImpl_Test {
 
         // jobPartTracker.completePart("key", new ObjectPart(0, 0));
 
-        eventDispatcher.emitObjectCompletedEvent(null);
+        eventDispatcher.emitObjectCompletedEvent(new BulkObject());
 
         assertEquals(1, numTimesHandlerCalled.get());
     }
@@ -249,8 +249,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String objectCompletedObserverId = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
-        final String objectCompletedObserverId2 = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
+        final ObjectCompletedObserver objectCompletedObserverId = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
+        final ObjectCompletedObserver objectCompletedObserverId2 = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
 
         assertEquals(objectCompletedObserverId, objectCompletedObserverId2);
 
@@ -305,8 +305,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String waitingForChunksObserverId = eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
-        final String waitingForChunksObserverId2 = eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
+        final WaitingForChunksObserver waitingForChunksObserverId = eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
+        final WaitingForChunksObserver waitingForChunksObserverId2 = eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
 
         assertEquals(waitingForChunksObserverId, waitingForChunksObserverId2);
 
@@ -373,8 +373,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String metaDataReceivedObserverId = eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
-        final String metaDataReceivedObserverId2 = eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
+        final MetaDataReceivedObserver metaDataReceivedObserverId = eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
+        final MetaDataReceivedObserver metaDataReceivedObserverId2 = eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
 
         assertEquals(metaDataReceivedObserverId, metaDataReceivedObserverId2);
 
@@ -470,8 +470,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String checksumObserverId = eventDispatcher.attachChecksumObserver(checksumObserver);
-        final String checksumObserverId2 = eventDispatcher.attachChecksumObserver(checksumObserver);
+        final ChecksumObserver checksumObserverId = eventDispatcher.attachChecksumObserver(checksumObserver);
+        final ChecksumObserver checksumObserverId2 = eventDispatcher.attachChecksumObserver(checksumObserver);
 
         assertEquals(checksumObserverId, checksumObserverId2);
 
@@ -525,8 +525,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String dataTransferredObserverId = eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
-        final String dataTransferredObserverId2 = eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
+        final DataTransferredObserver dataTransferredObserverId = eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
+        final DataTransferredObserver dataTransferredObserverId2 = eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
 
         assertEquals(dataTransferredObserverId, dataTransferredObserverId2);
 
@@ -585,8 +585,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String failureEventObserverId = eventDispatcher.attachFailureEventObserver(failureEventObserver);
-        final String failureEventObserverId2 = eventDispatcher.attachFailureEventObserver(failureEventObserver);
+        final FailureEventObserver failureEventObserverId = eventDispatcher.attachFailureEventObserver(failureEventObserver);
+        final FailureEventObserver failureEventObserverId2 = eventDispatcher.attachFailureEventObserver(failureEventObserver);
 
         assertEquals(failureEventObserverId, failureEventObserverId2)
         ;
@@ -645,8 +645,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String objectCompletedObserverId = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
-        final String objectCompletedObserverId2 = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
+        final ObjectCompletedObserver objectCompletedObserverId = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
+        final ObjectCompletedObserver objectCompletedObserverId2 = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
 
         assertEquals(objectCompletedObserverId, objectCompletedObserverId2);
 
@@ -700,8 +700,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String waitingForChunksObserverId = eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
-        final String waitingForChunksObserverId2 = eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
+        final WaitingForChunksObserver waitingForChunksObserverId = eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
+        final WaitingForChunksObserver waitingForChunksObserverId2 = eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
 
         assertEquals(waitingForChunksObserverId, waitingForChunksObserverId2);
 
@@ -764,8 +764,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String metaDataReceivedObserverId = eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
-        final String metaDataReceivedObserverId2 = eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
+        final MetaDataReceivedObserver metaDataReceivedObserverId = eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
+        final MetaDataReceivedObserver metaDataReceivedObserverId2 = eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
 
         assertEquals(metaDataReceivedObserverId, metaDataReceivedObserverId2)
         ;
@@ -822,8 +822,8 @@ public class EventDispatcherImpl_Test {
             }
         });
 
-        final String blobTransferredEventObserverId = eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
-        final String blobTransferredEventObserverId2 = eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
+        final BlobTransferredEventObserver blobTransferredEventObserverId = eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
+        final BlobTransferredEventObserver blobTransferredEventObserverId2 = eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
 
         assertEquals(blobTransferredEventObserverId, blobTransferredEventObserverId2);
 

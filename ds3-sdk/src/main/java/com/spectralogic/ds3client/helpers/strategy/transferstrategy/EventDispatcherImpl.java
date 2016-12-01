@@ -40,13 +40,13 @@ import java.util.UUID;
 public class EventDispatcherImpl implements EventDispatcher {
     private final EventRunner eventRunner;
 
-    private final BiMap<String, DataTransferredObserver> dataTransferredObservers = HashBiMap.create();
-    private final BiMap<String, ObjectCompletedObserver> objectCompletedObservers = HashBiMap.create();
-    private final BiMap<String, ChecksumObserver> checksumObservers = HashBiMap.create();
-    private final BiMap<String, WaitingForChunksObserver> waitingForChunksObservers = HashBiMap.create();
-    private final BiMap<String, FailureEventObserver> failureEventObservers = HashBiMap.create();
-    private final BiMap<String, MetaDataReceivedObserver> metaDataReceivedObservers = HashBiMap.create();
-    private final BiMap<String, BlobTransferredEventObserver> blobTransferredEventObservers = HashBiMap.create();
+    private final Set<DataTransferredObserver> dataTransferredObservers = Sets.newIdentityHashSet();
+    private final Set<ObjectCompletedObserver> objectCompletedObservers = Sets.newIdentityHashSet();
+    private final Set<ChecksumObserver> checksumObservers = Sets.newIdentityHashSet();
+    private final Set<WaitingForChunksObserver> waitingForChunksObservers = Sets.newIdentityHashSet();
+    private final Set<FailureEventObserver> failureEventObservers = Sets.newIdentityHashSet();
+    private final Set<MetaDataReceivedObserver> metaDataReceivedObservers = Sets.newConcurrentHashSet();
+    private final Set<BlobTransferredEventObserver> blobTransferredEventObservers = Sets.newIdentityHashSet();
 
     private final Set<DataTransferredListener> dataTransferredListeners = Sets.newIdentityHashSet();
     private final Set<ObjectCompletedListener> objectCompletedListeners = Sets.newIdentityHashSet();
@@ -61,88 +61,80 @@ public class EventDispatcherImpl implements EventDispatcher {
     }
 
     @Override
-    public String attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-        return registerForEvents(dataTransferredObservers, dataTransferredObserver);
-    }
-
-    private String registerForEvents(final BiMap eventObservers, final Observer observer) {
-        String observerId = (String)eventObservers.inverse().get(observer);
-
-        if (observerId == null) {
-            observerId = makeNewObserverId();
-            eventObservers.put(observerId, observer);
-        }
-
-        return observerId;
-    }
-
-    private String makeNewObserverId() {
-        return UUID.randomUUID().toString();
+    public DataTransferredObserver attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
+        dataTransferredObservers.add(dataTransferredObserver);
+        return dataTransferredObserver;
     }
 
     @Override
-    public void removeDataTransferredObserver(final String dataTransferredObserverId) {
-        dataTransferredObservers.remove(dataTransferredObserverId);
+    public void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
+        dataTransferredObservers.remove(dataTransferredObserver);
     }
 
     @Override
-    public String attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-        return registerForEvents(objectCompletedObservers, objectCompletedObserver);
+    public ObjectCompletedObserver attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
+        objectCompletedObservers.add(objectCompletedObserver);
+        return objectCompletedObserver;
     }
 
     @Override
-    public void removeObjectCompletedObserver(final String objectCompletedObserverId) {
-        objectCompletedObservers.remove(objectCompletedObserverId);
+    public void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
+        objectCompletedObservers.remove(objectCompletedObserver);
     }
 
     @Override
-    public String attachChecksumObserver(final ChecksumObserver checksumObserver) {
-        return registerForEvents(checksumObservers, checksumObserver);
+    public ChecksumObserver attachChecksumObserver(final ChecksumObserver checksumObserver) {
+        checksumObservers.add(checksumObserver);
+        return checksumObserver;
     }
 
     @Override
-    public void removeChecksumObserver(final String checksumObserverId) {
-        checksumObservers.remove(checksumObserverId);
+    public void removeChecksumObserver(final ChecksumObserver checksumObserver) {
+        checksumObservers.remove(checksumObserver);
     }
 
     @Override
-    public String attachWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
-        return registerForEvents(waitingForChunksObservers, waitingForChunksObserver);
+    public WaitingForChunksObserver attachWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
+        waitingForChunksObservers.add(waitingForChunksObserver);
+        return waitingForChunksObserver;
     }
 
     @Override
-    public void removeWaitingForChunksObserver(final String waitingForChunksObserverId) {
-        waitingForChunksObservers.remove(waitingForChunksObserverId);
+    public void removeWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
+        waitingForChunksObservers.remove(waitingForChunksObserver);
     }
 
     @Override
-    public String attachFailureEventObserver(final FailureEventObserver failureEventObserver) {
-        return registerForEvents(failureEventObservers, failureEventObserver);
+    public FailureEventObserver attachFailureEventObserver(final FailureEventObserver failureEventObserver) {
+        failureEventObservers.add(failureEventObserver);
+        return failureEventObserver;
     }
 
     @Override
-    public void removeFailureEventObserver(final String failureEventObserverId) {
-        failureEventObservers.remove(failureEventObserverId);
+    public void removeFailureEventObserver(final FailureEventObserver failureEventObserver) {
+        failureEventObservers.remove(failureEventObserver);
     }
 
     @Override
-    public String attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
-        return registerForEvents(metaDataReceivedObservers, metaDataReceivedObserver);
+    public MetaDataReceivedObserver attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
+        metaDataReceivedObservers.add(metaDataReceivedObserver);
+        return metaDataReceivedObserver;
     }
 
     @Override
-    public void removeMetadataReceivedEventObserver(final String metaDataReceivedObserverId) {
-        metaDataReceivedObservers.remove(metaDataReceivedObserverId);
+    public void removeMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
+        metaDataReceivedObservers.remove(metaDataReceivedObserver);
     }
 
     @Override
-    public String attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
-        return registerForEvents(blobTransferredEventObservers, blobTransferredEventObserver);
+    public BlobTransferredEventObserver attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
+        blobTransferredEventObservers.add(blobTransferredEventObserver);
+        return blobTransferredEventObserver;
     }
 
     @Override
-    public void removeBlobTransferredEventObserver(final String blobTransferredEventObserverId) {
-        blobTransferredEventObservers.remove(blobTransferredEventObserverId);
+    public void removeBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
+        blobTransferredEventObservers.remove(blobTransferredEventObserver);
     }
 
     @Override
@@ -150,8 +142,8 @@ public class EventDispatcherImpl implements EventDispatcher {
         emitEvents(failureEventObservers, failureEvent);
     }
 
-    private <T> void emitEvents(final BiMap eventObservers, final T eventData) {
-        for (final Object eventObserver : eventObservers.values()) {
+    private <T> void emitEvents(final Set eventObservers, final T eventData) {
+        for (final Object eventObserver : eventObservers) {
             eventRunner.emitEvent(new Runnable() {
                 @Override
                 public void run() {
@@ -173,17 +165,17 @@ public class EventDispatcherImpl implements EventDispatcher {
 
     @Override
     public void emitDataTransferredEvent(final BulkObject blob) {
-        emitEvents(dataTransferredObservers, blob);
+        emitEvents(dataTransferredObservers, blob.getLength());
     }
 
     @Override
     public void emitObjectCompletedEvent(final BulkObject blob) {
-        emitEvents(objectCompletedObservers, blob);
+        emitEvents(objectCompletedObservers, blob.getName());
     }
 
     @Override
     public void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata) {
-        emitEvents(metaDataReceivedObservers, metadata);
+        emitEvents(metaDataReceivedObservers, new MetadataEvent(objectName, metadata));
     }
 
     @Override
