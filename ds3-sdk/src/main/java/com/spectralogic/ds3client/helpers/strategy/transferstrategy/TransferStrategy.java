@@ -20,10 +20,6 @@ import com.spectralogic.ds3client.models.ChecksumType;
 
 import java.io.IOException;
 
-public interface TransferStrategy extends EventDispatcher {
+public interface TransferStrategy {
     void transfer() throws IOException, InterruptedException;
-
-    void attachChecksumObserver(final ChecksumObserver checksumObserver);
-    void removeChecksumObserver(final ChecksumObserver checksumObserver);
-    void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type type, final String checksum);
 }

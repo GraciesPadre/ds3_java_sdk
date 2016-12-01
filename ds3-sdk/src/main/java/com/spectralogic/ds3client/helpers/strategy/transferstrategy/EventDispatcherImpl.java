@@ -16,9 +16,17 @@
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Sets;
+import com.spectralogic.ds3client.helpers.ChecksumListener;
+import com.spectralogic.ds3client.helpers.DataTransferredListener;
+import com.spectralogic.ds3client.helpers.FailureEventListener;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
+import com.spectralogic.ds3client.helpers.MetadataReceivedListener;
+import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.ObjectPart;
+import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.events.MetadataEvent;
@@ -27,10 +35,163 @@ import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.networking.Metadata;
 
 import java.util.Set;
+import java.util.UUID;
 
 public class EventDispatcherImpl implements EventDispatcher {
     private final EventRunner eventRunner;
 
+    private final BiMap<String, DataTransferredObserver> dataTransferredObservers = HashBiMap.create();
+    private final BiMap<String, ObjectCompletedObserver> objectCompletedObservers = HashBiMap.create();
+    private final BiMap<String, ChecksumObserver> checksumObservers = HashBiMap.create();
+    private final BiMap<String, WaitingForChunksObserver> waitingForChunksObservers = HashBiMap.create();
+    private final BiMap<String, FailureEventObserver> failureEventObservers = HashBiMap.create();
+    private final BiMap<String, MetaDataReceivedObserver> metaDataReceivedObservers = HashBiMap.create();
+    private final BiMap<String, BlobTransferredEventObserver> blobTransferredEventObservers = HashBiMap.create();
+
+    private final Set<DataTransferredListener> dataTransferredListeners = Sets.newIdentityHashSet();
+    private final Set<ObjectCompletedListener> objectCompletedListeners = Sets.newIdentityHashSet();
+    private final Set<MetadataReceivedListener> metadataReceivedListeners = Sets.newIdentityHashSet();
+    private final Set<ChecksumListener> checksumListeners = Sets.newIdentityHashSet();
+    private final Set<WaitingForChunksListener> waitingForChunksListeners = Sets.newIdentityHashSet();
+    private final Set<FailureEventListener> failureEventListeners = Sets.newIdentityHashSet();
+
+    public EventDispatcherImpl(final EventRunner eventRunner) {
+        Preconditions.checkNotNull(eventRunner, "eventRunner must not be null.");
+        this.eventRunner = eventRunner;
+    }
+
+    @Override
+    public String attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
+        return registerForEvents(dataTransferredObservers, dataTransferredObserver);
+    }
+
+    private String registerForEvents(final BiMap eventObservers, final Observer observer) {
+        String observerId = (String)eventObservers.inverse().get(observer);
+
+        if (observerId == null) {
+            observerId = makeNewObserverId();
+            eventObservers.put(observerId, observer);
+        }
+
+        return observerId;
+    }
+
+    private String makeNewObserverId() {
+        return UUID.randomUUID().toString();
+    }
+
+    @Override
+    public void removeDataTransferredObserver(final String dataTransferredObserverId) {
+        dataTransferredObservers.remove(dataTransferredObserverId);
+    }
+
+    @Override
+    public String attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
+        return registerForEvents(objectCompletedObservers, objectCompletedObserver);
+    }
+
+    @Override
+    public void removeObjectCompletedObserver(final String objectCompletedObserverId) {
+        objectCompletedObservers.remove(objectCompletedObserverId);
+    }
+
+    @Override
+    public String attachChecksumObserver(final ChecksumObserver checksumObserver) {
+        return registerForEvents(checksumObservers, checksumObserver);
+    }
+
+    @Override
+    public void removeChecksumObserver(final String checksumObserverId) {
+        checksumObservers.remove(checksumObserverId);
+    }
+
+    @Override
+    public String attachWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
+        return registerForEvents(waitingForChunksObservers, waitingForChunksObserver);
+    }
+
+    @Override
+    public void removeWaitingForChunksObserver(final String waitingForChunksObserverId) {
+        waitingForChunksObservers.remove(waitingForChunksObserverId);
+    }
+
+    @Override
+    public String attachFailureEventObserver(final FailureEventObserver failureEventObserver) {
+        return registerForEvents(failureEventObservers, failureEventObserver);
+    }
+
+    @Override
+    public void removeFailureEventObserver(final String failureEventObserverId) {
+        failureEventObservers.remove(failureEventObserverId);
+    }
+
+    @Override
+    public String attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
+        return registerForEvents(metaDataReceivedObservers, metaDataReceivedObserver);
+    }
+
+    @Override
+    public void removeMetadataReceivedEventObserver(final String metaDataReceivedObserverId) {
+        metaDataReceivedObservers.remove(metaDataReceivedObserverId);
+    }
+
+    @Override
+    public String attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
+        return registerForEvents(blobTransferredEventObservers, blobTransferredEventObserver);
+    }
+
+    @Override
+    public void removeBlobTransferredEventObserver(final String blobTransferredEventObserverId) {
+        blobTransferredEventObservers.remove(blobTransferredEventObserverId);
+    }
+
+    @Override
+    public void emitFailureEvent(final FailureEvent failureEvent) {
+        emitEvents(failureEventObservers, failureEvent);
+    }
+
+    private <T> void emitEvents(final BiMap eventObservers, final T eventData) {
+        for (final Object eventObserver : eventObservers.values()) {
+            eventRunner.emitEvent(new Runnable() {
+                @Override
+                public void run() {
+                    ((Observer<T>)eventObserver).update(eventData);
+                }
+            });
+        }
+    }
+
+    @Override
+    public void emitWaitingForChunksEvents(final int secondsToDelay) {
+        emitEvents(waitingForChunksObservers, secondsToDelay);
+    }
+
+    @Override
+    public void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type type, final String checksum) {
+        emitEvents(checksumObservers, new ChecksumEvent(blob, type, checksum));
+    }
+
+    @Override
+    public void emitDataTransferredEvent(final BulkObject blob) {
+        emitEvents(dataTransferredObservers, blob);
+    }
+
+    @Override
+    public void emitObjectCompletedEvent(final BulkObject blob) {
+        emitEvents(objectCompletedObservers, blob);
+    }
+
+    @Override
+    public void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata) {
+        emitEvents(metaDataReceivedObservers, metadata);
+    }
+
+    @Override
+    public void emitBlobTransferredEvent(final BulkObject blob) {
+        emitEvents(blobTransferredEventObservers, blob);
+    }
+
+    /*
     private final Set<FailureEventObserver> failureEventObservers = Sets.newIdentityHashSet();
     private final Set<WaitingForChunksObserver> waitingForChunksObservers = Sets.newIdentityHashSet();
     private final Set<ChecksumObserver> checksumObservers = Sets.newIdentityHashSet();
@@ -276,4 +437,5 @@ public class EventDispatcherImpl implements EventDispatcher {
             });
         }
     }
+    */
 }

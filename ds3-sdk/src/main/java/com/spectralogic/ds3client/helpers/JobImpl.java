@@ -66,7 +66,7 @@ abstract class JobImpl implements Job {
 
         jobPartTracker = makeJobPartTracker(getChunks(masterObjectList), eventRunner);
 
-        eventDispatcher = new EventDispatcherImpl(eventRunner, jobPartTracker);
+        eventDispatcher = new EventDispatcherImpl(eventRunner);
     }
     
     @Override

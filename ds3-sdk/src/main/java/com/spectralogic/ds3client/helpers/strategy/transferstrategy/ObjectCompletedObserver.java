@@ -41,23 +41,4 @@ public class ObjectCompletedObserver extends AbstractObserver<String> {
     public ObjectCompletedListener getObjectCompletedListener() {
         return this.objectCompletedListener;
     }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ObjectCompletedObserver)) return false;
-        if (!super.equals(o)) return false;
-
-        final ObjectCompletedObserver that = (ObjectCompletedObserver) o;
-
-        return getObjectCompletedListener() != null ? getObjectCompletedListener().equals(that.getObjectCompletedListener()) : that.getObjectCompletedListener() == null;
-
-    }
-
-    @Override
-    public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + (getObjectCompletedListener() != null ? getObjectCompletedListener().hashCode() : 0);
-        return result;
-    }
 }

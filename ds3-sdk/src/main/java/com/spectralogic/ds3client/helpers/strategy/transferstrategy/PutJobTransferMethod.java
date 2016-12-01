@@ -100,7 +100,7 @@ public class PutJobTransferMethod implements TransferMethod {
 
                 if (checksum != null) {
                     putObjectRequest.withChecksum(ChecksumType.value(checksum), checksumType);
-                    transferStrategy.emitChecksumEvent(blob, checksumType, checksum);
+                    eventDispatcher.emitChecksumEvent(blob, checksumType, checksum);
                 }
             }  catch (final IOException e) {
                 // TODO Emit a failure event here

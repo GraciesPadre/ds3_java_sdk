@@ -17,7 +17,7 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
 
-public abstract class AbstractObserver<T> implements Observer<T> {
+public abstract class AbstractObserver<T> implements UpdateStrategy<T> {
     private final UpdateStrategy<T> updateStrategy;
 
     public AbstractObserver(final UpdateStrategy<T> updateStrategy) {
@@ -31,7 +31,7 @@ public abstract class AbstractObserver<T> implements Observer<T> {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (!(o instanceof AbstractObserver)) return false;
 

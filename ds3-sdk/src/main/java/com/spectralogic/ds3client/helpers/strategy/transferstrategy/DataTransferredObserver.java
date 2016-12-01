@@ -42,23 +42,4 @@ public class DataTransferredObserver extends AbstractObserver<Long> {
     public DataTransferredListener getDataTransferredListener() {
         return dataTransferredListener;
     }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof DataTransferredObserver)) return false;
-        if (!super.equals(o)) return false;
-
-        final DataTransferredObserver that = (DataTransferredObserver) o;
-
-        return getDataTransferredListener() != null ? getDataTransferredListener().equals(that.getDataTransferredListener()) : that.getDataTransferredListener() == null;
-
-    }
-
-    @Override
-    public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + (getDataTransferredListener() != null ? getDataTransferredListener().hashCode() : 0);
-        return result;
-    }
 }

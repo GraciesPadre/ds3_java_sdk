@@ -61,6 +61,7 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
         }
     }
 
+    /*
     @Override
     public void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
         eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
@@ -165,4 +166,5 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
     public void emitBlobTransferredEvent(final BulkObject blob) {
         eventDispatcher.emitBlobTransferredEvent(blob);
     }
+    */
 }
