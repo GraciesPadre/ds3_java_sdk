@@ -15,16 +15,13 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
-import com.google.common.collect.Sets;
 import com.spectralogic.ds3client.MockedHeaders;
 import com.spectralogic.ds3client.commands.interfaces.MetadataImpl;
 import com.spectralogic.ds3client.helpers.ChecksumListener;
 import com.spectralogic.ds3client.helpers.DataTransferredListener;
 import com.spectralogic.ds3client.helpers.FailureEventListener;
-import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.MetadataReceivedListener;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
-import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.events.MetadataEvent;
@@ -39,14 +36,11 @@ import static org.junit.Assert.assertNotNull;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class EventDispatcherImpl_Test {
     @Test
     public void testAddingChecksumObserver() {
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -68,8 +62,6 @@ public class EventDispatcherImpl_Test {
 
     @Test
     public void testRemovingChecksumObserver() {
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -95,8 +87,6 @@ public class EventDispatcherImpl_Test {
 
     @Test
     public void testAddingDataTransferredObserver() {
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -111,8 +101,6 @@ public class EventDispatcherImpl_Test {
         eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
         eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
 
-        // jobPartTracker.completePart("key", new ObjectPart(0, 0));
-
         eventDispatcher.emitDataTransferredEvent(new BulkObject());
 
         assertEquals(1, numTimesHandlerCalled.get());
@@ -120,8 +108,6 @@ public class EventDispatcherImpl_Test {
 
     @Test
     public void testRemovingDataTransferredObserver() {
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -140,8 +126,6 @@ public class EventDispatcherImpl_Test {
 
         eventDispatcher.removeDataTransferredObserver(dataTransferredObserverId);
 
-        // jobPartTracker.completePart("key", new ObjectPart(0, 0));
-
         eventDispatcher.emitDataTransferredEvent(new BulkObject());
 
         assertEquals(0, numTimesHandlerCalled.get());
@@ -149,8 +133,6 @@ public class EventDispatcherImpl_Test {
 
     @Test
     public void testAddingFailureEventObserver() {
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -179,8 +161,6 @@ public class EventDispatcherImpl_Test {
 
     @Test
     public void testRemovingFailureEventObserver() {
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -211,8 +191,6 @@ public class EventDispatcherImpl_Test {
 
     @Test
     public void testAddingObjectCompletedEventObserver() {
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -227,8 +205,6 @@ public class EventDispatcherImpl_Test {
         eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
         eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
 
-        // jobPartTracker.completePart("key", new ObjectPart(0, 0));
-
         eventDispatcher.emitObjectCompletedEvent(new BulkObject());
 
         assertEquals(1, numTimesHandlerCalled.get());
@@ -236,8 +212,6 @@ public class EventDispatcherImpl_Test {
 
     @Test
     public void testRemovingObjectCompletedEventObserver() {
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -256,16 +230,12 @@ public class EventDispatcherImpl_Test {
 
         eventDispatcher.removeObjectCompletedObserver(objectCompletedObserverId);
 
-        // jobPartTracker.completePart("key", new ObjectPart(0, 0));
-
         assertEquals(0, numTimesHandlerCalled.get());
     }
 
     @Test
     public void testAddingWaitingForChunksEventObserver() {
         final int numSecondsToWait = 85;
-
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
 
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
@@ -290,8 +260,6 @@ public class EventDispatcherImpl_Test {
     @Test
     public void testRemovingWaitingForChunksEventObserver() {
         final int numSecondsToWait = 85;
-
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
 
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
@@ -326,8 +294,6 @@ public class EventDispatcherImpl_Test {
         mockedHeaderContents.put("3rd", "Gracie");
         final Metadata expectedMetadata = new MetadataImpl(new MockedHeaders(mockedHeaderContents));
 
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -358,8 +324,6 @@ public class EventDispatcherImpl_Test {
         mockedHeaderContents.put("3rd", "Gracie");
         final Metadata expectedMetadata = new MetadataImpl(new MockedHeaders(mockedHeaderContents));
 
-        // final JobPartTracker jobPartTracker = new MockJobPartTracker();
-
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
 
         final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
@@ -384,51 +348,6 @@ public class EventDispatcherImpl_Test {
 
         assertEquals(0, numTimesHandlerCalled.get());
     }
-
-    /*
-    private static class MockJobPartTracker implements JobPartTracker {
-        private final Set<DataTransferredListener> dataTransferredListeners = Sets.newIdentityHashSet();
-        private final Set<ObjectCompletedListener> objectCompletedListeners = Sets.newIdentityHashSet();
-
-        @Override
-        public void completePart(final String key, final ObjectPart objectPart) {
-            for (final DataTransferredListener dataTransferredListener : dataTransferredListeners) {
-                dataTransferredListener.dataTransferred(0);
-            }
-
-            for (final ObjectCompletedListener objectCompletedListener : objectCompletedListeners) {
-                objectCompletedListener.objectCompleted("object name");
-            }
-        }
-
-        @Override
-        public boolean containsPart(final String key, final ObjectPart objectPart) {
-            return true;
-        }
-
-        @Override
-        public JobPartTracker attachDataTransferredListener(final DataTransferredListener listener) {
-            dataTransferredListeners.add(listener);
-            return this;
-        }
-
-        @Override
-        public JobPartTracker attachObjectCompletedListener(final ObjectCompletedListener listener) {
-            objectCompletedListeners.add(listener);
-            return this;
-        }
-
-        @Override
-        public void removeDataTransferredListener(final DataTransferredListener listener) {
-            dataTransferredListeners.remove(listener);
-        }
-
-        @Override
-        public void removeObjectCompletedListener(final ObjectCompletedListener listener) {
-            objectCompletedListeners.remove(listener);
-        }
-    }
-    */
 
     @Test
     public void testAddingUserDefinedChecksumObserverEventDispatcher() {
@@ -830,6 +749,341 @@ public class EventDispatcherImpl_Test {
         eventDispatcher.removeBlobTransferredEventObserver(blobTransferredEventObserverId);
 
         eventDispatcher.emitBlobTransferredEvent(blob);
+
+        assertEquals(0, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testAddingDataTransferredListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final long transferSize = 85L;
+
+        final BulkObject blob = new BulkObject();
+        blob.setName("Gracie");
+        blob.setLength(transferSize);
+        blob.setOffset(transferSize + 1);
+
+        final DataTransferredListener dataTransferredListener = new DataTransferredListener() {
+            @Override
+            public void dataTransferred(final long size) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(transferSize, size);
+            }
+        };
+
+        eventDispatcher.attachDataTransferredListener(dataTransferredListener);
+        eventDispatcher.attachDataTransferredListener(dataTransferredListener);
+
+        eventDispatcher.emitDataTransferredEvent(blob);
+
+        assertEquals(1, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testRemovingDataTransferredListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final long transferSize = 85L;
+
+        final BulkObject blob = new BulkObject();
+        blob.setName("Gracie");
+        blob.setLength(transferSize);
+        blob.setOffset(transferSize + 1);
+
+        final DataTransferredListener dataTransferredListener = new DataTransferredListener() {
+            @Override
+            public void dataTransferred(final long size) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(transferSize, size);
+            }
+        };
+
+        eventDispatcher.attachDataTransferredListener(dataTransferredListener);
+        eventDispatcher.attachDataTransferredListener(dataTransferredListener);
+        eventDispatcher.removeDataTransferredListener(dataTransferredListener);
+
+        eventDispatcher.emitDataTransferredEvent(blob);
+
+        assertEquals(0, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testAddingObjectCompletedListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final String blobName = "Gracie";
+
+        final BulkObject blob = new BulkObject();
+        blob.setName(blobName);
+        blob.setLength(0);
+        blob.setOffset(1);
+
+        final ObjectCompletedListener objectCompletedListener = new ObjectCompletedListener() {
+            @Override
+            public void objectCompleted(final String name) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(blob.getName(), name);
+            }
+        };
+
+        eventDispatcher.attachObjectCompletedListener(objectCompletedListener);
+        eventDispatcher.attachObjectCompletedListener(objectCompletedListener);
+
+        eventDispatcher.emitObjectCompletedEvent(blob);
+
+        assertEquals(1, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testRemovingObjectCompletedListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final String blobName = "Gracie";
+
+        final BulkObject blob = new BulkObject();
+        blob.setName(blobName);
+        blob.setLength(0);
+        blob.setOffset(1);
+
+        final ObjectCompletedListener objectCompletedListener = new ObjectCompletedListener() {
+            @Override
+            public void objectCompleted(final String name) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(blob.getName(), name);
+            }
+        };
+
+        eventDispatcher.attachObjectCompletedListener(objectCompletedListener);
+        eventDispatcher.attachObjectCompletedListener(objectCompletedListener);
+        eventDispatcher.removeObjectCompletedListener(objectCompletedListener);
+
+        eventDispatcher.emitObjectCompletedEvent(blob);
+
+        assertEquals(0, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testAddingMetadataReceivedListener() {
+        final String objectName = "Gracie";
+        final Map<String, String> mockedHeaderContents = new HashMap<>();
+        mockedHeaderContents.put("1st", "Trixie");
+        mockedHeaderContents.put("2nd", "Shasta");
+        mockedHeaderContents.put("3rd", "Gracie");
+        final Metadata expectedMetadata = new MetadataImpl(new MockedHeaders(mockedHeaderContents));
+
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final MetadataReceivedListener metadataReceivedListener = new MetadataReceivedListener() {
+            @Override
+            public void metadataReceived(final String filename, final Metadata metadata) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(objectName, filename);
+                assertEquals(expectedMetadata, metadata);
+            }
+        };
+
+        eventDispatcher.attachMetadataReceivedListener(metadataReceivedListener);
+        eventDispatcher.attachMetadataReceivedListener(metadataReceivedListener);
+
+        eventDispatcher.emitMetaDataReceivedEvent(objectName, expectedMetadata);
+
+        assertEquals(1, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testRemovingMetadataReceivedListener() {
+        final String objectName = "Gracie";
+        final Map<String, String> mockedHeaderContents = new HashMap<>();
+        mockedHeaderContents.put("1st", "Trixie");
+        mockedHeaderContents.put("2nd", "Shasta");
+        mockedHeaderContents.put("3rd", "Gracie");
+        final Metadata expectedMetadata = new MetadataImpl(new MockedHeaders(mockedHeaderContents));
+
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final MetadataReceivedListener metadataReceivedListener = new MetadataReceivedListener() {
+            @Override
+            public void metadataReceived(final String filename, final Metadata metadata) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(objectName, filename);
+                assertEquals(expectedMetadata, metadata);
+            }
+        };
+
+        eventDispatcher.attachMetadataReceivedListener(metadataReceivedListener);
+        eventDispatcher.attachMetadataReceivedListener(metadataReceivedListener);
+        eventDispatcher.removeMetadataReceivedListener(metadataReceivedListener);
+
+        eventDispatcher.emitMetaDataReceivedEvent(objectName, expectedMetadata);
+
+        assertEquals(0, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testAddingChecksumListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final String checksumText = "checksum";
+
+        final ChecksumListener checksumListener = new ChecksumListener() {
+            @Override
+            public void value(final BulkObject obj, final ChecksumType.Type type, final String checksum) {
+                assertEquals(ChecksumType.Type.MD5, type);
+                assertEquals(checksumText, checksum);
+                numTimesHandlerCalled.getAndIncrement();
+            }
+        };
+
+        eventDispatcher.attachChecksumListener(checksumListener);
+        eventDispatcher.attachChecksumListener(checksumListener);
+
+        eventDispatcher.emitChecksumEvent(new BulkObject(), ChecksumType.Type.MD5, checksumText);
+
+        assertEquals(1, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testRemovingChecksumListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final String checksumText = "checksum";
+
+        final ChecksumListener checksumListener = new ChecksumListener() {
+            @Override
+            public void value(final BulkObject obj, final ChecksumType.Type type, final String checksum) {
+                assertEquals(ChecksumType.Type.MD5, type);
+                assertEquals(checksumText, checksum);
+                numTimesHandlerCalled.getAndIncrement();
+            }
+        };
+
+        eventDispatcher.attachChecksumListener(checksumListener);
+        eventDispatcher.attachChecksumListener(checksumListener);
+        eventDispatcher.removeChecksumListener(checksumListener);
+
+        eventDispatcher.emitChecksumEvent(new BulkObject(), ChecksumType.Type.MD5, checksumText);
+
+        assertEquals(0, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testAddingFailureListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final String eventName = "Gracie";
+
+        final FailureEventListener failureEventListener = new FailureEventListener() {
+            @Override
+            public void onFailure(final FailureEvent failureEvent) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(eventName, failureEvent.withObjectNamed());
+            }
+        };
+
+        eventDispatcher.attachFailureEventListener(failureEventListener);
+        eventDispatcher.attachFailureEventListener(failureEventListener);
+
+        eventDispatcher.emitFailureEvent(new FailureEvent.Builder()
+                .withObjectNamed(eventName)
+                .doingWhat(FailureEvent.FailureActivity.GettingObject)
+                .withCausalException(new Exception())
+                .usingSystemWithEndpoint("endpoint")
+                .build());
+
+        assertEquals(1, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testRemovingFailureListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final FailureEventListener failureEventListener = new FailureEventListener() {
+            @Override
+            public void onFailure(final FailureEvent failureEvent) {
+                numTimesHandlerCalled.getAndIncrement();
+            }
+        };
+
+        eventDispatcher.attachFailureEventListener(failureEventListener);
+        eventDispatcher.attachFailureEventListener(failureEventListener);
+        eventDispatcher.removeFailureEventListener(failureEventListener);
+
+        eventDispatcher.emitFailureEvent(new FailureEvent.Builder()
+                .withObjectNamed("object name")
+                .doingWhat(FailureEvent.FailureActivity.GettingObject)
+                .withCausalException(new Exception())
+                .usingSystemWithEndpoint("endpoint")
+                .build());
+
+        assertEquals(0, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testAddingWaitingForChunksListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final int numSecondsToWait = 85;
+
+        final WaitingForChunksListener waitingForChunksListener = new WaitingForChunksListener() {
+            @Override
+            public void waiting(final int secondsToWait) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(numSecondsToWait, secondsToWait);
+            }
+        };
+
+        eventDispatcher.attachWaitingForChunksListener(waitingForChunksListener);
+        eventDispatcher.attachWaitingForChunksListener(waitingForChunksListener);
+
+        eventDispatcher.emitWaitingForChunksEvents(numSecondsToWait);
+
+        assertEquals(1, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testRemovingWaitingForChunksListener() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final int numSecondsToWait = 85;
+
+        final WaitingForChunksListener waitingForChunksListener = new WaitingForChunksListener() {
+            @Override
+            public void waiting(final int secondsToWait) {
+                numTimesHandlerCalled.getAndIncrement();
+                assertEquals(numSecondsToWait, secondsToWait);
+            }
+        };
+
+        eventDispatcher.attachWaitingForChunksListener(waitingForChunksListener);
+        eventDispatcher.attachWaitingForChunksListener(waitingForChunksListener);
+        eventDispatcher.removeWaitingForChunksListener(waitingForChunksListener);
+
+        eventDispatcher.emitWaitingForChunksEvents(numSecondsToWait);
 
         assertEquals(0, numTimesHandlerCalled.get());
     }

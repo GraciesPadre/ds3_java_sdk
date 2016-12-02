@@ -16,16 +16,13 @@
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.spectralogic.ds3client.helpers.ChecksumListener;
 import com.spectralogic.ds3client.helpers.DataTransferredListener;
 import com.spectralogic.ds3client.helpers.FailureEventListener;
-import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.MetadataReceivedListener;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
-import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
@@ -34,8 +31,8 @@ import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.networking.Metadata;
 
+import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 public class EventDispatcherImpl implements EventDispatcher {
     private final EventRunner eventRunner;
@@ -48,12 +45,12 @@ public class EventDispatcherImpl implements EventDispatcher {
     private final Set<MetaDataReceivedObserver> metaDataReceivedObservers = Sets.newConcurrentHashSet();
     private final Set<BlobTransferredEventObserver> blobTransferredEventObservers = Sets.newIdentityHashSet();
 
-    private final Set<DataTransferredListener> dataTransferredListeners = Sets.newIdentityHashSet();
-    private final Set<ObjectCompletedListener> objectCompletedListeners = Sets.newIdentityHashSet();
-    private final Set<MetadataReceivedListener> metadataReceivedListeners = Sets.newIdentityHashSet();
-    private final Set<ChecksumListener> checksumListeners = Sets.newIdentityHashSet();
-    private final Set<WaitingForChunksListener> waitingForChunksListeners = Sets.newIdentityHashSet();
-    private final Set<FailureEventListener> failureEventListeners = Sets.newIdentityHashSet();
+    private final Map<DataTransferredListener, DataTransferredObserver> dataTransferredListeners = Maps.newConcurrentMap();
+    private final Map<ObjectCompletedListener, ObjectCompletedObserver> objectCompletedListeners = Maps.newIdentityHashMap();
+    private final Map<MetadataReceivedListener, MetaDataReceivedObserver> metadataReceivedListeners = Maps.newIdentityHashMap();
+    private final Map<ChecksumListener, ChecksumObserver> checksumListeners = Maps.newIdentityHashMap();
+    private final Map<WaitingForChunksListener, WaitingForChunksObserver> waitingForChunksListeners = Maps.newIdentityHashMap();
+    private final Map<FailureEventListener, FailureEventObserver> failureEventListeners = Maps.newIdentityHashMap();
 
     public EventDispatcherImpl(final EventRunner eventRunner) {
         Preconditions.checkNotNull(eventRunner, "eventRunner must not be null.");
@@ -137,6 +134,135 @@ public class EventDispatcherImpl implements EventDispatcher {
         blobTransferredEventObservers.remove(blobTransferredEventObserver);
     }
 
+
+
+
+
+
+
+
+
+
+    @Override
+    public void attachDataTransferredListener(final DataTransferredListener listener) {
+        DataTransferredObserver dataTransferredObserver = dataTransferredListeners.get(listener);
+
+        if (dataTransferredObserver == null) {
+            dataTransferredObserver = attachDataTransferredObserver(new DataTransferredObserver(listener));
+            dataTransferredListeners.put(listener, dataTransferredObserver);
+        }
+    }
+
+    @Override
+    public void removeDataTransferredListener(final DataTransferredListener listener) {
+        final DataTransferredObserver dataTransferredObserver = dataTransferredListeners.get(listener);
+
+        if (dataTransferredObserver != null) {
+            removeDataTransferredObserver(dataTransferredObserver);
+            dataTransferredListeners.remove(listener);
+        }
+    }
+
+    @Override
+    public void attachObjectCompletedListener(final ObjectCompletedListener listener) {
+        ObjectCompletedObserver objectCompletedObserver = objectCompletedListeners.get(listener);
+
+        if (objectCompletedObserver == null) {
+            objectCompletedObserver = attachObjectCompletedObserver(new ObjectCompletedObserver(listener));
+            objectCompletedListeners.put(listener, objectCompletedObserver);
+        }
+    }
+
+    @Override
+    public void removeObjectCompletedListener(final ObjectCompletedListener listener) {
+        final ObjectCompletedObserver objectCompletedObserver = objectCompletedListeners.get(listener);
+
+        if (objectCompletedObserver != null) {
+            removeObjectCompletedObserver(objectCompletedObserver);
+            objectCompletedListeners.remove(listener);
+        }
+    }
+
+    @Override
+    public void attachMetadataReceivedListener(final MetadataReceivedListener listener) {
+        MetaDataReceivedObserver metaDataReceivedObserver = metadataReceivedListeners.get(listener);
+
+        if (metaDataReceivedObserver == null) {
+            metaDataReceivedObserver = attachMetadataReceivedEventObserver(new MetaDataReceivedObserver(listener));
+            metadataReceivedListeners.put(listener, metaDataReceivedObserver);
+        }
+    }
+
+    @Override
+    public void removeMetadataReceivedListener(final MetadataReceivedListener listener) {
+        final MetaDataReceivedObserver metaDataReceivedObserver = metadataReceivedListeners.get(listener);
+
+        if (metaDataReceivedObserver != null) {
+            removeMetadataReceivedEventObserver(metaDataReceivedObserver);
+            metadataReceivedListeners.remove(listener);
+        }
+    }
+
+    @Override
+    public void attachChecksumListener(final ChecksumListener listener) {
+        ChecksumObserver checksumObserver = checksumListeners.get(listener);
+
+        if (checksumObserver == null) {
+            checksumObserver = attachChecksumObserver(new ChecksumObserver(listener));
+            checksumListeners.put(listener, checksumObserver);
+        }
+    }
+
+    @Override
+    public void removeChecksumListener(final ChecksumListener listener) {
+        final ChecksumObserver checksumObserver = checksumListeners.get(listener);
+
+        if (checksumObserver != null) {
+            removeChecksumObserver(checksumObserver);
+            checksumListeners.remove(listener);
+        }
+    }
+
+    @Override
+    public void attachWaitingForChunksListener(final WaitingForChunksListener listener) {
+        WaitingForChunksObserver waitingForChunksObserver = waitingForChunksListeners.get(listener);
+
+        if (waitingForChunksObserver == null) {
+            waitingForChunksObserver = attachWaitingForChunksObserver(new WaitingForChunksObserver(listener));
+            waitingForChunksListeners.put(listener, waitingForChunksObserver);
+        }
+    }
+
+    @Override
+    public void removeWaitingForChunksListener(final WaitingForChunksListener listener) {
+        final WaitingForChunksObserver waitingForChunksObserver = waitingForChunksListeners.get(listener);
+
+        if (waitingForChunksObserver != null) {
+            removeWaitingForChunksObserver(waitingForChunksObserver);
+            waitingForChunksListeners.remove(listener);
+        }
+    }
+
+    @Override
+    public void attachFailureEventListener(final FailureEventListener listener) {
+        FailureEventObserver failureEventObserver = failureEventListeners.get(listener);
+
+        if (failureEventObserver == null) {
+            failureEventObserver = attachFailureEventObserver(new FailureEventObserver(listener));
+            failureEventListeners.put(listener, failureEventObserver);
+        }
+    }
+
+    @Override
+    public void removeFailureEventListener(final FailureEventListener listener) {
+        final FailureEventObserver failureEventObserver = failureEventListeners.get(listener);
+
+        if (failureEventObserver != null) {
+            removeFailureEventObserver(failureEventObserver);
+            failureEventListeners.remove(listener);
+        }
+    }
+
     @Override
     public void emitFailureEvent(final FailureEvent failureEvent) {
         emitEvents(failureEventObservers, failureEvent);
@@ -182,252 +308,4 @@ public class EventDispatcherImpl implements EventDispatcher {
     public void emitBlobTransferredEvent(final BulkObject blob) {
         emitEvents(blobTransferredEventObservers, blob);
     }
-
-    /*
-    private final Set<FailureEventObserver> failureEventObservers = Sets.newIdentityHashSet();
-    private final Set<WaitingForChunksObserver> waitingForChunksObservers = Sets.newIdentityHashSet();
-    private final Set<ChecksumObserver> checksumObservers = Sets.newIdentityHashSet();
-    private final Set<MetaDataReceivedObserver> metaDataReceivedObservers = Sets.newIdentityHashSet();
-
-    private Set<DataTransferredObserver> dataTransferredObservers;
-    private Set<ObjectCompletedObserver> objectCompletedObservers;
-
-    private final Set<BlobTransferredEventObserver> blobTransferredEventObservers = Sets.newIdentityHashSet();
-
-    private final EventDispatcherStrategy eventDispatcherStrategy;
-
-    public EventDispatcherImpl(final EventRunner eventRunner, final JobPartTracker jobPartTracker) {
-        Preconditions.checkNotNull(eventRunner, "eventRunner must not be null.");
-        Preconditions.checkNotNull(jobPartTracker, "jobPartTracker must not be null.");
-
-        this.eventRunner = eventRunner;
-
-        eventDispatcherStrategy = new EventDispatcherStrategy() {
-            @Override
-            public void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-                jobPartTracker.attachDataTransferredListener(dataTransferredObserver.getDataTransferredListener());
-            }
-
-            @Override
-            public void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-                jobPartTracker.removeDataTransferredListener(dataTransferredObserver.getDataTransferredListener());
-            }
-
-            @Override
-            public void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-                jobPartTracker.attachObjectCompletedListener(objectCompletedObserver.getObjectCompletedListener());
-            }
-
-            @Override
-            public void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-                jobPartTracker.removeObjectCompletedListener(objectCompletedObserver.getObjectCompletedListener());
-            }
-
-            @Override
-            public void emitDataTransferredEvent(final BulkObject blob) {
-                jobPartTracker.completePart(blob.getName(), new ObjectPart(blob.getOffset(), blob.getLength()));
-            }
-
-            @Override
-            public void emitObjectCompletedEvent(final BulkObject blob) {
-                emitDataTransferredEvent(blob);
-            }
-        };
-    }
-
-    public EventDispatcherImpl(final EventRunner eventRunner) {
-        Preconditions.checkNotNull(eventRunner, "eventRunner must not be null.");
-
-        this.eventRunner = eventRunner;
-
-        dataTransferredObservers = Sets.newIdentityHashSet();
-        objectCompletedObservers = Sets.newIdentityHashSet();
-
-        eventDispatcherStrategy = new EventDispatcherStrategy() {
-            @Override
-            public void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-                dataTransferredObservers.add(dataTransferredObserver);
-            }
-
-            @Override
-            public void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-                dataTransferredObservers.remove(dataTransferredObserver);
-            }
-
-            @Override
-            public void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-                objectCompletedObservers.add(objectCompletedObserver);
-            }
-
-            @Override
-            public void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-                objectCompletedObservers.remove(objectCompletedObserver);
-            }
-
-            @Override
-            public void emitDataTransferredEvent(final BulkObject blob) {
-                for (final DataTransferredObserver dataTransferredObserver : dataTransferredObservers) {
-                    eventRunner.emitEvent(new Runnable() {
-                        @Override
-                        public void run() {
-                            dataTransferredObserver.update(blob.getLength());
-                        }
-                    });
-                }
-            }
-
-            @Override
-            public void emitObjectCompletedEvent(final BulkObject blob) {
-                for (final ObjectCompletedObserver objectCompletedObserver : objectCompletedObservers) {
-                    eventRunner.emitEvent(new Runnable() {
-                        @Override
-                        public void run() {
-                            objectCompletedObserver.update(blob.getName());
-                        }
-                    });
-                }
-            }
-        };
-    }
-
-    @Override
-    public void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-        eventDispatcherStrategy.attachDataTransferredObserver(dataTransferredObserver);
-    }
-
-    @Override
-    public void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-        eventDispatcherStrategy.removeDataTransferredObserver(dataTransferredObserver);
-    }
-
-    @Override
-    public void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-        eventDispatcherStrategy.attachObjectCompletedObserver(objectCompletedObserver);
-    }
-
-    @Override
-    public void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-        eventDispatcherStrategy.removeObjectCompletedObserver(objectCompletedObserver);
-    }
-
-    @Override
-    public void attachChecksumObserver(final ChecksumObserver checksumObserver) {
-        checksumObservers.add(checksumObserver);
-    }
-
-    @Override
-    public void removeChecksumObserver(final ChecksumObserver checksumObserver) {
-        checksumObservers.remove(checksumObserver);
-    }
-
-    @Override
-    public void attachWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
-        waitingForChunksObservers.add(waitingForChunksObserver);
-    }
-
-    @Override
-    public void removeWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
-        waitingForChunksObservers.remove(waitingForChunksObserver);
-    }
-
-    @Override
-    public void attachFailureEventObserver(final FailureEventObserver failureEventObserver) {
-        failureEventObservers.add(failureEventObserver);
-    }
-
-    @Override
-    public void removeFailureEventObserver(final FailureEventObserver failureEventObserver) {
-        failureEventObservers.remove(failureEventObserver);
-    }
-
-    @Override
-    public void attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
-        metaDataReceivedObservers.add(metaDataReceivedObserver);
-    }
-
-    @Override
-    public void removeMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
-        metaDataReceivedObservers.remove(metaDataReceivedObserver);
-    }
-
-    @Override
-    public void attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
-        blobTransferredEventObservers.add(blobTransferredEventObserver);
-    }
-
-    @Override
-    public void removeBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
-        blobTransferredEventObservers.remove(blobTransferredEventObserver);
-    }
-
-    @Override
-    public void emitFailureEvent(final FailureEvent failureEvent) {
-        for (final FailureEventObserver failureEventObserver : failureEventObservers) {
-            eventRunner.emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    failureEventObserver.update(failureEvent);
-                }
-            });
-        }
-    }
-
-    @Override
-    public void emitWaitingForChunksEvents(final int secondsToDelay) {
-        for (final WaitingForChunksObserver waitingForChunksObserver : waitingForChunksObservers) {
-            eventRunner.emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    waitingForChunksObserver.update(secondsToDelay);
-                }
-            });
-        }
-    }
-
-    @Override
-    public void emitChecksumEvent(final BulkObject bulkObject, final ChecksumType.Type type, final String checksum) {
-        for (final ChecksumObserver checksumObserver : checksumObservers) {
-            eventRunner.emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    checksumObserver.update(new ChecksumEvent(bulkObject, type, checksum));
-                }
-            });
-        }
-    }
-
-    @Override
-    public void emitDataTransferredEvent(final BulkObject blob) {
-        eventDispatcherStrategy.emitDataTransferredEvent(blob);
-    }
-
-    @Override
-    public void emitObjectCompletedEvent(final BulkObject blob) {
-        eventDispatcherStrategy.emitObjectCompletedEvent(blob);
-    }
-
-    @Override
-    public void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata) {
-        for (final MetaDataReceivedObserver metaDataReceivedObserver : metaDataReceivedObservers) {
-            eventRunner.emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    metaDataReceivedObserver.update(new MetadataEvent(objectName, metadata));
-                }
-            });
-        }
-    }
-
-    @Override
-    public void emitBlobTransferredEvent(final BulkObject blob) {
-        for (final BlobTransferredEventObserver blobTransferredEventObserver : blobTransferredEventObservers) {
-            eventRunner.emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    blobTransferredEventObserver.update(blob);
-                }
-            });
-        }
-    }
-    */
 }

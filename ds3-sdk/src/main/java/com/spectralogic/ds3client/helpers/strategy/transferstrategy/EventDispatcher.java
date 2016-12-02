@@ -66,6 +66,46 @@ public interface EventDispatcher {
     BlobTransferredEventObserver attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver);
     void removeBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver);
 
+    /**
+     * Attaches an event handler that is invoked when a blob is successfully
+     * transferred to Spectra S3.
+     */
+    void attachDataTransferredListener(final DataTransferredListener listener);
+    void removeDataTransferredListener(final DataTransferredListener listener);
+
+    /**
+     * Attaches an event handler that is invoked when a full object is
+     * successfully transferred to Spectra S3.
+     */
+    void attachObjectCompletedListener(final ObjectCompletedListener listener);
+    void removeObjectCompletedListener(final ObjectCompletedListener listener);
+
+    /**
+     * Attaches an event handler that is invoked when metadata is received for
+     * an object.
+     */
+    void attachMetadataReceivedListener(final MetadataReceivedListener listener);
+    void removeMetadataReceivedListener(final MetadataReceivedListener listener);
+
+    /**
+     * Attaches an event handler that is invoked when an object checksum is received.
+     */
+    void attachChecksumListener(final ChecksumListener listener);
+    void removeChecksumListener(final ChecksumListener listener);
+
+    /**
+     * Attaches an event handler that will be invoked only when there are no chunks available
+     * for processing.
+     */
+    void attachWaitingForChunksListener(final WaitingForChunksListener listener);
+    void removeWaitingForChunksListener(final WaitingForChunksListener listener);
+
+    /**
+     * Attaches an event handler when an object transfer fails
+     */
+    void attachFailureEventListener(final FailureEventListener listener);
+    void removeFailureEventListener(final FailureEventListener listener);
+
     void emitFailureEvent(final FailureEvent failureEvent);
     void emitWaitingForChunksEvents(final int secondsToDelay);
     void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type type, final String checksum);
