@@ -38,8 +38,4 @@ public class DataTransferredObserver extends AbstractObserver<Long> {
     public DataTransferredObserver(final UpdateStrategy<Long> updateStrategy) {
         super(updateStrategy);
     }
-
-    public DataTransferredListener getDataTransferredListener() {
-        return dataTransferredListener;
-    }
 }

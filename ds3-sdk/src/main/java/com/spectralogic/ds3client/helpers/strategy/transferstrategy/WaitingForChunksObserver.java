@@ -37,23 +37,4 @@ public class WaitingForChunksObserver extends AbstractObserver<Integer> {
     public WaitingForChunksObserver(final UpdateStrategy<Integer> updateStrategy) {
         super(updateStrategy);
     }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof WaitingForChunksObserver)) return false;
-        if (!super.equals(o)) return false;
-
-        WaitingForChunksObserver that = (WaitingForChunksObserver) o;
-
-        return waitingForChunksListener != null ? waitingForChunksListener.equals(that.waitingForChunksListener) : that.waitingForChunksListener == null;
-
-    }
-
-    @Override
-    public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + (waitingForChunksListener != null ? waitingForChunksListener.hashCode() : 0);
-        return result;
-    }
 }

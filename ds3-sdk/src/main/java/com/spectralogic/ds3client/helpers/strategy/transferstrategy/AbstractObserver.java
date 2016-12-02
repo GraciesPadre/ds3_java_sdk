@@ -29,20 +29,4 @@ public abstract class AbstractObserver<T> implements UpdateStrategy<T> {
     public void update(final T eventData) {
         updateStrategy.update(eventData);
     }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof AbstractObserver)) return false;
-
-        final AbstractObserver<?> that = (AbstractObserver<?>) o;
-
-        return updateStrategy.equals(that.updateStrategy);
-
-    }
-
-    @Override
-    public int hashCode() {
-        return updateStrategy.hashCode();
-    }
 }

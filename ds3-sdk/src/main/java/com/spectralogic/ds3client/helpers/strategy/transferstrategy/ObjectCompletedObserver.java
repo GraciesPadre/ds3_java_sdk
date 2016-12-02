@@ -37,8 +37,4 @@ public class ObjectCompletedObserver extends AbstractObserver<String> {
     public ObjectCompletedObserver(final UpdateStrategy<String> updateStrategy) {
         super(updateStrategy);
     }
-
-    public ObjectCompletedListener getObjectCompletedListener() {
-        return this.objectCompletedListener;
-    }
 }

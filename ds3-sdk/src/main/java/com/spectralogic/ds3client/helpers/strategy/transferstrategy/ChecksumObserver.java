@@ -37,23 +37,4 @@ public class ChecksumObserver extends AbstractObserver<ChecksumEvent> {
     public ChecksumObserver(final UpdateStrategy<ChecksumEvent> updateStrategy) {
         super(updateStrategy);
     }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ChecksumObserver)) return false;
-        if (!super.equals(o)) return false;
-
-        final ChecksumObserver that = (ChecksumObserver) o;
-
-        return checksumListener != null ? checksumListener.equals(that.checksumListener) : that.checksumListener == null;
-
-    }
-
-    @Override
-    public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + (checksumListener != null ? checksumListener.hashCode() : 0);
-        return result;
-    }
 }
