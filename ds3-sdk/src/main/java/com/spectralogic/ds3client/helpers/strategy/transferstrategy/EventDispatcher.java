@@ -111,6 +111,7 @@ public interface EventDispatcher {
     void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type type, final String checksum);
     void emitDataTransferredEvent(final BulkObject blob);
     void emitObjectCompletedEvent(final BulkObject blob);
+    void emitObjectCompletedEvent(final String blobName);
     void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata);
     void emitBlobTransferredEvent(final BulkObject blob);
 }

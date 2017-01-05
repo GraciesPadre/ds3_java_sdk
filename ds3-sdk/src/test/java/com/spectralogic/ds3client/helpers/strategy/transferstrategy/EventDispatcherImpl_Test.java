@@ -230,6 +230,57 @@ public class EventDispatcherImpl_Test {
 
         eventDispatcher.removeObjectCompletedObserver(objectCompletedObserverId);
 
+        eventDispatcher.emitObjectCompletedEvent(new BulkObject());
+
+        assertEquals(0, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testAddingObjectCompletedEventObserverWithCompletionByName() {
+        final String BLOB_NAME = "aBlob";
+
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final ObjectCompletedObserver objectCompletedObserver = new ObjectCompletedObserver(new ObjectCompletedListener() {
+            @Override
+            public void objectCompleted(final String name) {
+                assertEquals(BLOB_NAME, name);
+                numTimesHandlerCalled.getAndIncrement();
+            }
+        });
+
+        eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
+        eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
+
+        eventDispatcher.emitObjectCompletedEvent(BLOB_NAME);
+
+        assertEquals(1, numTimesHandlerCalled.get());
+    }
+
+    @Test
+    public void testRemovingObjectCompletedEventObserverWithCompletionByName() {
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+        final AtomicInteger numTimesHandlerCalled = new AtomicInteger(0);
+
+        final ObjectCompletedObserver objectCompletedObserver = new ObjectCompletedObserver(new ObjectCompletedListener() {
+            @Override
+            public void objectCompleted(final String name) {
+                numTimesHandlerCalled.getAndIncrement();
+            }
+        });
+
+        final ObjectCompletedObserver objectCompletedObserverId = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
+        final ObjectCompletedObserver objectCompletedObserverId2 = eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
+
+        assertEquals(objectCompletedObserverId, objectCompletedObserverId2);
+
+        eventDispatcher.removeObjectCompletedObserver(objectCompletedObserverId);
+
+        eventDispatcher.emitObjectCompletedEvent("aBlob");
+
         assertEquals(0, numTimesHandlerCalled.get());
     }
 

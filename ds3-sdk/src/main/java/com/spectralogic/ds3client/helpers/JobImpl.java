@@ -279,6 +279,6 @@ abstract class JobImpl implements Job {
     }
 
     protected JobPartTracker getJobPartTracker() {
-        return jobPartTracker;
+        return jobPartTracker != null ? jobPartTracker : new NullJobPartTracker();
     }
 }

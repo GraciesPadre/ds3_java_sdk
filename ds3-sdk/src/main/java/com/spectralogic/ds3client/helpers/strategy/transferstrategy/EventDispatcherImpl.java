@@ -296,7 +296,12 @@ public class EventDispatcherImpl implements EventDispatcher {
 
     @Override
     public void emitObjectCompletedEvent(final BulkObject blob) {
-        emitEvents(objectCompletedObservers, blob.getName());
+        emitObjectCompletedEvent(blob.getName());
+    }
+
+    @Override
+    public void emitObjectCompletedEvent(final String blobName) {
+        emitEvents(objectCompletedObservers, blobName);
     }
 
     @Override

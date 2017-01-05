@@ -29,9 +29,13 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialStr
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialAggregatingChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.BlobTransferredEventObserver;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.DataTransferredObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MaxNumObjectTransferAttemptsBehavior;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.ObjectCompletedObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.UpdateStrategy;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
@@ -137,6 +141,20 @@ class WriteJobImpl extends JobImpl {
             final Path directory = StrategyUtils.extractPath(channelBuilder);
 
             final ChannelStrategy channelStrategy = new SequentialAggregatingChannelStrategy(new SequentialFileReaderChannelStrategy(directory));
+
+            getEventDispatcher().attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
+                @Override
+                public void update(final BulkObject eventData) {
+                    getJobPartTracker().completePart(eventData.getName(), new ObjectPart(eventData.getOffset(), eventData.getLength()));
+                }
+            }));
+
+            getJobPartTracker().attachObjectCompletedListener(new ObjectCompletedListener() {
+                @Override
+                public void objectCompleted(final String name) {
+                    getEventDispatcher().emitObjectCompletedEvent(name);
+                }
+            });
 
             final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                     .withBlobStrategy(blobStrategy)
