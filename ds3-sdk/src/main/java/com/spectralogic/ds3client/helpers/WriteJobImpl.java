@@ -149,13 +149,6 @@ class WriteJobImpl extends JobImpl {
                 }
             }));
 
-            getJobPartTracker().attachObjectCompletedListener(new ObjectCompletedListener() {
-                @Override
-                public void objectCompleted(final String name) {
-                    getEventDispatcher().emitObjectCompletedEvent(name);
-                }
-            });
-
             final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                     .withBlobStrategy(blobStrategy)
                     .withChannelStrategy(channelStrategy)
@@ -240,7 +233,20 @@ class WriteJobImpl extends JobImpl {
 
     @Override
     protected JobPartTrackerDecorator makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner) {
-        return chunks == null ? null : new JobPartTrackerDecorator(chunks, eventRunner);
+        if (chunks == null) {
+            return null;
+        }
+
+        final JobPartTrackerDecorator result = new JobPartTrackerDecorator(chunks, eventRunner);
+
+        result.attachObjectCompletedListener(new ObjectCompletedListener() {
+            @Override
+            public void objectCompleted(final String name) {
+                getEventDispatcher().emitObjectCompletedEvent(name);
+            }
+        });
+
+        return result;
     }
 
     private final class PutObjectTransferrerRetryDecorator implements ItemTransferrer {
