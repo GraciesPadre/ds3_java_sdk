@@ -15,36 +15,28 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.spectralogic.ds3client.helpers.JobPart;
-import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
-import com.spectralogic.ds3client.models.BulkObject;
-import com.spectralogic.ds3client.models.ChecksumType;
-import com.spectralogic.ds3client.networking.Metadata;
-
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 
 public class PutSequentialTransferStrategy implements TransferStrategy {
-    private final ChannelStrategy channelStrategy;
     private final BlobStrategy blobStrategy;
-    private final String bucketName;
-    private final String jobId;
-    private final EventDispatcher eventDispatcher;
+    private final ListeningExecutorService executorService = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
 
     private TransferMethod transferMethod;
 
-    public PutSequentialTransferStrategy(final ChannelStrategy channelStrategy,
-                                         final BlobStrategy blobStrategy,
-                                         final String bucketName,
-                                         final String jobId,
-                                         final EventDispatcher eventDispatcher)
-    {
-        this.channelStrategy = channelStrategy;
+    public PutSequentialTransferStrategy(final BlobStrategy blobStrategy) {
         this.blobStrategy = blobStrategy;
-        this.bucketName = bucketName;
-        this.jobId = jobId;
-        this.eventDispatcher = eventDispatcher;
     }
 
     public PutSequentialTransferStrategy withTransferMethod(final TransferMethod transferMethod) {
@@ -54,117 +46,48 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
 
     @Override
     public void transfer() throws IOException, InterruptedException {
+        final List<ListenableFuture<Void>> transferTasks = new ArrayList<>();
+
         final Iterable<JobPart> workQueue = blobStrategy.getWork();
 
         for (final JobPart jobPart : workQueue) {
-            transferMethod.transferJobPart(jobPart);
+            transferTasks.add(executorService.submit(new Callable<Void>() {
+                @Override
+                public Void call() throws Exception {
+                    transferMethod.transferJobPart(jobPart);
+                    return null;
+                }
+            }));
+        }
+
+        runTransferTasks(ImmutableList.copyOf(transferTasks));
+    }
+
+    private void runTransferTasks(final Iterable<ListenableFuture<Void>> transferTasks) throws IOException {
+        try {
+            Futures.allAsList(transferTasks).get();
+        } catch (final InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (final ExecutionException e) {
+            // The future throws a wrapper exception, but we want don't want to expose that this was implemented with futures.
+            final Throwable cause = e.getCause();
+
+            // Throw each of the advertised thrown exceptions.
+            if (cause instanceof IOException) {
+                throw (IOException)cause;
+            }
+
+            // The rest we don't know about, so we'll just forward them.
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException)cause;
+            } else {
+                throw new RuntimeException(cause);
+            }
         }
     }
 
-    /*
     @Override
-    public void attachDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-        eventDispatcher.attachDataTransferredObserver(dataTransferredObserver);
+    public void close() throws IOException {
+        executorService.shutdown();
     }
-
-    @Override
-    public void removeDataTransferredObserver(final DataTransferredObserver dataTransferredObserver) {
-        eventDispatcher.removeDataTransferredObserver(dataTransferredObserver);
-    }
-
-    @Override
-    public void attachObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-        eventDispatcher.attachObjectCompletedObserver(objectCompletedObserver);
-    }
-
-    @Override
-    public void removeObjectCompletedObserver(final ObjectCompletedObserver objectCompletedObserver) {
-        eventDispatcher.removeObjectCompletedObserver(objectCompletedObserver);
-    }
-
-    @Override
-    public void attachChecksumObserver(final ChecksumObserver checksumObserver) {
-        eventDispatcher.attachChecksumObserver(checksumObserver);
-    }
-
-    @Override
-    public void removeChecksumObserver(final ChecksumObserver checksumObserver) {
-        eventDispatcher.removeChecksumObserver(checksumObserver);
-    }
-
-    @Override
-    public void attachWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
-        eventDispatcher.attachWaitingForChunksObserver(waitingForChunksObserver);
-    }
-
-    @Override
-    public void removeWaitingForChunksObserver(final WaitingForChunksObserver waitingForChunksObserver) {
-        eventDispatcher.removeWaitingForChunksObserver(waitingForChunksObserver);
-    }
-
-    @Override
-    public void attachFailureEventObserver(final FailureEventObserver failureEventObserver) {
-        eventDispatcher.attachFailureEventObserver(failureEventObserver);
-    }
-
-    @Override
-    public void removeFailureEventObserver(final FailureEventObserver failureEventObserver) {
-        eventDispatcher.removeFailureEventObserver(failureEventObserver);
-    }
-
-    @Override
-    public void attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
-        eventDispatcher.attachMetadataReceivedEventObserver(metaDataReceivedObserver);
-    }
-
-    @Override
-    public void removeMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver) {
-        eventDispatcher.removeMetadataReceivedEventObserver(metaDataReceivedObserver);
-    }
-
-    @Override
-    public void attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
-        eventDispatcher.attachBlobTransferredEventObserver(blobTransferredEventObserver);
-    }
-
-    @Override
-    public void removeBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver) {
-        eventDispatcher.removeBlobTransferredEventObserver(blobTransferredEventObserver);
-    }
-
-    @Override
-    public void emitChecksumEvent(final BulkObject blob, final ChecksumType.Type checksumType, final String checksum) {
-        eventDispatcher.emitChecksumEvent(blob, checksumType, checksum);
-    }
-
-    @Override
-    public void emitFailureEvent(final FailureEvent failureEvent) {
-        eventDispatcher.emitFailureEvent(failureEvent);
-    }
-
-    @Override
-    public void emitWaitingForChunksEvents(final int secondsToDelay) {
-        eventDispatcher.emitWaitingForChunksEvents(secondsToDelay);
-    }
-
-    @Override
-    public void emitDataTransferredEvent(final BulkObject blob) {
-        eventDispatcher.emitDataTransferredEvent(blob);
-    }
-
-    @Override
-    public void emitObjectCompletedEvent(final BulkObject blob) {
-        eventDispatcher.emitObjectCompletedEvent(blob);
-    }
-
-    @Override
-    public void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata) {
-        eventDispatcher.emitMetaDataReceivedEvent(objectName, metadata);
-    }
-
-    @Override
-    public void emitBlobTransferredEvent(final BulkObject blob) {
-        eventDispatcher.emitBlobTransferredEvent(blob);
-    }
-    */
 }

@@ -117,19 +117,6 @@ class WriteJobImpl extends JobImpl {
                 return;
             }
 
-            /*
-            final BlobStrategy blobStrategy = new PutSequentialStrategy(client,
-                    this.masterObjectList,
-                    retryAfter,
-                    retryDelay,
-                    new BlobStrategy.ChunkEventHandler() {
-                        @Override
-                        public void emitWaitingForChunksEvents(final int secondsToDelay) {
-                            WriteJobImpl.super.emitWaitingForChunksEvents(secondsToDelay);
-                        }
-                    });
-                    */
-
             final BlobStrategy blobStrategy = new PutSequentialStrategy(
                     client,
                     this.masterObjectList,
@@ -191,20 +178,13 @@ class WriteJobImpl extends JobImpl {
                 }
             }
 
-            final TransferStrategy transferStrategy = transferStrategyBuilder.makePutSequentialTransferStrategy();
-
             try (final JobState jobState = new JobState(
                     channelBuilder,
                     filteredChunks,
                     getJobPartTracker(),
                     ImmutableMap.<String, ImmutableMultimap<BulkObject, Range>>of())) {
-                try (final ChunkTransferrer chunkTransferrer = new ChunkTransferrer(
-                        new PutObjectTransferrerRetryDecorator(jobState),
-                        jobState.getPartTracker(),
-                        this.maxParallelRequests
-                )) {
+                try (final TransferStrategy transferStrategy = transferStrategyBuilder.makePutSequentialTransferStrategy()) {
                     while (jobState.hasObjects()) {
-                        // chunkTransferrer.transferChunks(blobStrategy, channelStrategy);
                         transferStrategy.transfer();
                     }
                 }

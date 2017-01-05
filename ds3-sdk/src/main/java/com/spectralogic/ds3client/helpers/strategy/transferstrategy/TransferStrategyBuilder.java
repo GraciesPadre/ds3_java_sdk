@@ -86,8 +86,7 @@ public final class TransferStrategyBuilder {
         Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
 
-        final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(
-                channelStrategy, blobStrategy, bucketName, jobId, eventDispatcher);
+        final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(blobStrategy);
 
         return putSequentialTransferStrategy.withTransferMethod(makeTransferMethod(putSequentialTransferStrategy));
     }

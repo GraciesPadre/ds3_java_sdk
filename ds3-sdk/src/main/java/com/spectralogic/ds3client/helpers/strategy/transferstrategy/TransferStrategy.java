@@ -15,11 +15,9 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
-import com.spectralogic.ds3client.models.BulkObject;
-import com.spectralogic.ds3client.models.ChecksumType;
-
+import java.io.Closeable;
 import java.io.IOException;
 
-public interface TransferStrategy {
+public interface TransferStrategy extends Closeable {
     void transfer() throws IOException, InterruptedException;
 }
