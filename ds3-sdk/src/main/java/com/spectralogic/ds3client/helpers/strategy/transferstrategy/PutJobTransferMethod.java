@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 public class PutJobTransferMethod implements TransferMethod {
     private static final Logger LOG = LoggerFactory.getLogger(PutJobTransferMethod.class);
 
-    private final TransferStrategy transferStrategy;
     private final ChannelStrategy channelStrategy;
     private final String bucketName;
     private final String jobId;
@@ -43,15 +42,13 @@ public class PutJobTransferMethod implements TransferMethod {
     private final ChecksumFunction checksumFunction;
     private final ChecksumType.Type checksumType;
 
-    public PutJobTransferMethod(final TransferStrategy transferStrategy,
-                                final ChannelStrategy channelStrategy,
+    public PutJobTransferMethod(final ChannelStrategy channelStrategy,
                                 final String bucketName,
                                 final String jobId,
                                 final EventDispatcher eventDispatcher,
                                 final ChecksumFunction checksumFunction,
                                 final ChecksumType.Type checksumType)
     {
-        this.transferStrategy = transferStrategy;
         this.channelStrategy = channelStrategy;
         this.bucketName = bucketName;
         this.jobId = jobId;
