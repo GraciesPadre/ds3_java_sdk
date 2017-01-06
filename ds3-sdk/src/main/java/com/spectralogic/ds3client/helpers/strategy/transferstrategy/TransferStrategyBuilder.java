@@ -94,7 +94,7 @@ public final class TransferStrategyBuilder {
     private TransferMethod makeTransferMethod(final TransferStrategy transferStrategy) {
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
 
-        final TransferMethod transferMethod = new PutJobTransferMethod(transferStrategy, channelStrategy,
+        final TransferMethod transferMethod = new PutJobTransferMethod(channelStrategy,
                 bucketName, jobId, eventDispatcher, checksumFunction, checksumType);
 
         if (transferRetryBehavior != null) {
