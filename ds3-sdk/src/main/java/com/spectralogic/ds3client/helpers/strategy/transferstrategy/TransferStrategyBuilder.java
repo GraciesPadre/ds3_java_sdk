@@ -18,8 +18,10 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
+import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
+import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.utils.Guard;
 
@@ -85,6 +87,14 @@ public final class TransferStrategyBuilder {
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
         Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
+        Preconditions.checkNotNull(jobPartTracker);
+
+        eventDispatcher.attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
+            @Override
+            public void update(final BulkObject eventData) {
+                jobPartTracker.completePart(eventData.getName(), new ObjectPart(eventData.getOffset(), eventData.getLength()));
+            }
+        }));
 
         final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(blobStrategy);
 
