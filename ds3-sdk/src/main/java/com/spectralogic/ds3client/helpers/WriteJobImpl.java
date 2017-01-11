@@ -34,7 +34,6 @@ import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.utils.Guard;
-import com.spectralogic.ds3client.utils.SeekableByteChannelInputStream;
 import com.spectralogic.ds3client.utils.hashing.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,38 +127,8 @@ class WriteJobImpl extends JobImpl {
                     // .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
                     .withJobPartTracker(getJobPartTracker())
                     .withEventDispatcher(getEventDispatcher())
-                    .withChecksumType(checksumType);
-
-            if (checksumType != ChecksumType.Type.NONE) {
-                if (checksumFunction == null) {
-                    transferStrategyBuilder.withChecksumFunction(new ChecksumFunction() {
-                        @Override
-                        public String compute(final BulkObject obj, final ByteChannel channel) {
-                            String checksum = null;
-
-                            try
-                            {
-                                final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj));
-
-                                final Hasher hasher = ChecksumUtils.getHasher(checksumType);
-
-                                checksum = ChecksumUtils.hashInputStream(hasher, dataStream);
-
-                                LOG.info("Computed checksum for blob: {}", checksum);
-
-                                dataStream.reset();
-                            } catch (final IOException e) {
-                                // TODO Add a filure event for this
-                                LOG.error("Error computing checksum.", e);
-                            }
-
-                            return checksum;
-                        }
-                    });
-                } else {
-                    transferStrategyBuilder.withChecksumFunction(checksumFunction);
-                }
-            }
+                    .withChecksumType(checksumType)
+                    .withChecksumFunction(checksumFunction);
 
             try (final JobState jobState = new JobState(
                     channelBuilder,
