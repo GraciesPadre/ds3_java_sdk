@@ -19,13 +19,26 @@ import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
+import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.utils.Guard;
+import com.spectralogic.ds3client.utils.SeekableByteChannelInputStream;
+import com.spectralogic.ds3client.utils.hashing.ChecksumUtils;
+import com.spectralogic.ds3client.utils.hashing.Hasher;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.channels.ByteChannel;
 
 public final class TransferStrategyBuilder {
+    private static final Logger LOG = LoggerFactory.getLogger(TransferStrategyBuilder.class);
+
     private BlobStrategy blobStrategy;
     private ChannelStrategy channelStrategy;
     private String bucketName;
@@ -104,6 +117,10 @@ public final class TransferStrategyBuilder {
     private TransferMethod makeTransferMethod(final TransferStrategy transferStrategy) {
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
 
+        if (checksumType != ChecksumType.Type.NONE) {
+            maybeAddChecksumFunction();
+        }
+
         final TransferMethod transferMethod = new PutJobTransferMethod(channelStrategy,
                 bucketName, jobId, eventDispatcher, checksumFunction, checksumType);
 
@@ -112,5 +129,41 @@ public final class TransferStrategyBuilder {
         }
 
         return transferMethod;
+    }
+
+    private void maybeAddChecksumFunction() {
+        if (checksumFunction == null) {
+            final ChecksumFunction newChecksumFunction = new ChecksumFunction() {
+                @Override
+                public String compute(final BulkObject obj, final ByteChannel channel) {
+                    String checksum = null;
+
+                    try
+                    {
+                        final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj));
+
+                        final Hasher hasher = ChecksumUtils.getHasher(checksumType);
+
+                        checksum = ChecksumUtils.hashInputStream(hasher, dataStream);
+
+                        LOG.info("Computed checksum for blob: {}", checksum);
+
+                        dataStream.reset();
+                    } catch (final IOException e) {
+                        eventDispatcher.emitFailureEvent(FailureEvent.builder()
+                                .withObjectNamed(obj.getName())
+                                .withCausalException(e)
+                                .usingSystemWithEndpoint(blobStrategy.getClient().getConnectionDetails().getEndpoint())
+                                .doingWhat(FailureEvent.FailureActivity.ComputingChecksum)
+                                .build());
+                        LOG.error("Error computing checksum.", e);
+                    }
+
+                    return checksum;
+                }
+            };
+
+            checksumFunction = newChecksumFunction;
+        }
     }
 }

@@ -52,9 +52,14 @@ public class FailureEvent implements Event {
         return "Failure " + doingWhat().getActivityText() + " with object named \"" + withObjectNamed() + "\" using system with endpoint " + usingSystemWithEndpoint();
     }
 
+    public static FailureEvent.Builder builder() {
+        return new FailureEvent.Builder();
+    }
+
     public enum FailureActivity {
         PuttingObject("putting object"),
-        GettingObject("getting object");
+        GettingObject("getting object"),
+        ComputingChecksum("computing checksum");
 
         private final String activityText;
 
