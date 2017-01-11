@@ -23,19 +23,13 @@ import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
-import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.OriginalChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialAggregatingChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.BlobTransferredEventObserver;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.DataTransferredObserver;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MaxNumObjectTransferAttemptsBehavior;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.ObjectCompletedObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.UpdateStrategy;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
@@ -49,7 +43,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Channels;
-import java.nio.file.Path;
 import java.util.*;
 
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
@@ -125,9 +118,7 @@ class WriteJobImpl extends JobImpl {
                     getEventDispatcher()
             );
 
-            final Path directory = StrategyUtils.extractPath(channelBuilder);
-
-            final ChannelStrategy channelStrategy = new SequentialAggregatingChannelStrategy(new SequentialFileReaderChannelStrategy(directory));
+            final ChannelStrategy channelStrategy = new SequentialAggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
 
             final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                     .withBlobStrategy(blobStrategy)
