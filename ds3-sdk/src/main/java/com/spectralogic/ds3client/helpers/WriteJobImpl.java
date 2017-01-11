@@ -129,13 +129,6 @@ class WriteJobImpl extends JobImpl {
 
             final ChannelStrategy channelStrategy = new SequentialAggregatingChannelStrategy(new SequentialFileReaderChannelStrategy(directory));
 
-            getEventDispatcher().attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
-                @Override
-                public void update(final BulkObject eventData) {
-                    getJobPartTracker().completePart(eventData.getName(), new ObjectPart(eventData.getOffset(), eventData.getLength()));
-                }
-            }));
-
             final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                     .withBlobStrategy(blobStrategy)
                     .withChannelStrategy(channelStrategy)
@@ -155,7 +148,6 @@ class WriteJobImpl extends JobImpl {
 
                             try
                             {
-                                // final InputStream dataStream = channelStrategy.acquireChannelForBlob(obj).getInputStream();
                                 final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj));
 
                                 final Hasher hasher = ChecksumUtils.getHasher(checksumType);
