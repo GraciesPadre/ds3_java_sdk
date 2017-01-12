@@ -28,6 +28,9 @@ import com.spectralogic.ds3client.commands.*;
 import com.spectralogic.ds3client.commands.spectrads3.*;
 import com.spectralogic.ds3client.helpers.options.ReadJobOptions;
 import com.spectralogic.ds3client.helpers.options.WriteJobOptions;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcherImpl;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.bulk.RequestType;
@@ -121,15 +124,19 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
         final PutBulkJobSpectraS3Response putBulkJobSpectraS3Response = this.client.putBulkJobSpectraS3(
                 request);
 
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(eventRunner);
 
-        return new WriteJobImpl(
-                this.client,
-                putBulkJobSpectraS3Response.getResult(),
-                this.retryAfter,
-                options.getChecksumType(),
-                this.objectTransferAttempts,
-                this.retryDelay,
-                this.eventRunner);
+        final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+                .withDs3Client(client)
+                .withMasterObjectList(putBulkJobSpectraS3Response.getResult())
+                .withNumChunkAllocationRetries(retryAfter)
+                .withNumTransferRetries(objectTransferAttempts)
+                .withRetryDelayInSeconds(retryDelay)
+                .withChecksumType(options.getChecksumType())
+                .withEventDispatcher(eventDispatcher);
+
+        return new WriteJobImpl(transferStrategyBuilder,
+                client, putBulkJobSpectraS3Response.getResult(), objectTransferAttempts, eventRunner, eventDispatcher);
     }
 
     @Override
@@ -190,6 +197,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
         return this.startReadJob(bucket, ds3Objects, options);
     }
 
+    // TODO Need to allow the user to pass in the checksumming information again
     @Override
     public Ds3ClientHelpers.Job recoverWriteJob(final UUID jobId) throws IOException, JobRecoveryException {
         final ModifyJobSpectraS3Response jobResponse = this.client.modifyJobSpectraS3(new ModifyJobSpectraS3Request(jobId.toString()));
@@ -198,15 +206,21 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                     RequestType.PUT.toString(),
                     jobResponse.getMasterObjectListResult().getRequestType().toString());
         }
-        // TODO Need to allow the user to pass in the checksumming information again
-        return new WriteJobImpl(
-                this.client,
-                jobResponse.getMasterObjectListResult(),
-                this.retryAfter,
-                ChecksumType.Type.NONE,
-                this.objectTransferAttempts,
-                this.retryDelay,
-                this.eventRunner);
+
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(eventRunner);
+
+        final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+                .withDs3Client(client)
+                .withMasterObjectList(jobResponse.getMasterObjectListResult())
+                .withNumChunkAllocationRetries(retryAfter)
+                .withNumTransferRetries(objectTransferAttempts)
+                .withRetryDelayInSeconds(retryDelay)
+                .withChecksumType(ChecksumType.Type.NONE)
+                .withEventDispatcher(eventDispatcher);
+
+
+        return new WriteJobImpl(transferStrategyBuilder,
+                client, jobResponse.getMasterObjectListResult(), objectTransferAttempts, eventRunner, eventDispatcher);
     }
 
     @Override

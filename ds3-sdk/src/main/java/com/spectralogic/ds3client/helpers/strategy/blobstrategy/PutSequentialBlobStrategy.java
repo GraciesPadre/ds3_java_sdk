@@ -40,16 +40,16 @@ import java.util.UUID;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.buildNodeMap;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
 
-public class PutSequentialStrategy extends BlobStrategy {
+public class PutSequentialBlobStrategy extends BlobStrategy {
 
-    private final static Logger LOG = LoggerFactory.getLogger(PutSequentialStrategy.class);
+    private final static Logger LOG = LoggerFactory.getLogger(PutSequentialBlobStrategy.class);
 
     private final ImmutableMap<UUID, JobNode> uuidJobNodeImmutableMap;
     private final Iterator<Objects> filteredChunkIterator;
 
     private int retryAfterLeft;
 
-    public PutSequentialStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final EventDispatcher eventDispatcher) {
+    public PutSequentialBlobStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final EventDispatcher eventDispatcher) {
         super(client, masterObjectList, retryAfter, retryDelay, eventDispatcher);
         this.filteredChunkIterator = filterChunks(masterObjectList.getObjects()).iterator();
         this.uuidJobNodeImmutableMap = buildNodeMap(masterObjectList.getNodes());

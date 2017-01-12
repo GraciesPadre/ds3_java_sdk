@@ -24,10 +24,10 @@ import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialBlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileWriterChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcherImpl;
 import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.common.Range;
@@ -55,9 +55,9 @@ class ReadJobImpl extends JobImpl {
             final int objectTransferAttempts,
             final int retryAfter,
             final int retryDelay,
-            final EventRunner eventRunner
-            ) {
-        super(client, masterObjectList, objectTransferAttempts, eventRunner);
+            final EventRunner eventRunner)
+    {
+        super(client, masterObjectList, objectTransferAttempts, eventRunner, new EventDispatcherImpl(eventRunner));
 
         this.blobToRanges = PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), objectRanges);
         this.metadataListeners = Sets.newIdentityHashSet();
@@ -102,12 +102,12 @@ class ReadJobImpl extends JobImpl {
         try {
             running = true;
 /*
-            final BlobStrategy strategy = new GetSequentialStrategy(
+            final BlobStrategy strategy = new GetSequentialBlobStrategy(
                     client,
                     this.masterObjectList,
                     retryAfter,
                     retryDelay,
-                    new GetSequentialStrategy.ChunkEventHandler() {
+                    new GetSequentialBlobStrategy.ChunkEventHandler() {
                         @Override
                         public void emitWaitingForChunksEvents(final int secondsToDelay) {
                             ReadJobImpl.super.emitWaitingForChunksEvents(secondsToDelay);
@@ -115,7 +115,7 @@ class ReadJobImpl extends JobImpl {
                     });
 */
 
-            final BlobStrategy strategy = new GetSequentialStrategy(
+            final BlobStrategy strategy = new GetSequentialBlobStrategy(
                     client,
                     this.masterObjectList,
                     retryAfter,

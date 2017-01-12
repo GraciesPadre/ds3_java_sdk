@@ -135,14 +135,6 @@ public class EventDispatcherImpl implements EventDispatcher {
     }
 
 
-
-
-
-
-
-
-
-
     @Override
     public void attachDataTransferredListener(final DataTransferredListener listener) {
         DataTransferredObserver dataTransferredObserver = dataTransferredListeners.get(listener);

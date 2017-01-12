@@ -16,14 +16,20 @@
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
+import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
+import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialBlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.AggregatingChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.OriginalChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
+import com.spectralogic.ds3client.models.MasterObjectList;
 import com.spectralogic.ds3client.utils.Guard;
 import com.spectralogic.ds3client.utils.SeekableByteChannelInputStream;
 import com.spectralogic.ds3client.utils.hashing.ChecksumUtils;
@@ -48,24 +54,25 @@ public final class TransferStrategyBuilder {
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
     private EventDispatcher eventDispatcher;
     private JobPartTracker jobPartTracker;
-
-    public TransferStrategyBuilder withBlobStrategy(final BlobStrategy blobStrategy) {
-        this.blobStrategy = blobStrategy;
-        return this;
-    }
+    private int numTransferRetries;
+    private int numChunkAllocationRetries;
+    private int retryDelayInSeconds;
+    private Ds3Client ds3Client;
+    private MasterObjectList masterObjectList;
+    private Ds3ClientHelpers.ObjectChannelBuilder channelBuilder;
 
     public TransferStrategyBuilder withChannelStrategy(final ChannelStrategy channelStrategy) {
         this.channelStrategy = channelStrategy;
         return this;
     }
 
-    public TransferStrategyBuilder withTransferRetryBehavior(final TransferRetryBehavior transferRetryBehavior) {
-        this.transferRetryBehavior = transferRetryBehavior;
+    public TransferStrategyBuilder withChannelBuilder(final Ds3ClientHelpers.ObjectChannelBuilder channelBuilder) {
+        this.channelBuilder = channelBuilder;
         return this;
     }
 
-    public TransferStrategyBuilder withBucketName(final String bucketName) {
-        this.bucketName = bucketName;
+    public TransferStrategyBuilder withTransferRetryBehavior(final TransferRetryBehavior transferRetryBehavior) {
+        this.transferRetryBehavior = transferRetryBehavior;
         return this;
     }
 
@@ -94,13 +101,55 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
-    public TransferStrategy makePutSequentialTransferStrategy() {
-        Preconditions.checkNotNull(blobStrategy, "blobStrategy may not be null.");
-        Preconditions.checkNotNull(channelStrategy, "channelStrategy may not be null.");
-        Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
-        Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
+    public TransferStrategyBuilder withNumTransferRetries(final int numRetries) {
+        this.numTransferRetries = numRetries;
+        return this;
+    }
+
+    public TransferStrategyBuilder withNumChunkAllocationRetries(final int numChunkAllocationRetries) {
+        this.numChunkAllocationRetries = numChunkAllocationRetries;
+        return this;
+    }
+
+    public TransferStrategyBuilder withRetryDelayInSeconds(final int retryDelayInSeconds) {
+        this.retryDelayInSeconds = retryDelayInSeconds;
+        return this;
+    }
+
+    public TransferStrategyBuilder withDs3Client(final Ds3Client ds3Client) {
+        this.ds3Client = ds3Client;
+        return this;
+    }
+
+    public TransferStrategyBuilder withMasterObjectList(final MasterObjectList masterObjectList) {
+        this.masterObjectList = masterObjectList;
+        return this;
+    }
+
+    // TODO: implement these
+    // public TransferStrategy makePutSequentialTransferStrategy() { }
+    // public TransferStrategy makePutRandomTransferStrategy() { }
+
+    public TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
+        Preconditions.checkNotNull(ds3Client, "ds3Client may not be null.");
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
         Preconditions.checkNotNull(jobPartTracker);
+        Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
+        Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
+
+        bucketName = masterObjectList.getBucketName();
+        Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
+
+        jobId = masterObjectList.getJobId().toString();
+        Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
+
+        blobStrategy = new PutSequentialBlobStrategy(
+                ds3Client,
+                masterObjectList,
+                numChunkAllocationRetries,
+                retryDelayInSeconds,
+                eventDispatcher
+        );
 
         eventDispatcher.attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
             @Override
@@ -109,12 +158,14 @@ public final class TransferStrategyBuilder {
             }
         }));
 
+        channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
+
         final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(blobStrategy);
 
-        return putSequentialTransferStrategy.withTransferMethod(makeTransferMethod(putSequentialTransferStrategy));
+        return putSequentialTransferStrategy.withTransferMethod(makeTransferMethod());
     }
 
-    private TransferMethod makeTransferMethod(final TransferStrategy transferStrategy) {
+    private TransferMethod makeTransferMethod() {
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
 
         if (checksumType != ChecksumType.Type.NONE) {
@@ -133,37 +184,41 @@ public final class TransferStrategyBuilder {
 
     private void maybeAddChecksumFunction() {
         if (checksumFunction == null) {
-            final ChecksumFunction newChecksumFunction = new ChecksumFunction() {
-                @Override
-                public String compute(final BulkObject obj, final ByteChannel channel) {
-                    String checksum = null;
-
-                    try
-                    {
-                        final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj));
-
-                        final Hasher hasher = ChecksumUtils.getHasher(checksumType);
-
-                        checksum = ChecksumUtils.hashInputStream(hasher, dataStream);
-
-                        LOG.info("Computed checksum for blob: {}", checksum);
-
-                        dataStream.reset();
-                    } catch (final IOException e) {
-                        eventDispatcher.emitFailureEvent(FailureEvent.builder()
-                                .withObjectNamed(obj.getName())
-                                .withCausalException(e)
-                                .usingSystemWithEndpoint(blobStrategy.getClient().getConnectionDetails().getEndpoint())
-                                .doingWhat(FailureEvent.FailureActivity.ComputingChecksum)
-                                .build());
-                        LOG.error("Error computing checksum.", e);
-                    }
-
-                    return checksum;
-                }
-            };
-
-            checksumFunction = newChecksumFunction;
+            makeDefaultChecksumFunction();
         }
+    }
+
+    private void makeDefaultChecksumFunction() {
+        final ChecksumFunction newChecksumFunction = new ChecksumFunction() {
+            @Override
+            public String compute(final BulkObject obj, final ByteChannel channel) {
+                String checksum = null;
+
+                try
+                {
+                    final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj));
+
+                    final Hasher hasher = ChecksumUtils.getHasher(checksumType);
+
+                    checksum = ChecksumUtils.hashInputStream(hasher, dataStream);
+
+                    LOG.info("Computed checksum for blob: {}", checksum);
+
+                    dataStream.reset();
+                } catch (final IOException e) {
+                    eventDispatcher.emitFailureEvent(FailureEvent.builder()
+                            .withObjectNamed(obj.getName())
+                            .withCausalException(e)
+                            .usingSystemWithEndpoint(blobStrategy.getClient().getConnectionDetails().getEndpoint())
+                            .doingWhat(FailureEvent.FailureActivity.ComputingChecksum)
+                            .build());
+                    LOG.error("Error computing checksum.", e);
+                }
+
+                return checksum;
+            }
+        };
+
+        checksumFunction = newChecksumFunction;
     }
 }

@@ -39,7 +39,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-public class GetSequentialStrategy extends BlobStrategy {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class GetSequentialBlobStrategy extends BlobStrategy {
+    private static final Logger LOG = LoggerFactory.getLogger(GetSequentialBlobStrategy.class);
 
     private final Set<UUID> processedChunks;
 
@@ -47,7 +51,7 @@ public class GetSequentialStrategy extends BlobStrategy {
     private final Set<String> activeBlobs = new HashSet<>();
     private ImmutableList<JobPart> outstandingJobParts;
 
-    public GetSequentialStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final EventDispatcher eventDispatcher) {
+    public GetSequentialBlobStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final EventDispatcher eventDispatcher) {
         super(client, masterObjectList, retryAfter, retryDelay, eventDispatcher);
         this.processedChunks = new HashSet<>();
     }
@@ -56,6 +60,11 @@ public class GetSequentialStrategy extends BlobStrategy {
     public Iterable<JobPart> getWork() throws IOException, InterruptedException {
 
         final MasterObjectList available = getAvailable();
+
+        if (available == null || available.getObjects() == null) {
+            final String jobId = available == null ? "" : (available.getJobId() == null ? "" : available.getJobId().toString());
+            LOG.info("There is nothing to transfer for job " + jobId);
+        }
 
         final ImmutableMap<UUID, JobNode> jobNodes = StrategyUtils.buildNodeMap(available.getNodes());
 

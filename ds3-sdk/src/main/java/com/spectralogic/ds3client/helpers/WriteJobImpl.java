@@ -21,11 +21,7 @@ import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.OriginalChannelStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.AggregatingChannelStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.models.*;
@@ -43,28 +39,27 @@ class WriteJobImpl extends JobImpl {
     static private final Logger LOG = LoggerFactory.getLogger(WriteJobImpl.class);
 
     private final List<Objects> filteredChunks;
-    private final ChecksumType.Type checksumType;
 
-    private final int retryAfter; // Negative retryAfter value represent infinity retries
-    private final int retryDelay; //Negative value means use default
+    private final TransferStrategyBuilder transferStrategyBuilder;
 
     private Ds3ClientHelpers.MetadataAccess metadataAccess = null;
     private ChecksumFunction checksumFunction = null;
 
-    public WriteJobImpl(
-            final Ds3Client client,
-            final MasterObjectList masterObjectList,
-            final int retryAfter,
-            final ChecksumType.Type type,
-            final int objectTransferAttempts,
-            final int retryDelay,
-            final EventRunner eventRunner) {
-        super(client, masterObjectList, objectTransferAttempts, eventRunner);
+    // TODO: Get rid of all the ctor args other transferStrategy when super no longer needs them
+    // TODO: May need to continue calling out event dipsatcher separately.  Part of the job interface
+    // allows for attaching events before the user calls startWriteJob, which is what causes the
+    // creation of JobImpl.  May be have a jbb event dispatcher registrar?  The job id is in the master
+    // object list.
+    public WriteJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
+                        final Ds3Client client,
+                        final MasterObjectList masterObjectList,
+                        final int objectTransferAttempts,
+                        final EventRunner eventRunner,
+                        final EventDispatcher eventDispatcher)
+    {
+        super(client, masterObjectList, objectTransferAttempts, eventRunner, eventDispatcher);
+        this.transferStrategyBuilder = transferStrategyBuilder;
         this.filteredChunks = getChunks(masterObjectList);
-        this.retryAfter = retryAfter;
-        this.retryDelay = retryDelay;
-
-        this.checksumType = type;
     }
 
     @Override
@@ -96,39 +91,17 @@ class WriteJobImpl extends JobImpl {
         try {
             running = true;
             LOG.debug("Starting job transfer");
-            if (this.masterObjectList == null || this.masterObjectList.getObjects() == null) {
-                LOG.info("There is nothing to transfer for job"
-                        + (this.getJobId() == null ? "" : " " + this.getJobId().toString()));
-                return;
-            }
 
-            final BlobStrategy blobStrategy = new PutSequentialStrategy(
-                    client,
-                    this.masterObjectList,
-                    retryAfter,
-                    retryDelay,
-                    getEventDispatcher()
-            );
-
-            final ChannelStrategy channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
-
-            final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
-                    .withBlobStrategy(blobStrategy)
-                    .withChannelStrategy(channelStrategy)
-                    .withBucketName(masterObjectList.getBucketName())
-                    .withJobId(getJobId().toString())
-                    // .withTransferRetryBehavior(new MaxNumObjectTransferAttemptsBehavior(getObjectTransferAttempts()))
-                    .withJobPartTracker(getJobPartTracker())
-                    .withEventDispatcher(getEventDispatcher())
-                    .withChecksumType(checksumType)
-                    .withChecksumFunction(checksumFunction);
+            transferStrategyBuilder.withChannelBuilder(channelBuilder);
+            transferStrategyBuilder.withChecksumFunction(checksumFunction);
+            transferStrategyBuilder.withJobPartTracker(getJobPartTracker());
 
             try (final JobState jobState = new JobState(
                     channelBuilder,
                     filteredChunks,
                     getJobPartTracker(),
                     ImmutableMap.<String, ImmutableMultimap<BulkObject, Range>>of())) {
-                try (final TransferStrategy transferStrategy = transferStrategyBuilder.makePutSequentialTransferStrategy()) {
+                try (final TransferStrategy transferStrategy = transferStrategyBuilder.makeOriginalSdkSemanticsPutTransferStrategy()) {
                     while (jobState.hasObjects()) {
                         transferStrategy.transfer();
                     }

@@ -58,15 +58,16 @@ abstract class JobImpl implements Job {
     public JobImpl(final Ds3Client client,
                    final MasterObjectList masterObjectList,
                    final int objectTransferAttempts,
-                   final EventRunner eventRunner) {
+                   final EventRunner eventRunner,
+                   final EventDispatcher eventDispatcher)
+    {
         this.client = client;
         this.masterObjectList = masterObjectList;
         this.objectTransferAttempts = objectTransferAttempts;
         this.eventRunner = eventRunner;
+        this.eventDispatcher = eventDispatcher;
 
         jobPartTracker = makeJobPartTracker(getChunks(masterObjectList), eventRunner);
-
-        eventDispatcher = new EventDispatcherImpl(eventRunner);
     }
     
     @Override
