@@ -35,7 +35,7 @@ public class RecoverJobExample {
 
     public static void main(final String args[]) throws IOException, URISyntaxException {
 
-        // Get a client builder and then build a client instance.  This is the main entry point to the SDK.
+        // Get a client builder and then buildBlockingQueueThrottlingStrategy a client instance.  This is the main entry point to the SDK.
         try (final Ds3Client client = Ds3ClientBuilder.fromEnv().withHttps(false).build()) {
             final String bucketName = "recover_get_books_job_bucket";  //The bucket we are interested in getting objects from.
             Ds3ClientHelpers helper = Ds3ClientHelpers.wrap(client);

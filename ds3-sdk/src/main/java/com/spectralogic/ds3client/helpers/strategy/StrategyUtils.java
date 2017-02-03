@@ -132,7 +132,7 @@ public final class StrategyUtils {
                 try {
                     result = Paths.get(resourceUrl.toURI());
                 } catch (final URISyntaxException e) {
-                    LOG.info("Could not build path to resource.", e);
+                    LOG.info("Could not buildBlockingQueueThrottlingStrategy path to resource.", e);
                 }
             } else {
                 fieldValue = getFieldValue(anObject, "root");

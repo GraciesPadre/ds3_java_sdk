@@ -80,5 +80,6 @@ dependencies {
     compile     'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.7.1'
     compile     'com.google.guava:guava:19.0'
     compile     'com.google.code.findbugs:annotations:3.0.1'
+    compile     'org.apache.commons:commons-lang3:3.5'
     testCompile 'org.hamcrest:hamcrest-library:1.3'
 }

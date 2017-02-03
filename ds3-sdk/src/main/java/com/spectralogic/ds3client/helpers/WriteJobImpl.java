@@ -46,7 +46,7 @@ class WriteJobImpl extends JobImpl {
     private ChecksumFunction checksumFunction = null;
 
     // TODO: Get rid of all the ctor args other transferStrategy when super no longer needs them
-    // TODO: May need to continue calling out event dipsatcher separately.  Part of the job interface
+    // TODO: May need to continue calling out event dispatcher separately.  Part of the job interface
     // allows for attaching events before the user calls startWriteJob, which is what causes the
     // creation of JobImpl.  May be have a jbb event dispatcher registrar?  The job id is in the master
     // object list.

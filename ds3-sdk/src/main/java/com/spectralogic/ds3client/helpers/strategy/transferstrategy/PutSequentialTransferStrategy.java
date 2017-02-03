@@ -31,6 +31,7 @@ import java.util.concurrent.Executors;
 
 public class PutSequentialTransferStrategy implements TransferStrategy {
     private final BlobStrategy blobStrategy;
+
     private final ListeningExecutorService executorService = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
 
     private TransferMethod transferMethod;
@@ -46,10 +47,13 @@ public class PutSequentialTransferStrategy implements TransferStrategy {
 
     @Override
     public void transfer() throws IOException, InterruptedException {
+        // Inject the throttler here
         final List<ListenableFuture<Void>> transferTasks = new ArrayList<>();
 
         final Iterable<JobPart> workQueue = blobStrategy.getWork();
 
+        // producer is going to put job parts into queue
+        // consumer is going to call transfer
         for (final JobPart jobPart : workQueue) {
             transferTasks.add(executorService.submit(new Callable<Void>() {
                 @Override

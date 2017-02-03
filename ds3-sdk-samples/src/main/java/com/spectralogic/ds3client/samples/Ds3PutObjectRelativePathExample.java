@@ -33,7 +33,7 @@ import java.util.List;
 public class Ds3PutObjectRelativePathExample {
 
     public static void main(final String args[]) throws IOException {
-        // Get a client builder and then build a client instance.  This is the main entry point to the SDK.
+        // Get a client builder and then buildBlockingQueueThrottlingStrategy a client instance.  This is the main entry point to the SDK.
         try (final Ds3Client client = Ds3ClientBuilder.fromEnv().withHttps(false).build()) {
             /*************************************************************************************************
             Let's say I want to move directory DirB, which is located at ./DirA/DirB on my Windows machine,

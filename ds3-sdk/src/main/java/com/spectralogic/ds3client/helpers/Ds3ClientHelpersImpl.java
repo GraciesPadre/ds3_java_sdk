@@ -163,14 +163,24 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
 
         final ImmutableMultimap<String, Range> partialRanges = PartialObjectHelpers.getPartialObjectsRanges(objects);
 
-        return new ReadJobImpl(
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(eventRunner);
+
+        // TODO: Figure out what do with metadata listener
+        final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+                .withDs3Client(client)
+                .withMasterObjectList(getBulkJobSpectraS3Response.getResult())
+                .withNumChunkAllocationRetries(retryAfter)
+                .withNumTransferRetries(objectTransferAttempts)
+                .withRetryDelayInSeconds(retryDelay)
+                .withEventDispatcher(eventDispatcher);
+
+        return new ReadJobImpl(transferStrategyBuilder,
                 this.client,
                 getBulkJobSpectraS3Response.getResult(),
                 partialRanges,
                 this.objectTransferAttempts,
-                this.retryAfter,
-                this.retryDelay,
-                this.eventRunner);
+                this.eventRunner,
+                eventDispatcher);
     }
 
     @Override
@@ -232,14 +242,25 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                     RequestType.GET.toString(),
                     jobResponse.getMasterObjectListResult().getRequestType().toString() );
         }
-        return new ReadJobImpl(
+
+        final EventDispatcher eventDispatcher = new EventDispatcherImpl(eventRunner);
+
+        // TODO: Figure out what do with metadata listener
+        final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+                .withDs3Client(client)
+                .withMasterObjectList(jobResponse.getMasterObjectListResult())
+                .withNumChunkAllocationRetries(retryAfter)
+                .withNumTransferRetries(objectTransferAttempts)
+                .withRetryDelayInSeconds(retryDelay)
+                .withEventDispatcher(eventDispatcher);
+
+        return new ReadJobImpl(transferStrategyBuilder,
                 this.client,
                 jobResponse.getMasterObjectListResult(),
                 ImmutableMultimap.<String, Range>of(),
                 this.objectTransferAttempts,
-                this.retryAfter,
-                this.retryDelay,
-                this.eventRunner);
+                this.eventRunner,
+                eventDispatcher);
     }
 
     @Override

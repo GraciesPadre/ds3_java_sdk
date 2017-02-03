@@ -19,10 +19,13 @@ import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
+import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategyMaker;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialBlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialBlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.AggregatingChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
@@ -60,6 +63,8 @@ public final class TransferStrategyBuilder {
     private Ds3Client ds3Client;
     private MasterObjectList masterObjectList;
     private Ds3ClientHelpers.ObjectChannelBuilder channelBuilder;
+
+    private static final int MAX_CONCURRENT_TRANSFER_THREADS = 10;
 
     public TransferStrategyBuilder withChannelStrategy(final ChannelStrategy channelStrategy) {
         this.channelStrategy = channelStrategy;
@@ -126,16 +131,51 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
+    /*
+    public TransferStrategyBuilder withThrottlingStrategy(final ThrottlingStrategy throttlingStrategy) {
+        this.throttlingStrategy = throttlingStrategy;
+        return this;
+    }
+    */
+
     // TODO: implement these
     // public TransferStrategy makePutSequentialTransferStrategy() { }
     // public TransferStrategy makePutRandomTransferStrategy() { }
 
     public TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
+        return makeTransferStrategy(
+                new BlobStrategyMaker() {
+                    @Override
+                    public BlobStrategy makeBlobStrategy(final Ds3Client client,
+                                                         final MasterObjectList masterObjectList,
+                                                         final int retryAfter,
+                                                         final int retryDelay,
+                                                         final EventDispatcher eventDispatcher) {
+                        return new PutSequentialBlobStrategy(ds3Client,
+                                masterObjectList,
+                                numChunkAllocationRetries,
+                                retryDelayInSeconds,
+                                eventDispatcher);
+                    }
+                },
+                new TransferMethodMaker() {
+                    @Override
+                    public TransferMethod makeTransferMethod() {
+                        return makePutTransferMethod();
+                    }
+                });
+    }
+
+    private TransferStrategy makeTransferStrategy(final BlobStrategyMaker blobStrategyMaker,
+                                                  final TransferMethodMaker transferMethodMaker)
+    {
         Preconditions.checkNotNull(ds3Client, "ds3Client may not be null.");
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
         Preconditions.checkNotNull(jobPartTracker);
         Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
+        Preconditions.checkNotNull(blobStrategyMaker, "blobStrategyMaker may not be null.");
+        Preconditions.checkNotNull(transferMethodMaker, "transferMethodMaker may not be null.");
 
         bucketName = masterObjectList.getBucketName();
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
@@ -143,13 +183,11 @@ public final class TransferStrategyBuilder {
         jobId = masterObjectList.getJobId().toString();
         Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
 
-        blobStrategy = new PutSequentialBlobStrategy(
-                ds3Client,
+        blobStrategy = blobStrategyMaker.makeBlobStrategy(ds3Client,
                 masterObjectList,
                 numChunkAllocationRetries,
                 retryDelayInSeconds,
-                eventDispatcher
-        );
+                eventDispatcher);
 
         eventDispatcher.attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
             @Override
@@ -160,12 +198,14 @@ public final class TransferStrategyBuilder {
 
         channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
 
+        final TransferMethod transferMethod = transferMethodMaker.makeTransferMethod();
+
         final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(blobStrategy);
 
-        return putSequentialTransferStrategy.withTransferMethod(makeTransferMethod());
+        return putSequentialTransferStrategy.withTransferMethod(transferMethod);
     }
 
-    private TransferMethod makeTransferMethod() {
+    private TransferMethod makePutTransferMethod() {
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
 
         if (checksumType != ChecksumType.Type.NONE) {
@@ -220,5 +260,42 @@ public final class TransferStrategyBuilder {
         };
 
         checksumFunction = newChecksumFunction;
+    }
+
+    public TransferStrategy makeOriginalSdkSemanticsGetTransferStrategy() {
+        return makeTransferStrategy(
+                new BlobStrategyMaker() {
+                    @Override
+                    public BlobStrategy makeBlobStrategy(final Ds3Client client,
+                                                         final MasterObjectList masterObjectList,
+                                                         final int retryAfter,
+                                                         final int retryDelay,
+                                                         final EventDispatcher eventDispatcher) {
+                        return new GetSequentialBlobStrategy(ds3Client,
+                                masterObjectList,
+                                numChunkAllocationRetries,
+                                retryDelayInSeconds,
+                                eventDispatcher);
+                    }
+                },
+                new TransferMethodMaker() {
+                    @Override
+                    public TransferMethod makeTransferMethod() {
+                        return makeGetTransferMethod();
+                    }
+                });
+    }
+
+    private TransferMethod makeGetTransferMethod() {
+        Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
+
+        final TransferMethod transferMethod = new GetJobTransferMethod(channelStrategy,
+                bucketName, jobId, eventDispatcher);
+
+        if (transferRetryBehavior != null) {
+            return transferRetryBehavior.wrap(transferMethod);
+        }
+
+        return transferMethod;
     }
 }

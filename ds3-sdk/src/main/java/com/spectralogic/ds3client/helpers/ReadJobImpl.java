@@ -27,7 +27,11 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialBlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileWriterChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcherImpl;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MetaDataReceivedObserver;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.common.Range;
@@ -44,26 +48,30 @@ class ReadJobImpl extends JobImpl {
 
     private final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> blobToRanges;
     private final Set<MetadataReceivedListener> metadataListeners;
+    private final TransferStrategyBuilder transferStrategyBuilder;
 
-    private final int retryAfter; // Negative retryAfter value represent infinity retries
-    private final int retryDelay; // Negative value represents default
+    /*
+    public WriteJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
+                        final Ds3Client client,
+                        final MasterObjectList masterObjectList,
+                        final int objectTransferAttempts,
+                        final EventRunner eventRunner,
+                        final EventDispatcher eventDispatcher)
+     */
 
-    public ReadJobImpl(
-            final Ds3Client client,
-            final MasterObjectList masterObjectList,
-            final ImmutableMultimap<String, Range> objectRanges,
-            final int objectTransferAttempts,
-            final int retryAfter,
-            final int retryDelay,
-            final EventRunner eventRunner)
+    public ReadJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
+                       final Ds3Client client,
+                       final MasterObjectList masterObjectList,
+                       final ImmutableMultimap<String, Range> objectRanges,
+                       final int objectTransferAttempts,
+                       final EventRunner eventRunner,
+                       final EventDispatcher eventDispatcher)
     {
-        super(client, masterObjectList, objectTransferAttempts, eventRunner, new EventDispatcherImpl(eventRunner));
+        super(client, masterObjectList, objectTransferAttempts, eventRunner, eventDispatcher);
 
         this.blobToRanges = PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), objectRanges);
         this.metadataListeners = Sets.newIdentityHashSet();
-
-        this.retryAfter = retryAfter;
-        this.retryDelay = retryDelay;
+        this.transferStrategyBuilder = transferStrategyBuilder;
     }
 
     protected static ImmutableList<BulkObject> getAllBlobApiBeans(final List<Objects> jobWithChunksApiBeans) {
@@ -77,13 +85,13 @@ class ReadJobImpl extends JobImpl {
     @Override
     public void attachMetadataReceivedListener(final MetadataReceivedListener listener) {
         checkRunning();
-        this.metadataListeners.add(listener);
+        getEventDispatcher().attachMetadataReceivedEventObserver(new MetaDataReceivedObserver(listener));
     }
 
     @Override
     public void removeMetadataReceivedListener(final MetadataReceivedListener listener) {
         checkRunning();
-        this.metadataListeners.remove(listener);
+        getEventDispatcher().removeMetadataReceivedEventObserver(new MetaDataReceivedObserver(listener));
     }
 
     @Override
@@ -101,46 +109,17 @@ class ReadJobImpl extends JobImpl {
             throws IOException {
         try {
             running = true;
-/*
-            final BlobStrategy strategy = new GetSequentialBlobStrategy(
-                    client,
-                    this.masterObjectList,
-                    retryAfter,
-                    retryDelay,
-                    new GetSequentialBlobStrategy.ChunkEventHandler() {
-                        @Override
-                        public void emitWaitingForChunksEvents(final int secondsToDelay) {
-                            ReadJobImpl.super.emitWaitingForChunksEvents(secondsToDelay);
-                        }
-                    });
-*/
 
-            final BlobStrategy strategy = new GetSequentialBlobStrategy(
-                    client,
-                    this.masterObjectList,
-                    retryAfter,
-                    retryDelay,
-                    getEventDispatcher()
-            );
-
-            final FileObjectGetter fileObjectGetter = (FileObjectGetter)channelBuilder;
-            final Field rootField = fileObjectGetter.getClass().getDeclaredField("root");
-            rootField.setAccessible(true);
-            final Path directory = (Path)rootField.get(fileObjectGetter);
-
-            final ChannelStrategy channelStrategy = new SequentialFileWriterChannelStrategy(directory);
+            transferStrategyBuilder.withChannelBuilder(channelBuilder);
+            transferStrategyBuilder.withJobPartTracker(getJobPartTracker());
 
             try (final JobState jobState = new JobState(
                     channelBuilder,
                     this.masterObjectList.getObjects(),
                     getJobPartTracker(), blobToRanges)) {
-                try (final ChunkTransferrer chunkTransferrer = new ChunkTransferrer(
-                        new GetObjectTransferrerRetryDecorator(jobState),
-                        jobState.getPartTracker(),
-                        this.maxParallelRequests
-                )) {
+                try (final TransferStrategy transferStrategy = transferStrategyBuilder.makeOriginalSdkSemanticsGetTransferStrategy()) {
                     while (jobState.hasObjects()) {
-                        chunkTransferrer.transferChunks(strategy, channelStrategy);
+                        transferStrategy.transfer();
                     }
                 }
             } catch (final RuntimeException | IOException e) {
