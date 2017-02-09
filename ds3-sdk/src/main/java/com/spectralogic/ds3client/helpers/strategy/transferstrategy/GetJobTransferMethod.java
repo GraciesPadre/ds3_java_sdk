@@ -43,18 +43,21 @@ public class GetJobTransferMethod implements TransferMethod {
 
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
-        final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(jobPart.getBulkObject());
-
-        final GetObjectResponse getObjectResponse = jobPart.getClient().getObject(makeGetObjectRequest(seekableByteChannel, jobPart));
-
         final BulkObject blob = jobPart.getBulkObject();
-        channelStrategy.releaseChannelForBlob(seekableByteChannel, blob);
 
-        eventDispatcher.emitChecksumEvent(blob, getObjectResponse.getChecksumType(), getObjectResponse.getChecksum());
-        eventDispatcher.emitMetaDataReceivedEvent(blob.getName(), getObjectResponse.getMetadata());
+        final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob);
 
-        eventDispatcher.emitBlobTransferredEvent(blob);
-        eventDispatcher.emitDataTransferredEvent(blob);
+        try {
+            final GetObjectResponse getObjectResponse = jobPart.getClient().getObject(makeGetObjectRequest(seekableByteChannel, jobPart));
+
+            eventDispatcher.emitChecksumEvent(blob, getObjectResponse.getChecksumType(), getObjectResponse.getChecksum());
+            eventDispatcher.emitMetaDataReceivedEvent(blob.getName(), getObjectResponse.getMetadata());
+
+            eventDispatcher.emitBlobTransferredEvent(blob);
+            eventDispatcher.emitDataTransferredEvent(blob);
+        } finally {
+            channelStrategy.releaseChannelForBlob(seekableByteChannel, blob);
+        }
     }
 
     private GetObjectRequest makeGetObjectRequest(final SeekableByteChannel seekableByteChannel, final JobPart jobPart) {

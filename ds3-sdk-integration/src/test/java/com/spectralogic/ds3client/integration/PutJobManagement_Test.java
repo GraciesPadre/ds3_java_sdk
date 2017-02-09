@@ -17,6 +17,7 @@ package com.spectralogic.ds3client.integration;
 
 import com.google.common.collect.Lists;
 import com.spectralogic.ds3client.Ds3Client;
+import com.spectralogic.ds3client.Ds3ClientImpl;
 import com.spectralogic.ds3client.IntValue;
 import com.spectralogic.ds3client.commands.*;
 import com.spectralogic.ds3client.commands.spectrads3.*;
@@ -33,7 +34,6 @@ import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.options.WriteJobOptions;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
 import com.spectralogic.ds3client.integration.test.helpers.ABMTestHelper;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageIds;
@@ -66,8 +66,6 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -854,7 +852,7 @@ public class PutJobManagement_Test {
                                              final ObjectTransferExceptionHandler objectTransferExceptionHandler,
                                              final boolean computeChecksumWithUserSuppliedFunction)
             throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException, URISyntaxException {
-        // final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl) client);
+        final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl) client);
 
         final String tempPathPrefix = null;
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
@@ -877,7 +875,7 @@ public class PutJobManagement_Test {
             }
 
             final int maxNumBlockAllocationRetries = 1;
-            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(client, //ds3ClientShim,
+            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(ds3ClientShim,
                     maxNumBlockAllocationRetries,
                     maxNumObjectTransferAttempts);
 
@@ -993,8 +991,7 @@ public class PutJobManagement_Test {
             assertEquals(1, numTimesObjectCompletedEventCalled.get());
             assertEquals(1, numTimesDataTransferredEventCalled.get());
 
-            // final GetBucketResponse request = ds3ClientShim.getBucket(new GetBucketRequest(BUCKET_NAME));
-            final GetBucketResponse request = client.getBucket(new GetBucketRequest(BUCKET_NAME));
+            final GetBucketResponse request = ds3ClientShim.getBucket(new GetBucketRequest(BUCKET_NAME));
             final ListBucketResult result = request.getListBucketResult();
 
             assertEquals(bookTitles.size(), result.getObjects().size());
@@ -1003,7 +1000,7 @@ public class PutJobManagement_Test {
                 assertTrue(bookTitles.contains(contents.getKey()));
             }
 
-            final Ds3ClientHelpers.Job readJob = Ds3ClientHelpers.wrap(client /*ds3ClientShim*/, 1)
+            final Ds3ClientHelpers.Job readJob = Ds3ClientHelpers.wrap(ds3ClientShim, 1)
                     .startReadAllJob(BUCKET_NAME);
             readJob.attachObjectCompletedListener(new ObjectCompletedListener() {
                 @Override
@@ -1023,7 +1020,7 @@ public class PutJobManagement_Test {
             readJob.transfer(new FileObjectGetter(tempDirectory));
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
-            deleteAllContents(client /*ds3ClientShim*/, BUCKET_NAME);
+            deleteAllContents(ds3ClientShim, BUCKET_NAME);
         }
     }
 

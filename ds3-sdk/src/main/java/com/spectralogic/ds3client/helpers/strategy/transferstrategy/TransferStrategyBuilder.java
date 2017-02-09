@@ -142,6 +142,11 @@ public final class TransferStrategyBuilder {
     // public TransferStrategy makePutRandomTransferStrategy() { }
 
     public TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
+        Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
+
+        channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
+        transferRetryBehavior = new ContinueForeverTransferRetryBehavior();
+
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
                     @Override
@@ -170,11 +175,12 @@ public final class TransferStrategyBuilder {
     {
         Preconditions.checkNotNull(ds3Client, "ds3Client may not be null.");
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
-        Preconditions.checkNotNull(jobPartTracker);
+        Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null");
         Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
-        Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
         Preconditions.checkNotNull(blobStrategyMaker, "blobStrategyMaker may not be null.");
         Preconditions.checkNotNull(transferMethodMaker, "transferMethodMaker may not be null.");
+        Preconditions.checkNotNull(channelStrategy, "channelStrategy may not be null");
+        Preconditions.checkNotNull(transferRetryBehavior, "transferRetryBehavior may not be null");
 
         bucketName = masterObjectList.getBucketName();
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
@@ -194,8 +200,6 @@ public final class TransferStrategyBuilder {
                 jobPartTracker.completePart(eventData.getName(), new ObjectPart(eventData.getOffset(), eventData.getLength()));
             }
         }));
-
-        channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
 
         final TransferMethod transferMethod = transferMethodMaker.makeTransferMethod();
 
@@ -264,6 +268,11 @@ public final class TransferStrategyBuilder {
     }
 
     public TransferStrategy makeOriginalSdkSemanticsGetTransferStrategy() {
+        Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
+
+        channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
+        transferRetryBehavior = new ContinueForeverTransferRetryBehavior();
+
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
                     @Override
