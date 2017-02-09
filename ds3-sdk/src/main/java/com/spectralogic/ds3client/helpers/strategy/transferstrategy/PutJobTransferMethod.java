@@ -56,14 +56,17 @@ public class PutJobTransferMethod implements TransferMethod {
 
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
-        final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(jobPart.getBulkObject());
-
-        jobPart.getClient().putObject(makePutObjectRequest(seekableByteChannel, jobPart));
-
         final BulkObject blob = jobPart.getBulkObject();
-        channelStrategy.releaseChannelForBlob(seekableByteChannel, blob);
-        eventDispatcher.emitBlobTransferredEvent(blob);
-        eventDispatcher.emitDataTransferredEvent(blob);
+        final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob);
+
+        try {
+            jobPart.getClient().putObject(makePutObjectRequest(seekableByteChannel, jobPart));
+
+            eventDispatcher.emitBlobTransferredEvent(blob);
+            eventDispatcher.emitDataTransferredEvent(blob);
+        } finally {
+            channelStrategy.releaseChannelForBlob(seekableByteChannel, blob);
+        }
     }
 
     private PutObjectRequest makePutObjectRequest(final SeekableByteChannel seekableByteChannel, final JobPart jobPart) {
