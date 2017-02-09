@@ -50,15 +50,6 @@ class ReadJobImpl extends JobImpl {
     private final Set<MetadataReceivedListener> metadataListeners;
     private final TransferStrategyBuilder transferStrategyBuilder;
 
-    /*
-    public WriteJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
-                        final Ds3Client client,
-                        final MasterObjectList masterObjectList,
-                        final int objectTransferAttempts,
-                        final EventRunner eventRunner,
-                        final EventDispatcher eventDispatcher)
-     */
-
     public ReadJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
                        final Ds3Client client,
                        final MasterObjectList masterObjectList,
@@ -140,7 +131,16 @@ class ReadJobImpl extends JobImpl {
 
     @Override
     protected JobPartTrackerDecorator makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner) {
-        return new JobPartTrackerDecorator(chunks, eventRunner);
+        final JobPartTrackerDecorator result = new JobPartTrackerDecorator(chunks, eventRunner);
+
+        result.attachObjectCompletedListener(new ObjectCompletedListener() {
+            @Override
+            public void objectCompleted(final String name) {
+                getEventDispatcher().emitObjectCompletedEvent(name);
+            }
+        });
+
+        return result;
     }
 
     private final class GetObjectTransferrerRetryDecorator implements ItemTransferrer {

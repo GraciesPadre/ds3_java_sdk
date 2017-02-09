@@ -19,7 +19,6 @@ import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
-import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
@@ -200,9 +199,9 @@ public final class TransferStrategyBuilder {
 
         final TransferMethod transferMethod = transferMethodMaker.makeTransferMethod();
 
-        final PutSequentialTransferStrategy putSequentialTransferStrategy = new PutSequentialTransferStrategy(blobStrategy);
+        final SequentialTransferStrategy sequentialTransferStrategy = new SequentialTransferStrategy(blobStrategy);
 
-        return putSequentialTransferStrategy.withTransferMethod(transferMethod);
+        return sequentialTransferStrategy.withTransferMethod(transferMethod);
     }
 
     private TransferMethod makePutTransferMethod() {
@@ -237,6 +236,8 @@ public final class TransferStrategyBuilder {
                 try
                 {
                     final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj));
+
+                    dataStream.mark(Integer.MAX_VALUE);
 
                     final Hasher hasher = ChecksumUtils.getHasher(checksumType);
 

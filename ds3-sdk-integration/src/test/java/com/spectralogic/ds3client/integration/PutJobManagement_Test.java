@@ -17,12 +17,13 @@ package com.spectralogic.ds3client.integration;
 
 import com.google.common.collect.Lists;
 import com.spectralogic.ds3client.Ds3Client;
-import com.spectralogic.ds3client.Ds3ClientImpl;
 import com.spectralogic.ds3client.IntValue;
 import com.spectralogic.ds3client.commands.*;
 import com.spectralogic.ds3client.commands.spectrads3.*;
 import com.spectralogic.ds3client.commands.spectrads3.notifications.*;
 import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
+import com.spectralogic.ds3client.helpers.ChecksumFunction;
+import com.spectralogic.ds3client.helpers.ChecksumListener;
 import com.spectralogic.ds3client.helpers.DataTransferredListener;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.helpers.FailureEventListener;
@@ -32,6 +33,7 @@ import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.options.WriteJobOptions;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileReaderChannelStrategy;
 import com.spectralogic.ds3client.integration.test.helpers.ABMTestHelper;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageIds;
@@ -42,28 +44,35 @@ import com.spectralogic.ds3client.networking.FailedRequestException;
 import com.spectralogic.ds3client.utils.ByteArraySeekableByteChannel;
 import com.spectralogic.ds3client.utils.ResourceUtils;
 
-import com.spectralogic.ds3client.IntValue;
-
-import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimWithFailedChunkAllocation;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory.ClientFailureType;
 
+import com.spectralogic.ds3client.utils.hashing.ChecksumUtils;
+import com.spectralogic.ds3client.utils.hashing.Hasher;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.junit.*;
+import static org.junit.Assert.fail;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
+import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShim;
@@ -73,7 +82,11 @@ import static com.spectralogic.ds3client.integration.Util.deleteAllContents;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PutJobManagement_Test {
+    private static final Logger LOG = LoggerFactory.getLogger(PutJobManagement_Test.class);
 
     private static final Ds3Client client = Util.fromEnv();
     private static final Ds3ClientHelpers HELPERS = Ds3ClientHelpers.wrap(client);
@@ -824,6 +837,8 @@ public class PutJobManagement_Test {
     @Test
     public void testWriteJobWithRetries() throws Exception {
         final int maxNumObjectTransferAttempts = 3;
+        final boolean computeChecksumWithUserSuppliedFunction = false;
+
         transferAndCheckFileContent(maxNumObjectTransferAttempts,
                 new ObjectTransferExceptionHandler() {
                     @Override
@@ -832,11 +847,12 @@ public class PutJobManagement_Test {
                         fail("Got unexpected exception: " + t.getMessage());
                         return false;
                     }
-                });
+                }, computeChecksumWithUserSuppliedFunction);
     }
 
     private void transferAndCheckFileContent(final int maxNumObjectTransferAttempts,
-                                             final ObjectTransferExceptionHandler objectTransferExceptionHandler)
+                                             final ObjectTransferExceptionHandler objectTransferExceptionHandler,
+                                             final boolean computeChecksumWithUserSuppliedFunction)
             throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException, URISyntaxException {
         // final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl) client);
 
@@ -867,13 +883,68 @@ public class PutJobManagement_Test {
 
             final AtomicInteger numTimesObjectCompletedEventCalled = new AtomicInteger(0);
             final AtomicInteger numTimesDataTransferredEventCalled = new AtomicInteger(0);
+            final AtomicBoolean dataTransferredEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean objectCompletedEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean checksumEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean waitingForChunksEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean failureEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean checksumFunctionCalled = new AtomicBoolean(false);
 
-            final Ds3ClientHelpers.Job writeJob = ds3ClientHelpers.startWriteJob(BUCKET_NAME, objects);
+            final WriteJobOptions writeJobOptions = WriteJobOptions.create()
+                    .withChecksumType(ChecksumType.Type.MD5);
+
+            final Ds3ClientHelpers.Job writeJob = ds3ClientHelpers.startWriteJob(BUCKET_NAME, objects, writeJobOptions);
+
+            if (computeChecksumWithUserSuppliedFunction) {
+                writeJob.withChecksum(new ChecksumFunction() {
+                    @Override
+                    public String compute(final BulkObject obj, final ByteChannel channel) {
+                        checksumFunctionCalled.set(true);
+                        try {
+                            final InputStream dataStream = new BufferedInputStream(Channels.newInputStream(channel));
+
+                            dataStream.mark(Integer.MAX_VALUE);
+
+                            final Hasher hasher = ChecksumUtils.getHasher(ChecksumType.Type.MD5);
+
+                            final String checksum = ChecksumUtils.hashInputStream(hasher, dataStream);
+
+                            LOG.info("Computed checksum for blob: {}", checksum);
+
+                            dataStream.reset();
+
+                            return checksum;
+                        } catch (final IOException e) {
+                            LOG.error("Error calculating checksum for: " + obj.getName(), e);
+                            fail("Error calculating checksum for: " + obj.getName());
+                        }
+
+                        return null;
+                    }
+                });
+            }
+
+            writeJob.attachFailureEventListener(new FailureEventListener() {
+                @Override
+                public void onFailure(final FailureEvent failureEvent) {
+                    failureEventReceived.set(true);
+                }
+            });
+
+            writeJob.attachChecksumListener(new ChecksumListener() {
+                @Override
+                public void value(final BulkObject obj, final ChecksumType.Type type, final String checksum) {
+                    checksumEventReceived.set(true);
+                    assertEquals("0feqCQBgdtmmgGs9pB/Huw==", checksum);
+                }
+            });
+
             writeJob.attachObjectCompletedListener(new ObjectCompletedListener() {
                 private int numCompletedObjects = 0;
 
                 @Override
                 public void objectCompleted(final String name) {
+                    objectCompletedEventReceived.set(true);
                     assertTrue(bookTitles.contains(name));
                     assertEquals(1, ++numCompletedObjects);
                     numTimesObjectCompletedEventCalled.getAndIncrement();
@@ -883,8 +954,16 @@ public class PutJobManagement_Test {
             writeJob.attachDataTransferredListener(new DataTransferredListener() {
                 @Override
                 public void dataTransferred(final long size) {
+                    dataTransferredEventReceived.set(true);
                     assertEquals(objects.get(0).getSize(), size);
                     numTimesDataTransferredEventCalled.getAndIncrement();
+                }
+            });
+
+            writeJob.attachWaitingForChunksListener(new WaitingForChunksListener() {
+                @Override
+                public void waiting(final int secondsToWait) {
+                    waitingForChunksEventReceived.set(true);
                 }
             });
 
@@ -899,6 +978,17 @@ public class PutJobManagement_Test {
             if (!shouldContinueTest) {
                 return;
             }
+
+            if (computeChecksumWithUserSuppliedFunction) {
+                assertTrue(checksumFunctionCalled.get());
+            } else {
+                assertFalse(checksumFunctionCalled.get());
+            }
+            assertTrue(dataTransferredEventReceived.get());
+            assertTrue(objectCompletedEventReceived.get());
+            assertTrue(checksumEventReceived.get());
+            assertFalse(waitingForChunksEventReceived.get());
+            assertFalse(failureEventReceived.get());
 
             assertEquals(1, numTimesObjectCompletedEventCalled.get());
             assertEquals(1, numTimesDataTransferredEventCalled.get());
@@ -942,8 +1032,26 @@ public class PutJobManagement_Test {
     }
 
     @Test
+    public void testWriteJobWithRetriesAndUserDefinedChecksum() throws Exception {
+        final int maxNumObjectTransferAttempts = 3;
+        final boolean computeChecksumWithUserSuppliedFunction = true;
+
+        transferAndCheckFileContent(maxNumObjectTransferAttempts,
+                new ObjectTransferExceptionHandler() {
+                    @Override
+                    public boolean handleException(final Throwable t) {
+                        t.printStackTrace();
+                        fail("Got unexpected exception: " + t.getMessage());
+                        return false;
+                    }
+                }, computeChecksumWithUserSuppliedFunction);
+    }
+
+    @Test
     public void testWriteJobWithRetriesThrowsDs3NoMoreRetriesException() throws Exception {
         final int maxNumObjectTransferAttempts = 1;
+        final boolean computeChecksumWithUserSuppliedFunction = false;
+
         transferAndCheckFileContent(maxNumObjectTransferAttempts,
                 new ObjectTransferExceptionHandler() {
                     @Override
@@ -955,7 +1063,7 @@ public class PutJobManagement_Test {
 
                         return false;
                     }
-                });
+                }, computeChecksumWithUserSuppliedFunction);
     }
 
     @Test

@@ -25,13 +25,17 @@ import com.spectralogic.ds3client.commands.GetObjectResponse;
 import com.spectralogic.ds3client.commands.PutObjectRequest;
 import com.spectralogic.ds3client.commands.spectrads3.GetJobSpectraS3Request;
 import com.spectralogic.ds3client.commands.spectrads3.GetJobSpectraS3Response;
+import com.spectralogic.ds3client.helpers.ChecksumListener;
+import com.spectralogic.ds3client.helpers.DataTransferredListener;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.helpers.FailureEventListener;
 import com.spectralogic.ds3client.helpers.FileObjectGetter;
 import com.spectralogic.ds3client.helpers.FileObjectPutter;
 
+import com.spectralogic.ds3client.helpers.MetadataReceivedListener;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 
+import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 
 import com.spectralogic.ds3client.helpers.options.ReadJobOptions;
@@ -41,12 +45,14 @@ import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimWithFailedChunkAllocation;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageIds;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageUtil;
+import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.models.Contents;
 import com.spectralogic.ds3client.models.Priority;
 import com.spectralogic.ds3client.models.bulk.Ds3Object;
 import com.spectralogic.ds3client.models.bulk.PartialDs3Object;
 import com.spectralogic.ds3client.models.common.Range;
+import com.spectralogic.ds3client.networking.Metadata;
 import com.spectralogic.ds3client.utils.ResourceUtils;
 import com.spectralogic.ds3client.IntValue;
 import org.apache.commons.io.FileUtils;
@@ -67,11 +73,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.spectralogic.ds3client.integration.Util.RESOURCE_BASE_NAME;
 import static com.spectralogic.ds3client.integration.Util.deleteAllContents;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
@@ -168,17 +176,63 @@ public class GetJobManagement_Test {
             final long bookSize = Files.size(objPath);
             final Ds3Object obj = new Ds3Object(FILE_NAME, bookSize);
 
-            final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl)client);
+            // final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl)client);
 
             final int maxNumBlockAllocationRetries = 1;
             final int maxNumObjectTransferAttempts = 3;
-            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(ds3ClientShim,
+            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(client,
                     maxNumBlockAllocationRetries,
                     maxNumObjectTransferAttempts);
 
             final Ds3ClientHelpers.Job readJob = ds3ClientHelpers.startReadJob(BUCKET_NAME, Arrays.asList(obj));
 
-            final GetJobSpectraS3Response jobSpectraS3Response = ds3ClientShim
+            final AtomicBoolean dataTransferredEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean objectCompletedEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean checksumEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean metadataEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean waitingForChunksEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean failureEventReceived = new AtomicBoolean(false);
+
+            readJob.attachDataTransferredListener(new DataTransferredListener() {
+                @Override
+                public void dataTransferred(final long size) {
+                    dataTransferredEventReceived.set(true);
+                    assertEquals(bookSize, size);
+                }
+            });
+            readJob.attachObjectCompletedListener(new ObjectCompletedListener() {
+                @Override
+                public void objectCompleted(final String name) {
+                    objectCompletedEventReceived.set(true);
+                }
+            });
+            readJob.attachChecksumListener(new ChecksumListener() {
+                @Override
+                public void value(final BulkObject obj, final ChecksumType.Type type, final String checksum) {
+                    checksumEventReceived.set(true);
+                    assertEquals("0feqCQBgdtmmgGs9pB/Huw==", checksum);
+                }
+            });
+            readJob.attachMetadataReceivedListener(new MetadataReceivedListener() {
+                @Override
+                public void metadataReceived(final String filename, final Metadata metadata) {
+                    metadataEventReceived.set(true);
+                }
+            });
+            readJob.attachWaitingForChunksListener(new WaitingForChunksListener() {
+                @Override
+                public void waiting(final int secondsToWait) {
+                    waitingForChunksEventReceived.set(true);
+                }
+            });
+            readJob.attachFailureEventListener(new FailureEventListener() {
+                @Override
+                public void onFailure(final FailureEvent failureEvent) {
+                    failureEventReceived.set(true);
+                }
+            });
+
+            final GetJobSpectraS3Response jobSpectraS3Response = client
                     .getJobSpectraS3(new GetJobSpectraS3Request(readJob.getJobId()));
 
             assertThat(jobSpectraS3Response.getStatusCode(), is(200));
@@ -189,6 +243,12 @@ public class GetJobManagement_Test {
             final File fileCopiedFromBP = Paths.get(tempDirectory.toString(), FILE_NAME).toFile();
             assertTrue(FileUtils.contentEquals(originalFile, fileCopiedFromBP));
 
+            assertTrue(dataTransferredEventReceived.get());
+            assertTrue(objectCompletedEventReceived.get());
+            assertTrue(checksumEventReceived.get());
+            assertTrue(metadataEventReceived.get());
+            assertFalse(waitingForChunksEventReceived.get());
+            assertFalse(failureEventReceived.get());
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
             deleteBigFileFromBlackPearlBucket();
