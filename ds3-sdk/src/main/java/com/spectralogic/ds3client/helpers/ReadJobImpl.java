@@ -23,12 +23,7 @@ import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialBlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileWriterChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcherImpl;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MetaDataReceivedObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
@@ -39,14 +34,12 @@ import com.spectralogic.ds3client.networking.Metadata;
 import com.spectralogic.ds3client.utils.Guard;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
 class ReadJobImpl extends JobImpl {
 
-    private final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> blobToRanges;
+    private final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
     private final Set<MetadataReceivedListener> metadataListeners;
     private final TransferStrategyBuilder transferStrategyBuilder;
 
@@ -60,7 +53,7 @@ class ReadJobImpl extends JobImpl {
     {
         super(client, masterObjectList, objectTransferAttempts, eventRunner, eventDispatcher);
 
-        this.blobToRanges = PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), objectRanges);
+        this.rangesForBlobs = PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), objectRanges);
         this.metadataListeners = Sets.newIdentityHashSet();
         this.transferStrategyBuilder = transferStrategyBuilder;
     }
@@ -103,11 +96,12 @@ class ReadJobImpl extends JobImpl {
 
             transferStrategyBuilder.withChannelBuilder(channelBuilder);
             transferStrategyBuilder.withJobPartTracker(getJobPartTracker());
+            transferStrategyBuilder.withRangesForBlobs(rangesForBlobs);
 
             try (final JobState jobState = new JobState(
                     channelBuilder,
                     this.masterObjectList.getObjects(),
-                    getJobPartTracker(), blobToRanges)) {
+                    getJobPartTracker(), rangesForBlobs)) {
                 try (final TransferStrategy transferStrategy = transferStrategyBuilder.makeOriginalSdkSemanticsGetTransferStrategy()) {
                     while (jobState.hasObjects()) {
                         transferStrategy.transfer();
@@ -167,7 +161,7 @@ class ReadJobImpl extends JobImpl {
         public void transferItem(final JobPart jobPart, final BulkObject ds3Object)
                 throws IOException {
 
-            final ImmutableCollection<Range> ranges = getRangesForBlob(blobToRanges, ds3Object);
+            final ImmutableCollection<Range> ranges = getRangesForBlob(rangesForBlobs, ds3Object);
 
             final GetObjectRequest request = new GetObjectRequest(
                     ReadJobImpl.this.masterObjectList.getBucketName(),

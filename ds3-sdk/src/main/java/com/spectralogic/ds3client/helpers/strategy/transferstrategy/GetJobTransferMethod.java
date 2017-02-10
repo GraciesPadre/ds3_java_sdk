@@ -15,11 +15,15 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
+import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.spectralogic.ds3client.commands.GetObjectRequest;
 import com.spectralogic.ds3client.commands.GetObjectResponse;
 import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
+import com.spectralogic.ds3client.models.common.Range;
 
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
@@ -30,15 +34,20 @@ public class GetJobTransferMethod implements TransferMethod {
     private final String jobId;
     private final EventDispatcher eventDispatcher;
 
+    // This is a map of blob name to ranges for a blob of that name.
+    private final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
+
     public GetJobTransferMethod(final ChannelStrategy channelStrategy,
                                 final String bucketName,
                                 final String jobId,
-                                final EventDispatcher eventDispatcher)
+                                final EventDispatcher eventDispatcher,
+                                final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs)
     {
         this.channelStrategy = channelStrategy;
         this.bucketName = bucketName;
         this.jobId = jobId;
         this.eventDispatcher = eventDispatcher;
+        this.rangesForBlobs = rangesForBlobs;
     }
 
     @Override
@@ -70,6 +79,22 @@ public class GetJobTransferMethod implements TransferMethod {
                 jobId,
                 blob.getOffset());
 
+        final ImmutableCollection<Range> rangesForBlob = getRangesForBlob(blob);
+
+        if (rangesForBlob != null) {
+            getObjectRequest.withByteRanges(rangesForBlob);
+        }
+
         return getObjectRequest;
+    }
+
+    private ImmutableCollection<Range> getRangesForBlob(final BulkObject blob) {
+        final ImmutableMultimap<BulkObject, Range> rangesForBlob = rangesForBlobs.get(blob.getName());
+
+        if (rangesForBlob != null) {
+            return rangesForBlob.get(blob);
+        }
+
+        return null;
     }
 }

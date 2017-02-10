@@ -16,6 +16,8 @@
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
@@ -32,6 +34,7 @@ import com.spectralogic.ds3client.helpers.strategy.channelstrategy.OriginalChann
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.models.MasterObjectList;
+import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.utils.Guard;
 import com.spectralogic.ds3client.utils.SeekableByteChannelInputStream;
 import com.spectralogic.ds3client.utils.hashing.ChecksumUtils;
@@ -62,6 +65,7 @@ public final class TransferStrategyBuilder {
     private Ds3Client ds3Client;
     private MasterObjectList masterObjectList;
     private Ds3ClientHelpers.ObjectChannelBuilder channelBuilder;
+    private ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
 
     private static final int MAX_CONCURRENT_TRANSFER_THREADS = 10;
 
@@ -127,6 +131,11 @@ public final class TransferStrategyBuilder {
 
     public TransferStrategyBuilder withMasterObjectList(final MasterObjectList masterObjectList) {
         this.masterObjectList = masterObjectList;
+        return this;
+    }
+
+    public TransferStrategyBuilder withRangesForBlobs(final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs) {
+        this.rangesForBlobs = rangesForBlobs;
         return this;
     }
 
@@ -300,7 +309,7 @@ public final class TransferStrategyBuilder {
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
 
         final TransferMethod transferMethod = new GetJobTransferMethod(channelStrategy,
-                bucketName, jobId, eventDispatcher);
+                bucketName, jobId, eventDispatcher, rangesForBlobs);
 
         if (transferRetryBehavior != null) {
             return transferRetryBehavior.wrap(transferMethod);
