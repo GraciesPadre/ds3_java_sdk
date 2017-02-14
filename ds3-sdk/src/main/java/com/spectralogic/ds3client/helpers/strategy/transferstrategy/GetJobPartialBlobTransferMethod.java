@@ -1,27 +1,10 @@
-/*
- * ****************************************************************************
- *    Copyright 2014-2016 Spectra Logic Corporation. All Rights Reserved.
- *    Licensed under the Apache License, Version 2.0 (the "License"). You may not use
- *    this file except in compliance with the License. A copy of the License is located at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- *    or in the "license" file accompanying this file.
- *    This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- *    CONDITIONS OF ANY KIND, either express or implied. See the License for the
- *    specific language governing permissions and limitations under the License.
- *  ****************************************************************************
- */
-
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMultimap;
 import com.spectralogic.ds3client.commands.GetObjectRequest;
 import com.spectralogic.ds3client.commands.GetObjectResponse;
 import com.spectralogic.ds3client.helpers.JobPart;
-import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.common.Range;
@@ -29,33 +12,37 @@ import com.spectralogic.ds3client.models.common.Range;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 
-public class GetJobTransferMethod implements TransferMethod {
+public class GetJobPartialBlobTransferMethod implements TransferMethod {
     private final ChannelStrategy channelStrategy;
     private final String bucketName;
     private final String jobId;
     private final EventDispatcher eventDispatcher;
+    private final ImmutableCollection<Range> blobRanges;
+    private final long destinationChannelOffset;
 
-    // This is a map of blob name to ranges for a blob of that name.
-    private final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
-
-    public GetJobTransferMethod(final ChannelStrategy channelStrategy,
-                                final String bucketName,
-                                final String jobId,
-                                final EventDispatcher eventDispatcher,
-                                final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs)
+    public GetJobPartialBlobTransferMethod(final ChannelStrategy channelStrategy,
+                                           final String bucketName,
+                                           final String jobId,
+                                           final EventDispatcher eventDispatcher,
+                                           final ImmutableCollection<Range> blobRanges,
+                                           final long destinationChannelOffset)
     {
+        Preconditions.checkNotNull(blobRanges, "blobRanges may not be null.");
+        Preconditions.checkState(destinationChannelOffset >= 0, "destinationChannelOffset must be >= 0.");
+
         this.channelStrategy = channelStrategy;
         this.bucketName = bucketName;
         this.jobId = jobId;
         this.eventDispatcher = eventDispatcher;
-        this.rangesForBlobs = rangesForBlobs;
+        this.blobRanges = blobRanges;
+        this.destinationChannelOffset = destinationChannelOffset;
     }
 
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
         final BulkObject blob = jobPart.getBulkObject();
 
-        final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob);
+        final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob, destinationChannelOffset);
 
         try {
             final GetObjectResponse getObjectResponse = jobPart.getClient().getObject(makeGetObjectRequest(seekableByteChannel, jobPart));
@@ -80,11 +67,7 @@ public class GetJobTransferMethod implements TransferMethod {
                 jobId,
                 blob.getOffset());
 
-        final ImmutableCollection<Range> rangesForBlob = StrategyUtils.getRangesForBlob(rangesForBlobs, blob);
-
-        if (rangesForBlob != null) {
-            getObjectRequest.withByteRanges(rangesForBlob);
-        }
+        getObjectRequest.withByteRanges(blobRanges);
 
         return getObjectRequest;
     }

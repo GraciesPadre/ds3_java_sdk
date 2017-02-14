@@ -114,4 +114,5 @@ public interface EventDispatcher {
     void emitObjectCompletedEvent(final String blobName);
     void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata);
     void emitBlobTransferredEvent(final BulkObject blob);
+    void emitContentLengthMismatchFailureEvent(final BulkObject ds3Object, final String endpoint, final Throwable t);
 }

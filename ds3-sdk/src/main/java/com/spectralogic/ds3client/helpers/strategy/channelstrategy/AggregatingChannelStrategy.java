@@ -38,23 +38,31 @@ public class AggregatingChannelStrategy implements ChannelStrategy {
 
     @Override
     public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
+        final long offset = 0;
+        return acquireChannelForBlob(blob, offset);
+    }
+
+    @Override
+    public SeekableByteChannel acquireChannelForBlob(final BulkObject blob, final long offset) throws IOException {
         synchronized (lock) {
             final String blobName = blob.getName();
 
             blobNameOffsetMap.put(blobName, blob.getOffset());
 
-            final SeekableByteChannel seekableByteChannel = blobNameChannelMap.get(blobName);
+            SeekableByteChannel seekableByteChannel = blobNameChannelMap.get(blobName);
 
             if (seekableByteChannel != null) {
-                return seekableByteChannel;
+                seekableByteChannel.position(offset);
+            } else {
+                seekableByteChannel = makeNewChannel(blob, offset);
             }
 
-            return makeNewChannel(blob);
+            return seekableByteChannel;
         }
     }
 
-    private SeekableByteChannel makeNewChannel(final BulkObject blob) throws IOException {
-        final SeekableByteChannel seekableByteChannel = channelStrategyDelegate.acquireChannelForBlob(blob);
+    private SeekableByteChannel makeNewChannel(final BulkObject blob, final long offset) throws IOException {
+        final SeekableByteChannel seekableByteChannel = channelStrategyDelegate.acquireChannelForBlob(blob, offset);
 
         blobNameChannelMap.put(blob.getName(), seekableByteChannel);
 

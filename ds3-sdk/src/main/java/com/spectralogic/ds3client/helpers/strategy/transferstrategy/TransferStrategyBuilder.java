@@ -248,7 +248,8 @@ public final class TransferStrategyBuilder {
 
                 try
                 {
-                    final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj));
+                    final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj,
+                            obj.getOffset()));
 
                     dataStream.mark(Integer.MAX_VALUE);
 
@@ -308,7 +309,7 @@ public final class TransferStrategyBuilder {
     private TransferMethod makeGetTransferMethod() {
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
 
-        final TransferMethod transferMethod = new GetJobTransferMethod(channelStrategy,
+        final TransferMethod transferMethod = new GetJobNetworkFailureRetryDecorator(channelStrategy,
                 bucketName, jobId, eventDispatcher, rangesForBlobs);
 
         if (transferRetryBehavior != null) {

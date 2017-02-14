@@ -386,7 +386,7 @@ public class GetJobManagement_Test {
 
             try (final InputStream originalFileStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(DIR_NAME + FILE_NAME)) {
                 final byte[] first300000Bytes = new byte[300000 - offsetIntoFirstRange];
-                originalFileStream.skip(10);
+                originalFileStream.skip(offsetIntoFirstRange);
                 int numBytesRead = originalFileStream.read(first300000Bytes, 0, 300000 - offsetIntoFirstRange);
 
                 assertThat(numBytesRead, is(300000 -offsetIntoFirstRange ));

@@ -305,4 +305,15 @@ public class EventDispatcherImpl implements EventDispatcher {
     public void emitBlobTransferredEvent(final BulkObject blob) {
         emitEvents(blobTransferredEventObservers, blob);
     }
+
+    @Override
+    public void emitContentLengthMismatchFailureEvent(final BulkObject ds3Object, final String endpoint, final Throwable t) {
+        final FailureEvent failureEvent = FailureEvent.builder()
+                .doingWhat(FailureEvent.FailureActivity.GettingObject)
+                .usingSystemWithEndpoint(endpoint)
+                .withCausalException(t)
+                .withObjectNamed(ds3Object.getName())
+                .build();
+        emitFailureEvent(failureEvent);
+    }
 }

@@ -15,12 +15,15 @@
 
 package com.spectralogic.ds3client.helpers.strategy;
 
+import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.JobNode;
 import com.spectralogic.ds3client.models.Objects;
+import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.utils.ResourceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -158,5 +161,16 @@ public final class StrategyUtils {
         }
 
         return result;
+    }
+
+    public static ImmutableCollection<Range> getRangesForBlob(final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs,
+                                                       final BulkObject blob) {
+        final ImmutableMultimap<BulkObject, Range> rangesForBlob = rangesForBlobs.get(blob.getName());
+
+        if (rangesForBlob != null) {
+            return rangesForBlob.get(blob);
+        }
+
+        return null;
     }
 }

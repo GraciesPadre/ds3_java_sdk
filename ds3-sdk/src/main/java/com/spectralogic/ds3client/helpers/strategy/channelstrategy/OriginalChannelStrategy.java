@@ -32,8 +32,16 @@ public class OriginalChannelStrategy implements ChannelStrategy {
 
     @Override
     public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
+        final long offset = 0;
+        return acquireChannelForBlob(blob, offset);
+    }
+
+    @Override
+    public SeekableByteChannel acquireChannelForBlob(final BulkObject blob, final long offset) throws IOException {
         synchronized (lock) {
-            return channelBuilder.buildChannel(blob.getName());
+            final SeekableByteChannel seekableByteChannel = channelBuilder.buildChannel(blob.getName());
+            seekableByteChannel.position(offset);
+            return seekableByteChannel;
         }
     }
 

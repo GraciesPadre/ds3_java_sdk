@@ -211,4 +211,17 @@ public class GetObjectRequest extends AbstractRequest {
     }
 
 
+    @Override
+    public String toString() {
+        return "GetObjectRequest{" +
+                "bucketName='" + bucketName + '\'' +
+                ", objectName='" + objectName + '\'' +
+                ", channel=" + channel +
+                ", job='" + job + '\'' +
+                ", offset=" + offset +
+                ", byteRanges=" + byteRanges +
+                ", checksum=" + checksum +
+                ", checksumType=" + checksumType +
+                '}';
+    }
 }
