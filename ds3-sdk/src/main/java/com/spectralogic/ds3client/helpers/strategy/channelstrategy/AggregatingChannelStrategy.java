@@ -20,6 +20,7 @@ import com.google.common.collect.SetMultimap;
 import com.spectralogic.ds3client.models.BulkObject;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SeekableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,12 +53,26 @@ public class AggregatingChannelStrategy implements ChannelStrategy {
             SeekableByteChannel seekableByteChannel = blobNameChannelMap.get(blobName);
 
             if (seekableByteChannel != null) {
-                seekableByteChannel.position(offset);
+                seekableByteChannel = setChannelPositionOrMakeNewChannel(blob, seekableByteChannel, offset);
             } else {
                 seekableByteChannel = makeNewChannel(blob, offset);
             }
 
             return seekableByteChannel;
+        }
+    }
+
+    private SeekableByteChannel setChannelPositionOrMakeNewChannel(final BulkObject blob,
+                                                                   final SeekableByteChannel seekableByteChannel,
+                                                                   final long offset)
+        throws IOException
+    {
+        try {
+            seekableByteChannel.position(offset);
+            return seekableByteChannel;
+        } catch (final ClosedChannelException e) {
+            releaseChannelForBlob(seekableByteChannel, blob);
+            return makeNewChannel(blob, offset);
         }
     }
 
