@@ -17,9 +17,6 @@ package com.spectralogic.ds3client.helpers;
 
 import com.google.common.collect.*;
 import com.spectralogic.ds3client.Ds3Client;
-import com.spectralogic.ds3client.commands.GetObjectRequest;
-import com.spectralogic.ds3client.commands.GetObjectResponse;
-import com.spectralogic.ds3client.helpers.ChunkTransferrer.ItemTransferrer;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
@@ -30,17 +27,13 @@ import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStra
 import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.common.Range;
-import com.spectralogic.ds3client.networking.Metadata;
-import com.spectralogic.ds3client.utils.Guard;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 class ReadJobImpl extends JobImpl {
 
     private final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
-    private final Set<MetadataReceivedListener> metadataListeners;
     private final TransferStrategyBuilder transferStrategyBuilder;
 
     public ReadJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
@@ -54,7 +47,6 @@ class ReadJobImpl extends JobImpl {
         super(client, masterObjectList, objectTransferAttempts, eventRunner, eventDispatcher);
 
         this.rangesForBlobs = PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), objectRanges);
-        this.metadataListeners = Sets.newIdentityHashSet();
         this.transferStrategyBuilder = transferStrategyBuilder;
     }
 
@@ -135,70 +127,5 @@ class ReadJobImpl extends JobImpl {
         });
 
         return result;
-    }
-
-    private final class GetObjectTransferrerRetryDecorator implements ItemTransferrer {
-        private final GetObjectTransferrer getObjectTransferrer;
-
-        private GetObjectTransferrerRetryDecorator(final JobState jobState) {
-            getObjectTransferrer = new GetObjectTransferrer(jobState);
-        }
-
-        @Override
-        public void transferItem(final JobPart jobPart, final BulkObject ds3Object) throws IOException {
-            ReadJobImpl.this.transferItem(jobPart, client, ds3Object, getObjectTransferrer);
-        }
-    }
-
-    private final class GetObjectTransferrer implements ItemTransferrer {
-        private final JobState jobState;
-
-        private GetObjectTransferrer(final JobState jobState) {
-            this.jobState = jobState;
-        }
-
-        @Override
-        public void transferItem(final JobPart jobPart, final BulkObject ds3Object)
-                throws IOException {
-
-            final ImmutableCollection<Range> ranges = getRangesForBlob(rangesForBlobs, ds3Object);
-
-            final GetObjectRequest request = new GetObjectRequest(
-                    ReadJobImpl.this.masterObjectList.getBucketName(),
-                    ds3Object.getName(),
-                    jobState.getChannel(ds3Object.getName(), ds3Object.getOffset(), ds3Object.getLength()),
-                    ReadJobImpl.this.getJobId().toString(),
-                    ds3Object.getOffset()
-            );
-
-            if (Guard.isNotNullAndNotEmpty(ranges)) {
-                request.withByteRanges(ranges);
-            }
-
-            final GetObjectResponse response = client.getObject(request);
-            final Metadata metadata = response.getMetadata();
-
-            emitChecksumEvents(ds3Object, response.getChecksumType(), response.getChecksum());
-            sendMetadataEvents(ds3Object.getName(), metadata);
-        }
-    }
-
-    private void sendMetadataEvents(final String objName , final Metadata metadata) {
-        for (final MetadataReceivedListener listener : this.metadataListeners) {
-            getEventRunner().emitEvent(new Runnable() {
-                @Override
-                public void run() {
-                    listener.metadataReceived(objName, metadata);
-                }
-            });
-        }
-    }
-
-    private static ImmutableCollection<Range> getRangesForBlob(
-            final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> blobToRanges,
-            final BulkObject ds3Object) {
-        final ImmutableMultimap<BulkObject, Range> ranges =  blobToRanges.get(ds3Object.getName());
-        if (ranges == null) return null;
-        return ranges.get(ds3Object);
     }
 }
