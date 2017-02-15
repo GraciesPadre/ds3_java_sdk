@@ -15,6 +15,7 @@
 
 package com.spectralogic.ds3client.helpers;
 
+import com.google.common.collect.ImmutableList;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.Job;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
@@ -22,7 +23,6 @@ import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.ChecksumObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.DataTransferredObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcherImpl;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.FailureEventObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.ObjectCompletedObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.WaitingForChunksObserver;
@@ -38,8 +38,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
-import static com.spectralogic.ds3client.helpers.ReadJobImpl.getAllBlobApiBeans;
-
 abstract class JobImpl implements Job {
     private static final Logger LOG = LoggerFactory.getLogger(JobImpl.class);
 
@@ -48,9 +46,6 @@ abstract class JobImpl implements Job {
     protected boolean running = false;
     protected int maxParallelRequests = 10;
     private final int objectTransferAttempts;
-
-    // TODO Get rid of this when transfer strategy completely replaces transferer
-    private final EventRunner eventRunner;
 
     private final JobPartTracker jobPartTracker;
     private final EventDispatcher eventDispatcher;
@@ -64,7 +59,6 @@ abstract class JobImpl implements Job {
         this.client = client;
         this.masterObjectList = masterObjectList;
         this.objectTransferAttempts = objectTransferAttempts;
-        this.eventRunner = eventRunner;
         this.eventDispatcher = eventDispatcher;
 
         jobPartTracker = makeJobPartTracker(getChunks(masterObjectList), eventRunner);
@@ -215,68 +209,19 @@ abstract class JobImpl implements Job {
         eventDispatcher.emitChecksumEvent(bulkObject, checksumType, checksum);
     }
 
-    protected abstract List<Objects> getChunks(final MasterObjectList masterObjectList);
-    protected abstract JobPartTrackerDecorator makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner);
-
-    protected static class JobPartTrackerDecorator implements JobPartTracker {
-        private final JobPartTracker clientJobPartTracker;
-        private final JobPartTracker internalJobPartTracker;
-
-        protected JobPartTrackerDecorator(final List<Objects> chunks, final EventRunner eventRunner) {
-            clientJobPartTracker = JobPartTrackerFactory.buildPartTracker(getAllBlobApiBeans(chunks), eventRunner);
-            internalJobPartTracker = JobPartTrackerFactory.buildPartTracker(getAllBlobApiBeans(chunks), eventRunner);
+    protected static ImmutableList<BulkObject> getAllBlobApiBeans(final List<Objects> jobWithChunksApiBeans) {
+        final ImmutableList.Builder<BulkObject> builder = ImmutableList.builder();
+        for (final Objects objects : jobWithChunksApiBeans) {
+            builder.addAll(objects.getObjects());
         }
-
-        @Override
-        public void completePart(final String key, final ObjectPart objectPart) {
-            // It's important to fire the internal completions -- those we set up to close channels we
-            // have opened -- before firing client-registered events.  The reason is that some clients
-            // rely upon this ordering to know that channels are closed when their event handlers run.
-            internalJobPartTracker.completePart(key, objectPart);
-            clientJobPartTracker.completePart(key, objectPart);
-        }
-
-        @Override
-        public boolean containsPart(final String key, final ObjectPart objectPart) {
-            return internalJobPartTracker.containsPart(key, objectPart) || clientJobPartTracker.containsPart(key, objectPart);
-        }
-
-        @Override
-        public JobPartTracker attachDataTransferredListener(final DataTransferredListener listener) {
-            return clientJobPartTracker.attachDataTransferredListener(listener);
-        }
-
-        @Override
-        public JobPartTracker attachObjectCompletedListener(final ObjectCompletedListener listener) {
-            internalJobPartTracker.attachObjectCompletedListener(listener);
-            return this;
-        }
-
-        @Override
-        public void removeDataTransferredListener(final DataTransferredListener listener) {
-            clientJobPartTracker.removeDataTransferredListener(listener);
-        }
-
-        @Override
-        public void removeObjectCompletedListener(final ObjectCompletedListener listener) {
-            internalJobPartTracker.removeObjectCompletedListener(listener);
-        }
-
-        protected void attachClientObjectCompletedListener(final ObjectCompletedListener listener) {
-            clientJobPartTracker.attachObjectCompletedListener(listener);
-        }
-
-        protected void removeClientObjectCompletedListener(final ObjectCompletedListener listener) {
-            clientJobPartTracker.removeObjectCompletedListener(listener);
-        }
+        return builder.build();
     }
+
+    protected abstract List<Objects> getChunks(final MasterObjectList masterObjectList);
+    protected abstract JobPartTracker makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner);
 
     protected EventDispatcher getEventDispatcher() {
         return eventDispatcher;
-    }
-
-    protected EventRunner getEventRunner() {
-        return eventRunner;
     }
 
     protected JobPartTracker getJobPartTracker() {

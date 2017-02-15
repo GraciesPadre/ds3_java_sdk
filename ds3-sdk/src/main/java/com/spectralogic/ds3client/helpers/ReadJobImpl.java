@@ -50,14 +50,6 @@ class ReadJobImpl extends JobImpl {
         this.transferStrategyBuilder = transferStrategyBuilder;
     }
 
-    protected static ImmutableList<BulkObject> getAllBlobApiBeans(final List<Objects> jobWithChunksApiBeans) {
-        final ImmutableList.Builder<BulkObject> builder = ImmutableList.builder();
-        for (final Objects objects : jobWithChunksApiBeans) {
-            builder.addAll(objects.getObjects());
-        }
-        return builder.build();
-    }
-
     @Override
     public void attachMetadataReceivedListener(final MetadataReceivedListener listener) {
         checkRunning();
@@ -116,8 +108,8 @@ class ReadJobImpl extends JobImpl {
     }
 
     @Override
-    protected JobPartTrackerDecorator makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner) {
-        final JobPartTrackerDecorator result = new JobPartTrackerDecorator(chunks, eventRunner);
+    protected JobPartTracker makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner) {
+        final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(getAllBlobApiBeans(chunks), eventRunner);
 
         result.attachObjectCompletedListener(new ObjectCompletedListener() {
             @Override

@@ -17,6 +17,7 @@ package com.spectralogic.ds3client.helpers;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Iterables;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
@@ -38,7 +39,7 @@ import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterCh
 class WriteJobImpl extends JobImpl {
     static private final Logger LOG = LoggerFactory.getLogger(WriteJobImpl.class);
 
-    private final List<Objects> filteredChunks;
+    private List<Objects> filteredChunks;
 
     private final TransferStrategyBuilder transferStrategyBuilder;
 
@@ -59,7 +60,6 @@ class WriteJobImpl extends JobImpl {
     {
         super(client, masterObjectList, objectTransferAttempts, eventRunner, eventDispatcher);
         this.transferStrategyBuilder = transferStrategyBuilder;
-        this.filteredChunks = getChunks(masterObjectList);
     }
 
     @Override
@@ -126,16 +126,19 @@ class WriteJobImpl extends JobImpl {
         }
 
         LOG.info("Ready to start transfer for job {} with {} chunks", masterObjectList.getJobId().toString(), masterObjectList.getObjects().size());
-        return filterChunks(masterObjectList.getObjects());
+
+        filteredChunks = filterChunks(masterObjectList.getObjects());
+
+        return filteredChunks;
     }
 
     @Override
-    protected JobPartTrackerDecorator makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner) {
+    protected JobPartTracker makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner) {
         if (chunks == null) {
             return null;
         }
 
-        final JobPartTrackerDecorator result = new JobPartTrackerDecorator(chunks, eventRunner);
+        final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(Iterables.concat(getAllBlobApiBeans(filteredChunks)), eventRunner);
 
         result.attachObjectCompletedListener(new ObjectCompletedListener() {
             @Override
