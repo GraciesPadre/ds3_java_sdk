@@ -268,7 +268,7 @@ public class AggregatingChannelStrategy_Test {
 
         @Override
         public SeekableByteChannel acquireChannelForBlob(final BulkObject blob, final long offset) throws IOException {
-            return acquireChannelForBlob(blob, 0);
+            return acquireChannelForBlob(blob);
         }
 
         @Override

@@ -195,7 +195,7 @@ public class ThrottlingStrategy_Test {
                     break;
                 }
 
-                Thread.sleep(100);
+                Thread.sleep(1000);
             }
         } catch (final InterruptedException e) {
             fail("Waiting for transfer complete got interrupted.");

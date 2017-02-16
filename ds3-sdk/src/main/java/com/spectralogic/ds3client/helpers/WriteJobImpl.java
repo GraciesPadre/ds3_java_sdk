@@ -93,17 +93,14 @@ class WriteJobImpl extends JobImpl {
             getTransferStrategyBuilder().withChecksumFunction(checksumFunction);
             getTransferStrategyBuilder().withMetadataAccess(metadataAccess);
 
-            try (final JobState jobState = new JobState(
-                    channelBuilder,
-                    filteredChunks,
-                    getJobPartTracker(),
-                    ImmutableMap.<String, ImmutableMultimap<BulkObject, Range>>of())) {
+            try {
+                final JobState jobState = new JobState(filteredChunks, getJobPartTracker());
+
                 try (final TransferStrategy transferStrategy = getTransferStrategyBuilder().makeOriginalSdkSemanticsPutTransferStrategy()) {
                     while (jobState.hasObjects()) {
                         transferStrategy.transfer();
                     }
                 }
-
             } catch (final IOException | RuntimeException e) {
                 throw e;
             } catch (final Exception e) {
