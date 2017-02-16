@@ -41,8 +41,6 @@ class WriteJobImpl extends JobImpl {
 
     private List<Objects> filteredChunks;
 
-    private final TransferStrategyBuilder transferStrategyBuilder;
-
     private Ds3ClientHelpers.MetadataAccess metadataAccess = null;
     private ChecksumFunction checksumFunction = null;
 
@@ -54,12 +52,10 @@ class WriteJobImpl extends JobImpl {
     public WriteJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
                         final Ds3Client client,
                         final MasterObjectList masterObjectList,
-                        final int objectTransferAttempts,
                         final EventRunner eventRunner,
                         final EventDispatcher eventDispatcher)
     {
-        super(client, masterObjectList, objectTransferAttempts, eventRunner, eventDispatcher);
-        this.transferStrategyBuilder = transferStrategyBuilder;
+        super(transferStrategyBuilder, client, masterObjectList, eventRunner, eventDispatcher);
     }
 
     @Override
@@ -86,22 +82,23 @@ class WriteJobImpl extends JobImpl {
     }
 
     @Override
-    public void transfer(final ObjectChannelBuilder channelBuilder)
-            throws IOException {
+    public void transfer(final ObjectChannelBuilder channelBuilder) throws IOException {
         try {
             running = true;
+
+            super.transfer(channelBuilder);
+
             LOG.debug("Starting job transfer");
 
-            transferStrategyBuilder.withChannelBuilder(channelBuilder);
-            transferStrategyBuilder.withChecksumFunction(checksumFunction);
-            transferStrategyBuilder.withJobPartTracker(getJobPartTracker());
+            getTransferStrategyBuilder().withChecksumFunction(checksumFunction);
+            getTransferStrategyBuilder().withMetadataAccess(metadataAccess);
 
             try (final JobState jobState = new JobState(
                     channelBuilder,
                     filteredChunks,
                     getJobPartTracker(),
                     ImmutableMap.<String, ImmutableMultimap<BulkObject, Range>>of())) {
-                try (final TransferStrategy transferStrategy = transferStrategyBuilder.makeOriginalSdkSemanticsPutTransferStrategy()) {
+                try (final TransferStrategy transferStrategy = getTransferStrategyBuilder().makeOriginalSdkSemanticsPutTransferStrategy()) {
                     while (jobState.hasObjects()) {
                         transferStrategy.transfer();
                     }

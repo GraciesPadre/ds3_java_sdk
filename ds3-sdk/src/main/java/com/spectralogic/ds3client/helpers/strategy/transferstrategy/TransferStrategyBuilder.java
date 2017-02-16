@@ -50,6 +50,11 @@ import java.nio.channels.ByteChannel;
 public final class TransferStrategyBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(TransferStrategyBuilder.class);
 
+    private static final int MAX_CONCURRENT_TRANSFER_THREADS = 10;
+
+    // The negative number here is a legacy thing whose meaning is to repeat forever
+    private static final int NUM_TRANSFER_RETRIES = -1;
+
     private BlobStrategy blobStrategy;
     private ChannelStrategy channelStrategy;
     private String bucketName;
@@ -59,15 +64,14 @@ public final class TransferStrategyBuilder {
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
     private EventDispatcher eventDispatcher;
     private JobPartTracker jobPartTracker;
-    private int numTransferRetries;
+    private int numTransferRetries = NUM_TRANSFER_RETRIES;
     private int numChunkAllocationRetries;
     private int retryDelayInSeconds;
     private Ds3Client ds3Client;
     private MasterObjectList masterObjectList;
     private Ds3ClientHelpers.ObjectChannelBuilder channelBuilder;
     private ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
-
-    private static final int MAX_CONCURRENT_TRANSFER_THREADS = 10;
+    private Ds3ClientHelpers.MetadataAccess metadataAccess;
 
     public TransferStrategyBuilder withChannelStrategy(final ChannelStrategy channelStrategy) {
         this.channelStrategy = channelStrategy;
@@ -146,6 +150,11 @@ public final class TransferStrategyBuilder {
     }
     */
 
+    public TransferStrategyBuilder withMetadataAccess(final Ds3ClientHelpers.MetadataAccess metadataAccess) {
+        this.metadataAccess = metadataAccess;
+        return this;
+    }
+
     // TODO: implement these
     // public TransferStrategy makePutSequentialTransferStrategy() { }
     // public TransferStrategy makePutRandomTransferStrategy() { }
@@ -154,7 +163,7 @@ public final class TransferStrategyBuilder {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
         channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
-        transferRetryBehavior = new ContinueForeverTransferRetryBehavior();
+        transferRetryBehavior = makeTransferRetryBehavior();
 
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
@@ -177,6 +186,14 @@ public final class TransferStrategyBuilder {
                         return makePutTransferMethod();
                     }
                 });
+    }
+
+    private TransferRetryBehavior makeTransferRetryBehavior() {
+        if (numTransferRetries > 0) {
+            return new MaxNumObjectTransferAttemptsBehavior(numTransferRetries);
+        }
+
+        return new ContinueForeverTransferRetryBehavior();
     }
 
     private TransferStrategy makeTransferStrategy(final BlobStrategyMaker blobStrategyMaker,
@@ -212,9 +229,9 @@ public final class TransferStrategyBuilder {
 
         final TransferMethod transferMethod = transferMethodMaker.makeTransferMethod();
 
-        final SequentialTransferStrategy sequentialTransferStrategy = new SequentialTransferStrategy(blobStrategy);
+        final SingleThreadedTransferStrategy singleThreadedTransferStrategy = new SingleThreadedTransferStrategy(blobStrategy);
 
-        return sequentialTransferStrategy.withTransferMethod(transferMethod);
+        return singleThreadedTransferStrategy.withTransferMethod(transferMethod);
     }
 
     private TransferMethod makePutTransferMethod() {
@@ -225,7 +242,7 @@ public final class TransferStrategyBuilder {
         }
 
         final TransferMethod transferMethod = new PutJobTransferMethod(channelStrategy,
-                bucketName, jobId, eventDispatcher, checksumFunction, checksumType);
+                bucketName, jobId, eventDispatcher, checksumFunction, checksumType, metadataAccess);
 
         if (transferRetryBehavior != null) {
             return transferRetryBehavior.wrap(transferMethod);
@@ -281,7 +298,7 @@ public final class TransferStrategyBuilder {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
         channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
-        transferRetryBehavior = new ContinueForeverTransferRetryBehavior();
+        transferRetryBehavior = makeTransferRetryBehavior();
 
         return makeTransferStrategy(
                 new BlobStrategyMaker() {

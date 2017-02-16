@@ -25,9 +25,9 @@ import com.spectralogic.ds3client.helpers.strategy.transferstrategy.DataTransfer
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.FailureEventObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.ObjectCompletedObserver;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.WaitingForChunksObserver;
 import com.spectralogic.ds3client.models.BulkObject;
-import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.models.MasterObjectList;
 import com.spectralogic.ds3client.models.Objects;
 
@@ -45,20 +45,21 @@ abstract class JobImpl implements Job {
     protected final MasterObjectList masterObjectList;
     protected boolean running = false;
     protected int maxParallelRequests = 10;
-    private final int objectTransferAttempts;
 
     private final JobPartTracker jobPartTracker;
     private final EventDispatcher eventDispatcher;
 
-    public JobImpl(final Ds3Client client,
+    private final TransferStrategyBuilder transferStrategyBuilder;
+
+    public JobImpl(final TransferStrategyBuilder transferStrategyBuilder,
+                   final Ds3Client client,
                    final MasterObjectList masterObjectList,
-                   final int objectTransferAttempts,
                    final EventRunner eventRunner,
                    final EventDispatcher eventDispatcher)
     {
+        this.transferStrategyBuilder = transferStrategyBuilder;
         this.client = client;
         this.masterObjectList = masterObjectList;
-        this.objectTransferAttempts = objectTransferAttempts;
         this.eventDispatcher = eventDispatcher;
 
         jobPartTracker = makeJobPartTracker(getChunks(masterObjectList), eventRunner);
@@ -82,37 +83,14 @@ abstract class JobImpl implements Job {
     
     @Override
     public Job withMaxParallelRequests(final int maxParallelRequests) {
+        // TODO: This needs to set the kind of transfer strategy we will use.
+        // > 1 we need to use a single-threaded or multi-threaded transfer strategy
         this.maxParallelRequests = maxParallelRequests;
         return this;
     }
 
     protected void checkRunning() {
         if (running) throw new IllegalStateException("You cannot modify a job after calling transfer");
-    }
-
-    protected void transferItem(
-            final JobPart jobPart,
-            final Ds3Client client,
-            final BulkObject ds3Object,
-            final ChunkTransferrer.ItemTransferrer itemTransferrer)
-            throws IOException
-    {
-        int objectTransfersAttempted = 0;
-
-        while(true) {
-            try {
-                itemTransferrer.transferItem(jobPart, ds3Object);
-                break;
-            } catch (final Throwable t) {
-                if (ExceptionClassifier.isUnrecoverableException(t) || ++objectTransfersAttempted >= getObjectTransferAttempts()) {
-                    throw t;
-                }
-            }
-        }
-    }
-
-    protected int getObjectTransferAttempts() {
-        return objectTransferAttempts;
     }
 
     @Override
@@ -175,6 +153,16 @@ abstract class JobImpl implements Job {
         eventDispatcher.removeObjectCompletedObserver(new ObjectCompletedObserver(listener));
     }
 
+    @Override
+    public void transfer(final Ds3ClientHelpers.ObjectChannelBuilder channelBuilder) throws IOException {
+        transferStrategyBuilder.withChannelBuilder(channelBuilder);
+        transferStrategyBuilder.withJobPartTracker(getJobPartTracker());
+    }
+
+    protected TransferStrategyBuilder getTransferStrategyBuilder() {
+        return transferStrategyBuilder;
+    }
+
     protected void emitFailureEvent(final FailureEvent failureEvent) {
         eventDispatcher.emitFailureEvent(failureEvent);
     }
@@ -199,14 +187,6 @@ abstract class JobImpl implements Job {
         }
 
         return "unnamed object";
-    }
-
-    protected void emitWaitingForChunksEvents(final int secondsToDelay) {
-        eventDispatcher.emitWaitingForChunksEvents(secondsToDelay);
-    }
-
-    protected void emitChecksumEvents(final BulkObject bulkObject, final ChecksumType.Type checksumType, final String checksum) {
-        eventDispatcher.emitChecksumEvent(bulkObject, checksumType, checksum);
     }
 
     protected static ImmutableList<BulkObject> getAllBlobApiBeans(final List<Objects> jobWithChunksApiBeans) {

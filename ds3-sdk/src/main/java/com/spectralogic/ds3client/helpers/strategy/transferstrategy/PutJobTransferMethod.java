@@ -15,8 +15,10 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
+import com.google.common.collect.ImmutableMap;
 import com.spectralogic.ds3client.commands.PutObjectRequest;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
+import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
@@ -25,7 +27,9 @@ import com.spectralogic.ds3client.models.ChecksumType;
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.util.Map;
 
+import com.spectralogic.ds3client.utils.Guard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,13 +42,15 @@ public class PutJobTransferMethod implements TransferMethod {
     private final EventDispatcher eventDispatcher;
     private final ChecksumFunction checksumFunction;
     private final ChecksumType.Type checksumType;
+    private final Ds3ClientHelpers.MetadataAccess metadataAccess;
 
     public PutJobTransferMethod(final ChannelStrategy channelStrategy,
                                 final String bucketName,
                                 final String jobId,
                                 final EventDispatcher eventDispatcher,
                                 final ChecksumFunction checksumFunction,
-                                final ChecksumType.Type checksumType)
+                                final ChecksumType.Type checksumType,
+                                final Ds3ClientHelpers.MetadataAccess metadataAccess)
     {
         this.channelStrategy = channelStrategy;
         this.bucketName = bucketName;
@@ -52,6 +58,7 @@ public class PutJobTransferMethod implements TransferMethod {
         this.eventDispatcher = eventDispatcher;
         this.checksumFunction = checksumFunction;
         this.checksumType = checksumType;
+        this.metadataAccess = metadataAccess;
     }
 
     @Override
@@ -80,13 +87,12 @@ public class PutJobTransferMethod implements TransferMethod {
                 blob.getLength());
 
         addCheckSum(blob, putObjectRequest);
+        addMetadata(blob, putObjectRequest);
 
         return putObjectRequest;
     }
 
-    private void addCheckSum(final BulkObject blob,
-                             final PutObjectRequest putObjectRequest)
-    {
+    private void addCheckSum(final BulkObject blob, final PutObjectRequest putObjectRequest) {
         if (checksumFunction != null) {
             final String checksum;
 
@@ -101,6 +107,18 @@ public class PutJobTransferMethod implements TransferMethod {
             }  catch (final IOException e) {
                 // TODO Emit a failure event here
                 LOG.info("Failure creating channel to calculate checksum.", e);
+            }
+        }
+    }
+
+    private void addMetadata(final BulkObject blob, final PutObjectRequest putObjectRequest) {
+        if (blob.getOffset() == 0 && metadataAccess != null) {
+            final Map<String, String> metadata = metadataAccess.getMetadataValue(blob.getName());
+            if ( ! Guard.isMapNullOrEmpty(metadata)) {
+                final ImmutableMap<String, String> immutableMetadata = ImmutableMap.copyOf(metadata);
+                for (final Map.Entry<String, String> value : immutableMetadata.entrySet()) {
+                    putObjectRequest.withMetaData(value.getKey(), value.getValue());
+                }
             }
         }
     }

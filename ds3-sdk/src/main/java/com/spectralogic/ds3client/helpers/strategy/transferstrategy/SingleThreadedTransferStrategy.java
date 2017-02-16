@@ -29,18 +29,18 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
-public class SequentialTransferStrategy implements TransferStrategy {
+public class SingleThreadedTransferStrategy implements TransferStrategy {
     private final BlobStrategy blobStrategy;
 
     private final ListeningExecutorService executorService = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
 
     private TransferMethod transferMethod;
 
-    public SequentialTransferStrategy(final BlobStrategy blobStrategy) {
+    public SingleThreadedTransferStrategy(final BlobStrategy blobStrategy) {
         this.blobStrategy = blobStrategy;
     }
 
-    public SequentialTransferStrategy withTransferMethod(final TransferMethod transferMethod) {
+    public SingleThreadedTransferStrategy withTransferMethod(final TransferMethod transferMethod) {
         this.transferMethod = transferMethod;
         return this;
     }

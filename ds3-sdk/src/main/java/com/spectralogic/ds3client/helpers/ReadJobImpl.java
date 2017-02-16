@@ -34,20 +34,17 @@ import java.util.List;
 class ReadJobImpl extends JobImpl {
 
     private final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
-    private final TransferStrategyBuilder transferStrategyBuilder;
 
     public ReadJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
                        final Ds3Client client,
                        final MasterObjectList masterObjectList,
                        final ImmutableMultimap<String, Range> objectRanges,
-                       final int objectTransferAttempts,
                        final EventRunner eventRunner,
                        final EventDispatcher eventDispatcher)
     {
-        super(client, masterObjectList, objectTransferAttempts, eventRunner, eventDispatcher);
+        super(transferStrategyBuilder, client, masterObjectList, eventRunner, eventDispatcher);
 
         this.rangesForBlobs = PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), objectRanges);
-        this.transferStrategyBuilder = transferStrategyBuilder;
     }
 
     @Override
@@ -78,15 +75,15 @@ class ReadJobImpl extends JobImpl {
         try {
             running = true;
 
-            transferStrategyBuilder.withChannelBuilder(channelBuilder);
-            transferStrategyBuilder.withJobPartTracker(getJobPartTracker());
-            transferStrategyBuilder.withRangesForBlobs(rangesForBlobs);
+            super.transfer(channelBuilder);
+
+            getTransferStrategyBuilder().withRangesForBlobs(rangesForBlobs);
 
             try (final JobState jobState = new JobState(
                     channelBuilder,
                     this.masterObjectList.getObjects(),
                     getJobPartTracker(), rangesForBlobs)) {
-                try (final TransferStrategy transferStrategy = transferStrategyBuilder.makeOriginalSdkSemanticsGetTransferStrategy()) {
+                try (final TransferStrategy transferStrategy = getTransferStrategyBuilder().makeOriginalSdkSemanticsGetTransferStrategy()) {
                     while (jobState.hasObjects()) {
                         transferStrategy.transfer();
                     }

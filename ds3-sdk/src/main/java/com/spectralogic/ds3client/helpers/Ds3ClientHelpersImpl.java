@@ -135,8 +135,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withChecksumType(options.getChecksumType())
                 .withEventDispatcher(eventDispatcher);
 
-        return new WriteJobImpl(transferStrategyBuilder,
-                client, putBulkJobSpectraS3Response.getResult(), objectTransferAttempts, eventRunner, eventDispatcher);
+        return new WriteJobImpl(transferStrategyBuilder, client, putBulkJobSpectraS3Response.getResult(), eventRunner, eventDispatcher);
     }
 
     @Override
@@ -178,7 +177,6 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 this.client,
                 getBulkJobSpectraS3Response.getResult(),
                 partialRanges,
-                this.objectTransferAttempts,
                 this.eventRunner,
                 eventDispatcher);
     }
@@ -230,7 +228,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
 
 
         return new WriteJobImpl(transferStrategyBuilder,
-                client, jobResponse.getMasterObjectListResult(), objectTransferAttempts, eventRunner, eventDispatcher);
+                client, jobResponse.getMasterObjectListResult(), eventRunner, eventDispatcher);
     }
 
     @Override
@@ -258,7 +256,6 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 this.client,
                 jobResponse.getMasterObjectListResult(),
                 ImmutableMultimap.<String, Range>of(),
-                this.objectTransferAttempts,
                 this.eventRunner,
                 eventDispatcher);
     }
