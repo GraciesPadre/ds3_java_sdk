@@ -26,9 +26,7 @@ class JobState {
     private final AtomicInteger objectsRemaining;
     private final JobPartTracker partTracker;
 
-    public JobState(final Collection<Objects> filteredChunks,
-                    final JobPartTracker partTracker)
-    {
+    public JobState(final Collection<Objects> filteredChunks,final JobPartTracker partTracker) {
         this.objectsRemaining = new AtomicInteger(getObjectCount(filteredChunks));
         this.partTracker = partTracker.attachObjectCompletedListener(new ObjectCompletedListenerImpl());
     }
