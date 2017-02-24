@@ -18,7 +18,7 @@ package com.spectralogic.ds3client.helpers.events;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.utils.Guard;
 
-public class FailureEvent implements Event {
+public class FailureEvent {
     private final FailureActivity doingWhat;
     private final String objectName;
     private final String endpoint;

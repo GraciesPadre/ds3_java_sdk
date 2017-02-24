@@ -15,8 +15,6 @@
 
 package com.spectralogic.ds3client.helpers;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
@@ -27,7 +25,6 @@ import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStra
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
-import com.spectralogic.ds3client.models.common.Range;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
