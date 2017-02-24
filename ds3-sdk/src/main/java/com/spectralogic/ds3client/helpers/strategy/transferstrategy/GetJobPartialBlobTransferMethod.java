@@ -42,7 +42,9 @@ public class GetJobPartialBlobTransferMethod implements TransferMethod {
     public void transferJobPart(final JobPart jobPart) throws IOException {
         final BulkObject blob = jobPart.getBulkObject();
 
-        final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob, destinationChannelOffset);
+        final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob);
+
+        seekableByteChannel.position(destinationChannelOffset);
 
         try {
             final GetObjectResponse getObjectResponse = jobPart.getClient().getObject(makeGetObjectRequest(seekableByteChannel, jobPart));

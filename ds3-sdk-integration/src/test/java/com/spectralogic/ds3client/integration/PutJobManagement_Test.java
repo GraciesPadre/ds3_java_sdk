@@ -18,7 +18,6 @@ package com.spectralogic.ds3client.integration;
 import com.google.common.collect.Lists;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.Ds3ClientImpl;
-import com.spectralogic.ds3client.IntValue;
 import com.spectralogic.ds3client.commands.*;
 import com.spectralogic.ds3client.commands.spectrads3.*;
 import com.spectralogic.ds3client.commands.spectrads3.notifications.*;
@@ -1177,7 +1176,7 @@ public class PutJobManagement_Test {
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
         try {
-            final IntValue numFailureEventsFired = new IntValue();
+            final AtomicInteger numFailureEventsFired = new AtomicInteger();
 
             final int maxNumObjectTransferAttempts = 1;
             final Ds3ClientHelpers.Job writeJob = createWriteJobWithObjectsReadyToTransfer(maxNumObjectTransferAttempts,
@@ -1186,7 +1185,7 @@ public class PutJobManagement_Test {
             final FailureEventListener failureEventListener = new FailureEventListener() {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
-                    numFailureEventsFired.increment();
+                    numFailureEventsFired.incrementAndGet();
                     assertEquals(FailureEvent.FailureActivity.PuttingObject, failureEvent.doingWhat());
                 }
             };
@@ -1195,8 +1194,8 @@ public class PutJobManagement_Test {
 
             try {
                 writeJob.transfer(new FileObjectPutter(tempDirectory));
-            } catch (final RuntimeException e) {
-                assertEquals(1, numFailureEventsFired.getValue());
+            } catch (final IOException | RuntimeException e) {
+                assertEquals(1, numFailureEventsFired.get());
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());

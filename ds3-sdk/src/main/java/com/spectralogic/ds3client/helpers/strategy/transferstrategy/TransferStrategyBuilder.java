@@ -28,7 +28,6 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategyMaker;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialBlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialBlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.AggregatingChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.OriginalChannelStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
@@ -162,7 +161,8 @@ public final class TransferStrategyBuilder {
     public TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
-        channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
+        channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs);
+
         transferRetryBehavior = makeTransferRetryBehavior();
 
         return makeTransferStrategy(
@@ -265,8 +265,7 @@ public final class TransferStrategyBuilder {
 
                 try
                 {
-                    final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj,
-                            obj.getOffset()));
+                    final InputStream dataStream = new SeekableByteChannelInputStream(channelStrategy.acquireChannelForBlob(obj));
 
                     dataStream.mark(Integer.MAX_VALUE);
 
@@ -297,7 +296,8 @@ public final class TransferStrategyBuilder {
     public TransferStrategy makeOriginalSdkSemanticsGetTransferStrategy() {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
-        channelStrategy = new AggregatingChannelStrategy(new OriginalChannelStrategy(channelBuilder));
+        channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs);
+
         transferRetryBehavior = makeTransferRetryBehavior();
 
         return makeTransferStrategy(

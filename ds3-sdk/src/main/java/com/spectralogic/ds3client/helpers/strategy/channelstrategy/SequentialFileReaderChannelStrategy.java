@@ -22,7 +22,6 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.resolveForSymbolic;
 
 public class SequentialFileReaderChannelStrategy implements ChannelStrategy {
@@ -35,20 +34,10 @@ public class SequentialFileReaderChannelStrategy implements ChannelStrategy {
 
     @Override
     public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
-        final long offset = 0;
-        return acquireChannelForBlob(blob, offset);
-    }
-
-    @Override
-    public SeekableByteChannel acquireChannelForBlob(final BulkObject blob, final long offset) throws IOException {
         synchronized (lock) {
             final Path path = directory.resolve(blob.getName());
 
-            final SeekableByteChannel seekableByteChannel = FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
-
-            seekableByteChannel.position(offset);
-
-            return seekableByteChannel;
+            return FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
         }
     }
 

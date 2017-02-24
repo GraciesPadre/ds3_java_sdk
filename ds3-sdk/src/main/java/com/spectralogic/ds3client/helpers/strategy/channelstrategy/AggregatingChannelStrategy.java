@@ -20,7 +20,6 @@ import com.google.common.collect.SetMultimap;
 import com.spectralogic.ds3client.models.BulkObject;
 
 import java.io.IOException;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SeekableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,45 +38,23 @@ public class AggregatingChannelStrategy implements ChannelStrategy {
 
     @Override
     public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
-        final long offset = 0;
-        return acquireChannelForBlob(blob, offset);
-    }
-
-    @Override
-    public SeekableByteChannel acquireChannelForBlob(final BulkObject blob, final long offset) throws IOException {
         synchronized (lock) {
             final String blobName = blob.getName();
 
             blobNameOffsetMap.put(blobName, blob.getOffset());
 
-            SeekableByteChannel seekableByteChannel = blobNameChannelMap.get(blobName);
+            final SeekableByteChannel seekableByteChannel = blobNameChannelMap.get(blobName);
 
             if (seekableByteChannel != null) {
-                seekableByteChannel = setChannelPositionOrMakeNewChannel(blob, seekableByteChannel, offset);
-            } else {
-                seekableByteChannel = makeNewChannel(blob, offset);
+                return seekableByteChannel;
             }
 
-            return seekableByteChannel;
+            return makeNewChannel(blob);
         }
     }
 
-    private SeekableByteChannel setChannelPositionOrMakeNewChannel(final BulkObject blob,
-                                                                   final SeekableByteChannel seekableByteChannel,
-                                                                   final long offset)
-        throws IOException
-    {
-        try {
-            seekableByteChannel.position(offset);
-            return seekableByteChannel;
-        } catch (final ClosedChannelException e) {
-            releaseChannelForBlob(seekableByteChannel, blob);
-            return makeNewChannel(blob, offset);
-        }
-    }
-
-    private SeekableByteChannel makeNewChannel(final BulkObject blob, final long offset) throws IOException {
-        final SeekableByteChannel seekableByteChannel = channelStrategyDelegate.acquireChannelForBlob(blob, offset);
+    private SeekableByteChannel makeNewChannel(final BulkObject blob) throws IOException {
+        final SeekableByteChannel seekableByteChannel = channelStrategyDelegate.acquireChannelForBlob(blob);
 
         blobNameChannelMap.put(blob.getName(), seekableByteChannel);
 

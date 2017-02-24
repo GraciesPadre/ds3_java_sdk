@@ -28,8 +28,6 @@ import java.nio.file.StandardOpenOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.resolveForSymbolic;
-
 public class SequentialFileWriterChannelStrategy implements ChannelStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(SequentialFileWriterChannelStrategy.class);
 
@@ -42,8 +40,17 @@ public class SequentialFileWriterChannelStrategy implements ChannelStrategy {
 
     @Override
     public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
-        final long offset = 0;
-        return acquireChannelForBlob(blob, offset);
+        synchronized (lock) {
+            Files.createDirectories(directory);
+
+            final Path filePath = Paths.get(directory.toString(), blob.getName());
+            createFile(filePath);
+
+            return FileChannel.open(filePath,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.WRITE);
+        }
     }
 
     private void createFile(final Path filePath) {
@@ -51,25 +58,6 @@ public class SequentialFileWriterChannelStrategy implements ChannelStrategy {
             Files.createFile(filePath);
         } catch (final IOException e) {
             LOG.info("File already exists", e);
-        }
-    }
-
-    @Override
-    public SeekableByteChannel acquireChannelForBlob(final BulkObject blob, final long offset) throws IOException {
-        synchronized (lock) {
-            Files.createDirectories(directory);
-
-            final Path filePath = Paths.get(directory.toString(), blob.getName());
-            createFile(filePath);
-
-            final SeekableByteChannel seekableByteChannel = FileChannel.open(filePath,
-                    StandardOpenOption.TRUNCATE_EXISTING,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.WRITE);
-
-            seekableByteChannel.position(offset);
-
-            return seekableByteChannel;
         }
     }
 

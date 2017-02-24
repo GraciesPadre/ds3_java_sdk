@@ -1,6 +1,6 @@
 /*
  * ******************************************************************************
- *   Copyright 2014-2016 Spectra Logic Corporation. All Rights Reserved.
+ *   Copyright 2014-2017 Spectra Logic Corporation. All Rights Reserved.
  *   Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  *   this file except in compliance with the License. A copy of the License is located at
  *
@@ -16,13 +16,8 @@
 // This code is auto-generated, do not modify
 package com.spectralogic.ds3client.commands;
 
-import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.networking.HttpVerb;
-
-import java.io.BufferedInputStream;
 import java.io.InputStream;
-import java.nio.channels.ByteChannel;
-import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
 import com.spectralogic.ds3client.utils.SeekableByteChannelInputStream;
 import static com.spectralogic.ds3client.utils.Guard.isStringNullOrEmpty;
@@ -50,7 +45,7 @@ public class PutObjectRequest extends AbstractRequest {
     private String job;
 
     private long offset;
-    private ByteChannel channel;
+    private SeekableByteChannel channel;
     private ChecksumType checksum = ChecksumType.none();
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
 
@@ -93,20 +88,6 @@ public class PutObjectRequest extends AbstractRequest {
         this.channel = channel;
         this.stream = new SeekableByteChannelInputStream(channel);
         
-        this.getQueryParams().put("job", UrlEscapers.urlFragmentEscaper().escape(job).replace("+", "%2B"));
-        this.getQueryParams().put("offset", Long.toString(offset));
-
-    }
-
-    public PutObjectRequest(final String bucketName, final String objectName, final ByteChannel channel, final InputStream inputStream, final String job, final long offset, final long size) {
-        this.bucketName = bucketName;
-        this.objectName = objectName;
-        this.size = size;
-        this.job = job;
-        this.offset = offset;
-        this.channel = channel;
-        this.stream = inputStream;
-
         this.getQueryParams().put("job", UrlEscapers.urlFragmentEscaper().escape(job).replace("+", "%2B"));
         this.getQueryParams().put("offset", Long.toString(offset));
 
@@ -195,7 +176,7 @@ public class PutObjectRequest extends AbstractRequest {
         }
         final String modifiedKey;
         if (!key.toLowerCase().startsWith(AMZ_META_HEADER)){
-            modifiedKey = AMZ_META_HEADER + key;
+            modifiedKey = AMZ_META_HEADER + key.toLowerCase();
         } else {
             modifiedKey = key;
         }
@@ -224,7 +205,7 @@ public class PutObjectRequest extends AbstractRequest {
     }
 
 
-    public ByteChannel getChannel() {
+    public SeekableByteChannel getChannel() {
         return this.channel;
     }
 

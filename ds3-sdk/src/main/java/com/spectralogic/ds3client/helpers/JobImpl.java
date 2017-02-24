@@ -96,61 +96,61 @@ abstract class JobImpl implements Job {
     @Override
     public void attachChecksumListener(final ChecksumListener listener) {
         checkRunning();
-        eventDispatcher.attachChecksumObserver(new ChecksumObserver(listener));
+        eventDispatcher.attachChecksumListener(listener);
     }
 
     @Override
     public void removeChecksumListener(final ChecksumListener listener) {
         checkRunning();
-        eventDispatcher.removeChecksumObserver(new ChecksumObserver(listener));
+        eventDispatcher.removeChecksumListener(listener);
     }
 
     @Override
     public void attachWaitingForChunksListener(final WaitingForChunksListener listener) {
         checkRunning();
-        eventDispatcher.attachWaitingForChunksObserver(new WaitingForChunksObserver(listener));
+        eventDispatcher.attachWaitingForChunksListener(listener);
     }
 
     @Override
     public void removeWaitingForChunksListener(final WaitingForChunksListener listener) {
         checkRunning();
-        eventDispatcher.removeWaitingForChunksObserver(new WaitingForChunksObserver(listener));
+        eventDispatcher.removeWaitingForChunksListener(listener);
     }
 
     @Override
     public void attachFailureEventListener(final FailureEventListener listener) {
         checkRunning();
-        eventDispatcher.attachFailureEventObserver(new FailureEventObserver(listener));
+        eventDispatcher.attachFailureEventListener(listener);
     }
 
     @Override
     public void removeFailureEventListener(final FailureEventListener listener) {
         checkRunning();
-        eventDispatcher.removeFailureEventObserver(new FailureEventObserver(listener));
+        eventDispatcher.removeFailureEventListener(listener);
     }
 
     @Override
     public void attachDataTransferredListener(final DataTransferredListener listener) {
         checkRunning();
-        eventDispatcher.attachDataTransferredObserver(new DataTransferredObserver(listener));
+        eventDispatcher.attachDataTransferredListener(listener);
     }
 
     @Override
     public void removeDataTransferredListener(final DataTransferredListener listener) {
         checkRunning();
-        eventDispatcher.removeDataTransferredObserver(new DataTransferredObserver(listener));
+        eventDispatcher.removeDataTransferredListener(listener);
     }
 
     @Override
     public void attachObjectCompletedListener(final ObjectCompletedListener listener) {
         checkRunning();
-        eventDispatcher.attachObjectCompletedObserver(new ObjectCompletedObserver(listener));
+        eventDispatcher.attachObjectCompletedListener(listener);
     }
 
     @Override
     public void removeObjectCompletedListener(final ObjectCompletedListener listener) {
         checkRunning();
-        eventDispatcher.removeObjectCompletedObserver(new ObjectCompletedObserver(listener));
+        eventDispatcher.removeObjectCompletedListener(listener);
     }
 
     @Override

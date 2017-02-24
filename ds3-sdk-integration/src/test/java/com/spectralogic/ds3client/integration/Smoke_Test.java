@@ -1047,10 +1047,11 @@ public class Smoke_Test {
             final TransferredListener transferredListener = new TransferredListener();
 
             job.attachObjectCompletedListener(transferredListener);
+            job.removeObjectCompletedListener(transferredListener);
+            job.attachObjectCompletedListener(transferredListener);
             job.attachDataTransferredListener(transferredListener);
             job.removeDataTransferredListener(transferredListener);
             job.attachDataTransferredListener(transferredListener);
-
             job.transfer(new ResourceObjectPutter(RESOURCE_BASE_NAME));
 
             assertThat(transferredListener.getTotalBytes(), is(booksSize));

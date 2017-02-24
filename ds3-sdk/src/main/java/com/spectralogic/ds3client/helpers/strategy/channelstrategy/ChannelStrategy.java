@@ -22,6 +22,5 @@ import java.nio.channels.SeekableByteChannel;
 
 public interface ChannelStrategy {
     SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException;
-    SeekableByteChannel acquireChannelForBlob(final BulkObject blob, final long offset) throws IOException;
     void releaseChannelForBlob(final SeekableByteChannel seekableByteChannel, final BulkObject blob) throws IOException;
 }
