@@ -43,7 +43,7 @@ public class OriginalChannelStrategy_Test {
             Mockito.when(blob.getName()).thenReturn(blobName);
 
             final ChannelStrategy channelStrategy = new OriginalChannelStrategy(new FileObjectPutter(directory),
-                    null);
+                    null, new NullChannelPreparable());
 
             final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob);
 
@@ -67,7 +67,7 @@ public class OriginalChannelStrategy_Test {
             Mockito.when(blob.getName()).thenReturn(blobName);
 
             final ChannelStrategy channelStrategy = new OriginalChannelStrategy(new FileObjectPutter(directory),
-                    null);
+                    null, new NullChannelPreparable());
 
             final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob);
 

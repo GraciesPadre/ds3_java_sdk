@@ -35,21 +35,28 @@ public class OriginalChannelStrategy implements ChannelStrategy {
 
     private final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder;
     private final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
+    private final ChannelPreparable channelPreparer;
     private final Map<BulkObject, SeekableByteChannel> blobChannelMap;
 
+
     public OriginalChannelStrategy(final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder,
-                                   final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs)
+                                   final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs,
+                                   final ChannelPreparable channelPreparer)
     {
         Preconditions.checkNotNull(objectChannelBuilder, "objectChannelBuilder may not be null.");
+        Preconditions.checkNotNull(channelPreparer, "channelPreparer may not be null.");
 
         this.objectChannelBuilder = objectChannelBuilder;
         this.rangesForBlobs = rangesForBlobs;
+        this.channelPreparer = channelPreparer;
         blobChannelMap  = new HashMap<>();
     }
 
     @Override
     public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
         synchronized (lock) {
+            channelPreparer.prepareChannel(blob.getName(), objectChannelBuilder);
+
             SeekableByteChannel seekableByteChannel = blobChannelMap.get(blob);
 
             if (seekableByteChannel == null) {

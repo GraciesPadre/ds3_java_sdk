@@ -29,7 +29,9 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategyMake
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialBlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialBlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.NullChannelPreparable;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.OriginalChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.TruncatingChannelPreparable;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.models.MasterObjectList;
@@ -161,7 +163,7 @@ public final class TransferStrategyBuilder {
     public TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
-        channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs);
+        channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
 
         transferRetryBehavior = makeTransferRetryBehavior();
 
@@ -296,7 +298,7 @@ public final class TransferStrategyBuilder {
     public TransferStrategy makeOriginalSdkSemanticsGetTransferStrategy() {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
-        channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs);
+        channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs, new TruncatingChannelPreparable());
 
         transferRetryBehavior = makeTransferRetryBehavior();
 
