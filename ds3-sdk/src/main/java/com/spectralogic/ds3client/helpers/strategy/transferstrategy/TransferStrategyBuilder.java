@@ -166,6 +166,8 @@ public final class TransferStrategyBuilder {
 
         transferRetryBehavior = makeTransferRetryBehavior();
 
+        numConcurrentTransferThreads = 1;
+
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
                     @Override
@@ -230,9 +232,15 @@ public final class TransferStrategyBuilder {
 
         final TransferMethod transferMethod = transferMethodMaker.makeTransferMethod();
 
-        final SingleThreadedTransferStrategy singleThreadedTransferStrategy = new SingleThreadedTransferStrategy(blobStrategy);
+        final TransferStrategy transferStrategy;
 
-        return singleThreadedTransferStrategy.withTransferMethod(transferMethod);
+        if (numConcurrentTransferThreads > 1) {
+            transferStrategy = new MultiThreadedTransferStrategy(blobStrategy, numConcurrentTransferThreads);
+        } else {
+            transferStrategy = new SingleThreadedTransferStrategy(blobStrategy).withTransferMethod(transferMethod);
+        }
+
+        return transferStrategy;
     }
 
     private TransferMethod makePutTransferMethod() {
@@ -300,6 +308,8 @@ public final class TransferStrategyBuilder {
         channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs, new TruncatingChannelPreparable());
 
         transferRetryBehavior = makeTransferRetryBehavior();
+
+        numConcurrentTransferThreads = 1;
 
         return makeTransferStrategy(
                 new BlobStrategyMaker() {

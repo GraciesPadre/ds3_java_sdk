@@ -20,8 +20,8 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 
 import java.util.concurrent.Executors;
 
-public class SingleThreadedTransferStrategy extends AbstractTransferStrategy {
-    public SingleThreadedTransferStrategy(final BlobStrategy blobStrategy) {
-        super(blobStrategy,  MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor()));
+public class MultiThreadedTransferStrategy extends AbstractTransferStrategy {
+    public MultiThreadedTransferStrategy(final BlobStrategy blobStrategy, final int numConcurrentTransferThreads) {
+        super(blobStrategy, MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(numConcurrentTransferThreads)));
     }
 }
