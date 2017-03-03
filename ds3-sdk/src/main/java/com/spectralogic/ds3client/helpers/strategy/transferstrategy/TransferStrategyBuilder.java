@@ -66,6 +66,7 @@ public final class TransferStrategyBuilder {
     private EventDispatcher eventDispatcher;
     private JobPartTracker jobPartTracker;
     private int numTransferRetries = NUM_TRANSFER_RETRIES;
+    private int numConcurrentTransferThreads = MAX_CONCURRENT_TRANSFER_THREADS;
     private int numChunkAllocationRetries;
     private int retryDelayInSeconds;
     private Ds3Client ds3Client;
@@ -119,6 +120,11 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
+    public TransferStrategyBuilder withNumConcurrentTransferThreads(final int numConcurrentTransferThreads) {
+        this.numConcurrentTransferThreads = numConcurrentTransferThreads;
+        return this;
+    }
+
     public TransferStrategyBuilder withNumChunkAllocationRetries(final int numChunkAllocationRetries) {
         this.numChunkAllocationRetries = numChunkAllocationRetries;
         return this;
@@ -143,13 +149,6 @@ public final class TransferStrategyBuilder {
         this.rangesForBlobs = rangesForBlobs;
         return this;
     }
-
-    /*
-    public TransferStrategyBuilder withThrottlingStrategy(final ThrottlingStrategy throttlingStrategy) {
-        this.throttlingStrategy = throttlingStrategy;
-        return this;
-    }
-    */
 
     public TransferStrategyBuilder withMetadataAccess(final Ds3ClientHelpers.MetadataAccess metadataAccess) {
         this.metadataAccess = metadataAccess;

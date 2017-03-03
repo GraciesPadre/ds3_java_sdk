@@ -23,8 +23,6 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -47,15 +45,12 @@ public class SingleThreadedTransferStrategy implements TransferStrategy {
 
     @Override
     public void transfer() throws IOException, InterruptedException {
-        // Inject the throttler here
-        final List<ListenableFuture<Void>> transferTasks = new ArrayList<>();
+        final ImmutableList.Builder<ListenableFuture<Void>> transferTasksListBuilder = ImmutableList.builder();
 
         final Iterable<JobPart> workQueue = blobStrategy.getWork();
 
-        // producer is going to put job parts into queue
-        // consumer is going to call transfer
         for (final JobPart jobPart : workQueue) {
-            transferTasks.add(executorService.submit(new Callable<Void>() {
+            transferTasksListBuilder.add(executorService.submit(new Callable<Void>() {
                 @Override
                 public Void call() throws Exception {
                     transferMethod.transferJobPart(jobPart);
@@ -64,7 +59,7 @@ public class SingleThreadedTransferStrategy implements TransferStrategy {
             }));
         }
 
-        runTransferTasks(ImmutableList.copyOf(transferTasks));
+        runTransferTasks(ImmutableList.copyOf(transferTasksListBuilder.build()));
     }
 
     private void runTransferTasks(final Iterable<ListenableFuture<Void>> transferTasks) throws IOException {
