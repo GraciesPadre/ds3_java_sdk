@@ -83,9 +83,7 @@ abstract class JobImpl implements Job {
     
     @Override
     public Job withMaxParallelRequests(final int maxParallelRequests) {
-        // TODO: This needs to set the kind of transfer strategy we will use.
-        // > 1 we need to use a single-threaded or multi-threaded transfer strategy
-        this.maxParallelRequests = maxParallelRequests;
+        transferStrategyBuilder.withNumConcurrentTransferThreads(maxParallelRequests);
         return this;
     }
 
