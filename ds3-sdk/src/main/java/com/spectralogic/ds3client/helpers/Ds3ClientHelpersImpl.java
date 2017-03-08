@@ -159,7 +159,6 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
 
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(eventRunner);
 
-        // TODO: Figure out what do with metadata listener
         final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                 .withDs3Client(client)
                 .withMasterObjectList(getBulkJobSpectraS3Response.getResult())

@@ -266,7 +266,7 @@ public final class TransferStrategyBuilder {
 
     private String getJobId() {
         if (Guard.isStringNullOrEmpty(jobId)) {
-            jobId =  masterObjectList.getJobId().toString();
+            jobId = masterObjectList.getJobId().toString();
         }
 
         return jobId;

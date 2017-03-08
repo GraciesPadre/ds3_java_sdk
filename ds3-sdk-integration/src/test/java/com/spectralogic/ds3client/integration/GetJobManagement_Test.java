@@ -174,11 +174,11 @@ public class GetJobManagement_Test {
             final long bookSize = Files.size(objPath);
             final Ds3Object obj = new Ds3Object(FILE_NAME, bookSize);
 
-            // final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl)client);
+            final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl)client);
 
             final int maxNumBlockAllocationRetries = 1;
             final int maxNumObjectTransferAttempts = 3;
-            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(client,
+            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(ds3ClientShim,
                     maxNumBlockAllocationRetries,
                     maxNumObjectTransferAttempts);
 
@@ -230,7 +230,7 @@ public class GetJobManagement_Test {
                 }
             });
 
-            final GetJobSpectraS3Response jobSpectraS3Response = client
+            final GetJobSpectraS3Response jobSpectraS3Response = ds3ClientShim
                     .getJobSpectraS3(new GetJobSpectraS3Request(readJob.getJobId()));
 
             assertThat(jobSpectraS3Response.getStatusCode(), is(200));
