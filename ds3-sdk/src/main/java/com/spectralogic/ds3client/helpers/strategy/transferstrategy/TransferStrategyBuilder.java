@@ -57,7 +57,7 @@ import java.nio.channels.ByteChannel;
 public final class TransferStrategyBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(TransferStrategyBuilder.class);
 
-    private static final int MAX_CONCURRENT_TRANSFER_THREADS = 10;
+    private static final int DEFAULT_MAX_CONCURRENT_TRANSFER_THREADS = 10;
 
     // The negative number here is a legacy thing whose meaning is to repeat forever
     private static final int NUM_TRANSFER_RETRIES = -1;
@@ -76,7 +76,7 @@ public final class TransferStrategyBuilder {
     private EventDispatcher eventDispatcher;
     private JobPartTracker jobPartTracker;
     private int numTransferRetries = NUM_TRANSFER_RETRIES;
-    private int numConcurrentTransferThreads = MAX_CONCURRENT_TRANSFER_THREADS;
+    private int numConcurrentTransferThreads = DEFAULT_MAX_CONCURRENT_TRANSFER_THREADS;
     private int numChunkAllocationRetries = DEFAULT_NUM_CHUNK_ALLOCATION_RETRY_ATTEMPTS;
     private int chunkRetryDelayInSeconds = DEFAULT_CHUNK_ALLOCATION_RETRY_INTERVAL;
     private Ds3Client ds3Client;
@@ -176,8 +176,6 @@ public final class TransferStrategyBuilder {
 
         transferRetryDecorator = makeTransferRetryDecorator();
 
-        numConcurrentTransferThreads = 1;
-
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
                     @Override
@@ -261,7 +259,7 @@ public final class TransferStrategyBuilder {
         final TransferStrategy transferStrategy;
 
         if (numConcurrentTransferThreads > 1) {
-            transferStrategy = new MultiThreadedTransferStrategy(blobStrategy, numConcurrentTransferThreads);
+            transferStrategy = new MultiThreadedTransferStrategy(blobStrategy, numConcurrentTransferThreads).withTransferMethod(transferMethod);
         } else {
             transferStrategy = new SingleThreadedTransferStrategy(blobStrategy).withTransferMethod(transferMethod);
         }
@@ -334,8 +332,6 @@ public final class TransferStrategyBuilder {
         channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs, new TruncatingChannelPreparable());
 
         transferRetryDecorator = makeTransferRetryDecorator();
-
-        numConcurrentTransferThreads = 1;
 
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
