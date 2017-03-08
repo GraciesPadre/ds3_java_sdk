@@ -16,7 +16,6 @@
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
 import com.spectralogic.ds3client.models.BulkObject;
-import com.spectralogic.ds3client.models.BulkObjectList;
 import org.junit.Test;
 
 import java.io.File;
@@ -27,58 +26,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.UUID;
 
 import static org.junit.Assert.fail;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertNotNull;
 
 public class SequentialFileWriterChannelStrategy_Test {
-    /*
-    @Test
-    public void testThatMultipleBlobsWithTheSameBucketAndNameMapToTheSameChannel() {
-        final String bucketName = "bucket";
-        final String blobName = "theBlobThatAteGunbarrel";
-
-        final BulkObject blob1 = new BulkObject();
-        blob1.setBucket(bucketName);
-        blob1.setName(blobName);
-        blob1.setId(UUID.randomUUID());
-        blob1.setLength(100);
-        blob1.setOffset(0);
-
-        final BulkObject blob2 = new BulkObject();
-        blob2.setBucket(bucketName);
-        blob2.setName(blobName);
-        blob2.setId(UUID.randomUUID());
-        blob2.setLength(200);
-        blob2.setOffset(50);
-
-        try {
-            final BulkObjectList blobs = new BulkObjectList();
-            blobs.setObjects(Arrays.asList(new BulkObject[]{blob1, blob2}));
-
-            final SequentialFileWriterChannelStrategy sequentialFileWriterChannelStrategy = new SequentialFileWriterChannelStrategy(Paths.get("."));
-            final BlobChannelPairs blobChannelPairs = sequentialFileWriterChannelStrategy.channelsForBlobs(blobs, new ChannelAllocationFailureHandler() {
-                @Override
-                public void onChannelAllocationFailure(final String channelName, final Throwable causalException) {
-                    fail("Error creating channel: " + channelName + ", error: " + causalException.getMessage());
-                }
-            });
-
-            final ByteChannel channel1 = blobChannelPairs.acquireChannelForBlob(blob1);
-            assertNotNull(channel1);
-
-            final ByteChannel channel2 = blobChannelPairs.acquireChannelForBlob(blob2);
-            assertNotNull(channel2);
-
-            assertTrue(channel1.equals(channel2));
-        } finally {
-            Paths.get(".", blob1.getName()).toFile().delete();
-        }
-    }
-
     @Test
     public void testThatBlobsReferringToExistingFileTruncate() {
         final String channelName = "Gracie.txt";
@@ -96,17 +48,7 @@ public class SequentialFileWriterChannelStrategy_Test {
             final BulkObject blob = new BulkObject();
             blob.setName(channelName);
 
-            final BulkObjectList blobs = new BulkObjectList();
-            blobs.setObjects(Arrays.asList(new BulkObject[]{blob}));
-
-            final BlobChannelPairs blobChannelPairs = channelStrategy.channelsForBlobs(blobs, new ChannelAllocationFailureHandler() {
-                @Override
-                public void onChannelAllocationFailure(final String channelName, final Throwable causalException) {
-                    fail("Failed allocating channel: " + channelName + " with exception: " + causalException.getMessage());
-                }
-            });
-
-            final ByteChannel byteChannel = blobChannelPairs.acquireChannelForBlob(blob);
+            final ByteChannel byteChannel = channelStrategy.acquireChannelForBlob(blob);
 
             try {
                 final ByteBuffer writeBuffer = ByteBuffer.allocate(32);
@@ -130,5 +72,4 @@ public class SequentialFileWriterChannelStrategy_Test {
             file.delete();
         }
     }
-    */
 }

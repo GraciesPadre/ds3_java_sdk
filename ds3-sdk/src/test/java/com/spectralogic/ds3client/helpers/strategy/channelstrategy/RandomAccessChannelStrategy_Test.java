@@ -28,7 +28,7 @@ import java.nio.file.Paths;
 
 import static org.junit.Assert.assertNotNull;
 
-public class OriginalChannelStrategy_Test {
+public class RandomAccessChannelStrategy_Test {
     @Test
     public void testGettingChannelForABlobAndNoRanges() throws IOException {
         final String directoryName = ".";
@@ -42,7 +42,7 @@ public class OriginalChannelStrategy_Test {
             final BulkObject blob = Mockito.mock(BulkObject.class);
             Mockito.when(blob.getName()).thenReturn(blobName);
 
-            final ChannelStrategy channelStrategy = new OriginalChannelStrategy(new FileObjectPutter(directory),
+            final ChannelStrategy channelStrategy = new RandomAccessChannelStrategy(new FileObjectPutter(directory),
                     null, new NullChannelPreparable());
 
             final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob);
@@ -66,7 +66,7 @@ public class OriginalChannelStrategy_Test {
             final BulkObject blob = Mockito.mock(BulkObject.class);
             Mockito.when(blob.getName()).thenReturn(blobName);
 
-            final ChannelStrategy channelStrategy = new OriginalChannelStrategy(new FileObjectPutter(directory),
+            final ChannelStrategy channelStrategy = new RandomAccessChannelStrategy(new FileObjectPutter(directory),
                     null, new NullChannelPreparable());
 
             final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(blob);

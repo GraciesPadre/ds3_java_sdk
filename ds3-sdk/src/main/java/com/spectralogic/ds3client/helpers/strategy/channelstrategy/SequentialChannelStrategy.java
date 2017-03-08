@@ -24,7 +24,7 @@ import java.nio.channels.SeekableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 
-public class AggregatingChannelStrategy implements ChannelStrategy {
+public class SequentialChannelStrategy implements ChannelStrategy {
     private final Object lock = new Object();
 
     private final SetMultimap<String, Long> blobNameOffsetMap = HashMultimap.create();
@@ -32,7 +32,7 @@ public class AggregatingChannelStrategy implements ChannelStrategy {
 
     private final ChannelStrategy channelStrategyDelegate;
 
-    public AggregatingChannelStrategy(final ChannelStrategy channelStrategy) {
+    public SequentialChannelStrategy(final ChannelStrategy channelStrategy) {
         channelStrategyDelegate = channelStrategy;
     }
 

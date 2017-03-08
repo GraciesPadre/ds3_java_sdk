@@ -36,7 +36,7 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialBlo
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.RetryBehavior;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.NullChannelPreparable;
-import com.spectralogic.ds3client.helpers.strategy.channelstrategy.OriginalChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.RandomAccessChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.TruncatingChannelPreparable;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
@@ -59,12 +59,9 @@ public final class TransferStrategyBuilder {
 
     private static final int DEFAULT_MAX_CONCURRENT_TRANSFER_THREADS = 10;
 
-    // The negative number here is a legacy thing whose meaning is to repeat forever
-    private static final int NUM_TRANSFER_RETRIES = -1;
-
-    public final static int DEFAULT_CHUNK_ALLOCATION_RETRY_INTERVAL = -1;
-    public final static int DEFAULT_NUM_CHUNK_ALLOCATION_RETRY_ATTEMPTS = -1;
-    public final static int DEFAULT_OBJECT_TRANSFER_ATTEMPTS = 5;
+    public static final int DEFAULT_CHUNK_ALLOCATION_RETRY_INTERVAL = -1;
+    public static final int DEFAULT_CHUNK_ALLOCATION_RETRY_ATTEMPTS = -1;
+    public static final int DEFAULT_OBJECT_TRANSFER_ATTEMPTS = 5;
 
     private BlobStrategy blobStrategy;
     private ChannelStrategy channelStrategy;
@@ -75,9 +72,9 @@ public final class TransferStrategyBuilder {
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
     private EventDispatcher eventDispatcher;
     private JobPartTracker jobPartTracker;
-    private int numTransferRetries = NUM_TRANSFER_RETRIES;
+    private int numTransferRetries = DEFAULT_OBJECT_TRANSFER_ATTEMPTS;
     private int numConcurrentTransferThreads = DEFAULT_MAX_CONCURRENT_TRANSFER_THREADS;
-    private int numChunkAllocationRetries = DEFAULT_NUM_CHUNK_ALLOCATION_RETRY_ATTEMPTS;
+    private int numChunkAllocationRetries = DEFAULT_CHUNK_ALLOCATION_RETRY_ATTEMPTS;
     private int chunkRetryDelayInSeconds = DEFAULT_CHUNK_ALLOCATION_RETRY_INTERVAL;
     private Ds3Client ds3Client;
     private MasterObjectList masterObjectList;
@@ -172,7 +169,7 @@ public final class TransferStrategyBuilder {
     public TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
-        channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
+        channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
 
         transferRetryDecorator = makeTransferRetryDecorator();
 
@@ -240,7 +237,7 @@ public final class TransferStrategyBuilder {
         bucketName = masterObjectList.getBucketName();
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
 
-        jobId = masterObjectList.getJobId().toString();
+        jobId = getJobId();
         Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
 
         blobStrategy = blobStrategyMaker.makeBlobStrategy(ds3Client,
@@ -265,6 +262,14 @@ public final class TransferStrategyBuilder {
         }
 
         return transferStrategy;
+    }
+
+    private String getJobId() {
+        if (Guard.isStringNullOrEmpty(jobId)) {
+            jobId =  masterObjectList.getJobId().toString();
+        }
+
+        return jobId;
     }
 
     private TransferMethod makePutTransferMethod() {
@@ -329,7 +334,7 @@ public final class TransferStrategyBuilder {
     public TransferStrategy makeOriginalSdkSemanticsGetTransferStrategy() {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
-        channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs, new TruncatingChannelPreparable());
+        channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new TruncatingChannelPreparable());
 
         transferRetryDecorator = makeTransferRetryDecorator();
 

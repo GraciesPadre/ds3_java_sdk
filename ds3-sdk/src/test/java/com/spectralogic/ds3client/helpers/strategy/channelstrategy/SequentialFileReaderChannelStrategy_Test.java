@@ -35,7 +35,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SequentialFileReaderChannelStrategy_Test {
-    /*
     @Test
     public void testThatSequentialFileReaderIsOpenWhenCreated() {
         final String channelName = "Gracie.txt";
@@ -53,17 +52,7 @@ public class SequentialFileReaderChannelStrategy_Test {
             final BulkObject blob = new BulkObject();
             blob.setName(channelName);
 
-            final BulkObjectList blobs = new BulkObjectList();
-            blobs.setObjects(Arrays.asList(new BulkObject[]{blob}));
-
-            final BlobChannelPairs blobChannelPairs = channelStrategy.channelsForBlobs(blobs, new ChannelAllocationFailureHandler() {
-                @Override
-                public void onChannelAllocationFailure(final String channelName, final Throwable causalException) {
-                    fail("Failed allocating channel: " + channelName + " with exception: " + causalException.getMessage());
-                }
-            });
-
-            final ByteChannel byteChannel = blobChannelPairs.acquireChannelForBlob(blob);
+            final ByteChannel byteChannel = channelStrategy.acquireChannelForBlob(blob);
 
             assertTrue(byteChannel.isOpen());
 
@@ -85,95 +74,8 @@ public class SequentialFileReaderChannelStrategy_Test {
         }
     }
 
-    @Test
-    public void testThatBlobCompletionFiresHandler() {
-        final String channelName = "Gracie.txt";
-        final String expectedText = "Gracie";
-
-        final File file = new File(Paths.get(".", channelName).toString());
-
-        try {
-            try (final FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-                fileOutputStream.write(expectedText.getBytes());
-            }
-
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-
-            final BulkObject blob = new BulkObject();
-            blob.setName(channelName);
-
-            final BulkObjectList blobs = new BulkObjectList();
-            blobs.setObjects(Arrays.asList(new BulkObject[]{blob}));
-
-            final BlobChannelPairs blobChannelPairs = channelStrategy.channelsForBlobs(blobs, new ChannelAllocationFailureHandler() {
-                @Override
-                public void onChannelAllocationFailure(final String channelName, final Throwable causalException) {
-                    fail("Failed allocating channel: " + channelName + " with exception: " + causalException.getMessage());
-                }
-            });
-
-            final AtomicBoolean channelClosed = new AtomicBoolean(false);
-
-            channelStrategy.withBlobCompletionHandler(new BlobCompletionHandler() {
-                @Override
-                public void onBlobComplete(final BulkObject blob) {
-                    final ByteChannel byteChannel = blobChannelPairs.acquireChannelForBlob(blob);
-                    try {
-                        byteChannel.close();
-                        channelClosed.set(true);
-                    } catch (final IOException e) {
-                        fail("Failed closing channel.");
-                    }
-                }
-            });
-
-            channelStrategy.completeBlob(blob);
-
-            assertTrue(channelClosed.get());
-        } catch (final IOException e) {
-            fail("Failed writing to channel: " + channelName + " with exception: " + e.getMessage());
-        } finally {
-            file.delete();
-        }
-    }
-
-    @Test
-    public void testThatNullCompletionHandlerDoesNotCrash() {
-        final String channelName = "Gracie.txt";
-        final String expectedText = "Gracie";
-
-        final File file = new File(Paths.get(".", channelName).toString());
-
-        try {
-            try (final FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-                fileOutputStream.write(expectedText.getBytes());
-            }
-
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-
-            final BulkObject blob = new BulkObject();
-            blob.setName(channelName);
-
-            final BulkObjectList blobs = new BulkObjectList();
-            blobs.setObjects(Arrays.asList(new BulkObject[]{blob}));
-
-            channelStrategy.channelsForBlobs(blobs, new ChannelAllocationFailureHandler() {
-                @Override
-                public void onChannelAllocationFailure(final String channelName, final Throwable causalException) {
-                    fail("Failed allocating channel: " + channelName + " with exception: " + causalException.getMessage());
-                }
-            });
-
-            channelStrategy.completeBlob(blob);
-        } catch (final IOException e) {
-            fail("Failed writing to channel: " + channelName + " with exception: " + e.getMessage());
-        } finally {
-            file.delete();
-        }
-    }
-
-    @Test
-    public void testThatInvalidFileFiresFailureHandler() {
+    @Test(expected = IOException.class)
+    public void testThatInvalidFileFiresFailureHandler() throws IOException {
         final String channelName = "Gracie.txt";
 
         final File file = new File(Paths.get(".", channelName).toString());
@@ -184,107 +86,9 @@ public class SequentialFileReaderChannelStrategy_Test {
             final BulkObject blob = new BulkObject();
             blob.setName(channelName);
 
-            final BulkObjectList blobs = new BulkObjectList();
-            blobs.setObjects(Arrays.asList(new BulkObject[]{blob}));
-
-            final AtomicBoolean allocationFailed = new AtomicBoolean(false);
-
-            channelStrategy.channelsForBlobs(blobs, new ChannelAllocationFailureHandler() {
-                @Override
-                public void onChannelAllocationFailure(final String channelName, final Throwable causalException) {
-                    allocationFailed.set(true);
-                }
-            });
-
-            assertTrue(allocationFailed.get());
+            channelStrategy.acquireChannelForBlob(blob);
         } finally {
             file.delete();
         }
     }
-
-    @Test
-    public void testThatNullAllocationFailureHandlerDoesNotCrash() {
-        final String channelName = "Gracie.txt";
-
-        final File file = new File(Paths.get(".", channelName).toString());
-
-        try {
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-
-            final BulkObject blob = new BulkObject();
-            blob.setName(channelName);
-
-            final BulkObjectList blobs = new BulkObjectList();
-            blobs.setObjects(Arrays.asList(new BulkObject[]{blob}));
-
-            try {
-                final ChannelAllocationFailureHandler nullChannelAllocationFailureHandler = null;
-                channelStrategy.channelsForBlobs(blobs, nullChannelAllocationFailureHandler);
-            } catch (final Throwable t) {
-                fail("There is a bug with how we're referencing channel failure notification handlers: " + t.getMessage());
-            }
-        } finally {
-            file.delete();
-        }
-    }
-
-    @Test
-    public void testThatWeAllocateChannelsForValidFilesWhenThereAreSomeInvalidOnes() {
-        final String[] channelNames = new String[] { "Gracie.txt", "Gracie2.txt" };
-        final String expectedText = "Gracie";
-
-        try {
-            for (final String channelName : channelNames) {
-                final File file = new File(Paths.get(".", channelName).toString());
-
-                try (final FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-                    fileOutputStream.write(expectedText.getBytes());
-                }
-            }
-
-            final BulkObject goodBlob1 = new BulkObject();
-            goodBlob1.setName(channelNames[0]);
-
-            final BulkObject badBlob = new BulkObject();
-            final String badChannelName = "Gack";
-            badBlob.setName(badChannelName);
-
-            final BulkObject goodBlob2 = new BulkObject();
-            goodBlob2.setName(channelNames[1]);
-
-            final BulkObjectList blobs = new BulkObjectList();
-            blobs.setObjects(Arrays.asList(new BulkObject[]{ goodBlob1, badBlob, goodBlob2 }));
-
-            final AtomicInteger numChannelFailures = new AtomicInteger(0);
-
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final BlobChannelPairs blobChannelPairs = channelStrategy.channelsForBlobs(blobs, new ChannelAllocationFailureHandler() {
-                @Override
-                public void onChannelAllocationFailure(final String channelName, final Throwable causalException) {
-                    assertEquals(channelName, badChannelName);
-                    numChannelFailures.getAndIncrement();
-                }
-            });
-
-            assertEquals(1, numChannelFailures.get());
-
-            ByteChannel channel = blobChannelPairs.acquireChannelForBlob(blobs.getObjects().get(0));
-            assertNotNull(channel);
-
-            channel = blobChannelPairs.acquireChannelForBlob(blobs.getObjects().get(1));
-            assertNull(channel);
-
-            channel = blobChannelPairs.acquireChannelForBlob(blobs.getObjects().get(2));
-            assertNotNull(channel);
-        } catch (final Throwable t) {
-            fail("Failure creating test files: " + t.getMessage());
-        } finally {
-            for (final String channelName : channelNames) {
-                final File file = new File(Paths.get(".", channelName).toString());
-                file.delete();
-            }
-        }
-
-    }
-    */
 }

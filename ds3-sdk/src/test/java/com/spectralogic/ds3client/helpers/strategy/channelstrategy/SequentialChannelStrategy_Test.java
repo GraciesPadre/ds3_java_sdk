@@ -31,7 +31,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
 
-public class AggregatingChannelStrategy_Test {
+public class SequentialChannelStrategy_Test {
     @Test
     public void testGettingChannelForOneBlob() throws IOException {
         final String blobName = "Blobby";
@@ -49,7 +49,7 @@ public class AggregatingChannelStrategy_Test {
             blob.setOffset(0);
 
             final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new AggregatingChannelStrategy(channelStrategy);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             assertNotNull(seekableByteChannel);
@@ -80,7 +80,7 @@ public class AggregatingChannelStrategy_Test {
             blob2.setOffset(3);
 
             final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new AggregatingChannelStrategy(channelStrategy);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             final SeekableByteChannel seekableByteChannel2 = wrapperChannelStrategy.acquireChannelForBlob(blob2);
@@ -108,7 +108,7 @@ public class AggregatingChannelStrategy_Test {
             blob.setOffset(0);
 
             final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new AggregatingChannelStrategy(channelStrategy);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             assertTrue(seekableByteChannel.isOpen());
@@ -140,7 +140,7 @@ public class AggregatingChannelStrategy_Test {
             blob2.setOffset(3);
 
             final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new AggregatingChannelStrategy(channelStrategy);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             final SeekableByteChannel seekableByteChannel2 = wrapperChannelStrategy.acquireChannelForBlob(blob2);
@@ -178,7 +178,7 @@ public class AggregatingChannelStrategy_Test {
             blob2.setOffset(3);
 
             final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new AggregatingChannelStrategy(channelStrategy);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             final SeekableByteChannel seekableByteChannel2 = wrapperChannelStrategy.acquireChannelForBlob(blob2);
@@ -213,7 +213,7 @@ public class AggregatingChannelStrategy_Test {
 
             final ChannelStrategy mockSequentialFileReaderChannelStrategy = new MockSequentialChannelReaderStrategy(channelStrategy, blob2);
 
-            final ChannelStrategy wrapperChannelStrategy = new AggregatingChannelStrategy(mockSequentialFileReaderChannelStrategy);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(mockSequentialFileReaderChannelStrategy);
 
             final AtomicInteger numTimesIOExceptionCaught = new AtomicInteger(0);
 
@@ -281,7 +281,7 @@ public class AggregatingChannelStrategy_Test {
         blob.setOffset(0);
 
         final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-        final ChannelStrategy wrapperChannelStrategy = new AggregatingChannelStrategy(channelStrategy);
+        final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
 
         final AtomicInteger numTimesIOExceptionCaught = new AtomicInteger(0);
 
@@ -304,7 +304,7 @@ public class AggregatingChannelStrategy_Test {
         blob.setOffset(0);
 
         final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("transfererJustBecauseICan"));
-        final ChannelStrategy wrapperChannelStrategy = new AggregatingChannelStrategy(channelStrategy);
+        final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
 
         final AtomicInteger numTimesIOExceptionCaught = new AtomicInteger(0);
 

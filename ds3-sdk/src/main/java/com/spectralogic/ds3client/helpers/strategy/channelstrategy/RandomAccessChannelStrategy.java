@@ -30,7 +30,7 @@ import java.nio.channels.SeekableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OriginalChannelStrategy implements ChannelStrategy {
+public class RandomAccessChannelStrategy implements ChannelStrategy {
     private final Object lock = new Object();
 
     private final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder;
@@ -39,9 +39,9 @@ public class OriginalChannelStrategy implements ChannelStrategy {
     private final Map<BulkObject, SeekableByteChannel> blobChannelMap;
 
 
-    public OriginalChannelStrategy(final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder,
-                                   final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs,
-                                   final ChannelPreparable channelPreparer)
+    public RandomAccessChannelStrategy(final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder,
+                                       final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs,
+                                       final ChannelPreparable channelPreparer)
     {
         Preconditions.checkNotNull(objectChannelBuilder, "objectChannelBuilder may not be null.");
         Preconditions.checkNotNull(channelPreparer, "channelPreparer may not be null.");

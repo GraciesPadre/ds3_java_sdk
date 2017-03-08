@@ -62,7 +62,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
     private final EventRunner eventRunner;
 
     public Ds3ClientHelpersImpl(final Ds3Client client) {
-        this(client, TransferStrategyBuilder.DEFAULT_NUM_CHUNK_ALLOCATION_RETRY_ATTEMPTS);
+        this(client, TransferStrategyBuilder.DEFAULT_CHUNK_ALLOCATION_RETRY_ATTEMPTS);
     }
 
     public Ds3ClientHelpersImpl(final Ds3Client client, final int maxNumChunkAllocationAttempts) {
