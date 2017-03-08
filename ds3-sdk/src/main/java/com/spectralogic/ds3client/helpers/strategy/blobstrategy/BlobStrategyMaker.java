@@ -22,7 +22,5 @@ import com.spectralogic.ds3client.models.MasterObjectList;
 public interface BlobStrategyMaker {
     BlobStrategy makeBlobStrategy(final Ds3Client client,
                                   final MasterObjectList masterObjectList,
-                                  final int retryAfter,
-                                  final int retryDelay,
                                   final EventDispatcher eventDispatcher);
 }

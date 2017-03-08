@@ -6,7 +6,7 @@ import com.spectralogic.ds3client.helpers.JobPart;
 
 import java.io.IOException;
 
-public class ContinueForeverTransferRetryBehavior implements TransferRetryBehavior {
+public class ContinueForeverTransferRetryDecorator implements TransferRetryDecorator {
     private TransferMethod transferMethodDelegate;
 
     @Override

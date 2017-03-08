@@ -15,68 +15,10 @@
 
 package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
-import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.JobPart;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.BlobTransferredEventObserver;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.UpdateStrategy;
-import com.spectralogic.ds3client.models.BulkObject;
-import com.spectralogic.ds3client.models.MasterObjectList;
 
 import java.io.IOException;
 
-public abstract class BlobStrategy {
-
-    private final Ds3Client client;
-    private final MasterObjectList masterObjectList;
-    private final int retryAfter;
-    private final int retryDelay;
-    private final EventDispatcher eventDispatcher;
-
-    public BlobStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final EventDispatcher eventDispatcher) {
-        this.client = client;
-        this.masterObjectList = masterObjectList;
-        this.retryAfter = retryAfter;
-        this.retryDelay = retryDelay;
-        this.eventDispatcher = eventDispatcher;
-
-        eventDispatcher.attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
-            @Override
-            public void update(final BulkObject eventData) {
-                blobCompleted(eventData);
-            }
-        }));
-    }
-
-    public abstract Iterable<JobPart> getWork() throws IOException, InterruptedException;
-    public abstract void blobCompleted(final BulkObject bulkObject);
-
-    public Ds3Client getClient() {
-        return client;
-    }
-
-    public int getRetryAfter() {
-        return retryAfter;
-    }
-
-    public int getRetryDelay() {
-        return retryDelay;
-    }
-
-    public EventDispatcher getEventDispatcher() {
-        return eventDispatcher;
-    }
-
-    public MasterObjectList getMasterObjectList() {
-        return masterObjectList;
-    }
-
-    protected int computeDelay(final int retryAfterSeconds) {
-        final int retryDelay = getRetryDelay();
-        if (retryDelay == -1) {
-            return retryAfterSeconds;
-        } else {
-            return retryDelay;
-        }
-    }
+public interface BlobStrategy {
+    Iterable<JobPart> getWork() throws IOException, InterruptedException;
 }

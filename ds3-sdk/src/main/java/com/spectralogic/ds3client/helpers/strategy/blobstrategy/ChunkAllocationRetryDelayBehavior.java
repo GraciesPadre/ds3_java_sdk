@@ -13,16 +13,9 @@
  *  ****************************************************************************
  */
 
-package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
+package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
-import com.google.common.util.concurrent.MoreExecutors;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.AbstractBlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
-
-import java.util.concurrent.Executors;
-
-public class SingleThreadedTransferStrategy extends AbstractTransferStrategy {
-    public SingleThreadedTransferStrategy(final BlobStrategy blobStrategy) {
-        super(blobStrategy,  MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor()));
-    }
+public interface ChunkAllocationRetryDelayBehavior {
+    void delay(final int delayIntervalInSeconds) throws InterruptedException;
+    int getDelayIntervalInSeconds();
 }

@@ -21,11 +21,11 @@ import com.spectralogic.ds3client.helpers.JobPart;
 
 import java.io.IOException;
 
-public class MaxNumObjectTransferAttemptsBehavior implements TransferRetryBehavior {
+public class MaxNumObjectTransferAttemptsDecorator implements TransferRetryDecorator {
     private final int maxNumObjectTransferAttempts;
     private TransferMethod transferMethodDelegate;
 
-    public MaxNumObjectTransferAttemptsBehavior(final int maxNumObjectTransferAttempts) {
+    public MaxNumObjectTransferAttemptsDecorator(final int maxNumObjectTransferAttempts) {
         this.maxNumObjectTransferAttempts = maxNumObjectTransferAttempts;
     }
 

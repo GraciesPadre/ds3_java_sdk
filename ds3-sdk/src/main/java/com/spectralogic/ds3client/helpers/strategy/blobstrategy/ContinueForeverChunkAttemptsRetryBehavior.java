@@ -13,16 +13,18 @@
  *  ****************************************************************************
  */
 
-package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
+package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
-import com.google.common.util.concurrent.MoreExecutors;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.AbstractBlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
+import java.io.IOException;
 
-import java.util.concurrent.Executors;
+public class ContinueForeverChunkAttemptsRetryBehavior implements RetryBehavior {
+    @Override
+    public void invoke() throws IOException {
+        // intentionally not implemented
+    }
 
-public class SingleThreadedTransferStrategy extends AbstractTransferStrategy {
-    public SingleThreadedTransferStrategy(final BlobStrategy blobStrategy) {
-        super(blobStrategy,  MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor()));
+    @Override
+    public void reset() {
+        // intentionally not implemented
     }
 }

@@ -24,10 +24,16 @@ import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlackPearlChunkAllocationRetryDelayBehavior;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategyMaker;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.ChunkAllocationRetryDelayBehavior;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.ClientDefinedChunkAllocationRetyDelayBehavior;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.ContinueForeverChunkAttemptsRetryBehavior;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialBlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.MaxChunkAttemptsRetryBehavior;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialBlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.RetryBehavior;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.NullChannelPreparable;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.OriginalChannelStrategy;
@@ -56,19 +62,23 @@ public final class TransferStrategyBuilder {
     // The negative number here is a legacy thing whose meaning is to repeat forever
     private static final int NUM_TRANSFER_RETRIES = -1;
 
+    public final static int DEFAULT_CHUNK_ALLOCATION_RETRY_INTERVAL = -1;
+    public final static int DEFAULT_NUM_CHUNK_ALLOCATION_RETRY_ATTEMPTS = -1;
+    public final static int DEFAULT_OBJECT_TRANSFER_ATTEMPTS = 5;
+
     private BlobStrategy blobStrategy;
     private ChannelStrategy channelStrategy;
     private String bucketName;
     private String jobId;
-    private TransferRetryBehavior transferRetryBehavior;
+    private TransferRetryDecorator transferRetryDecorator;
     private ChecksumFunction checksumFunction;
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
     private EventDispatcher eventDispatcher;
     private JobPartTracker jobPartTracker;
     private int numTransferRetries = NUM_TRANSFER_RETRIES;
     private int numConcurrentTransferThreads = MAX_CONCURRENT_TRANSFER_THREADS;
-    private int numChunkAllocationRetries;
-    private int retryDelayInSeconds;
+    private int numChunkAllocationRetries = DEFAULT_NUM_CHUNK_ALLOCATION_RETRY_ATTEMPTS;
+    private int chunkRetryDelayInSeconds = DEFAULT_CHUNK_ALLOCATION_RETRY_INTERVAL;
     private Ds3Client ds3Client;
     private MasterObjectList masterObjectList;
     private Ds3ClientHelpers.ObjectChannelBuilder channelBuilder;
@@ -85,8 +95,8 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
-    public TransferStrategyBuilder withTransferRetryBehavior(final TransferRetryBehavior transferRetryBehavior) {
-        this.transferRetryBehavior = transferRetryBehavior;
+    public TransferStrategyBuilder withTransferRetryDecorator(final TransferRetryDecorator transferRetryDecorator) {
+        this.transferRetryDecorator = transferRetryDecorator;
         return this;
     }
 
@@ -131,7 +141,7 @@ public final class TransferStrategyBuilder {
     }
 
     public TransferStrategyBuilder withRetryDelayInSeconds(final int retryDelayInSeconds) {
-        this.retryDelayInSeconds = retryDelayInSeconds;
+        this.chunkRetryDelayInSeconds = retryDelayInSeconds;
         return this;
     }
 
@@ -164,7 +174,7 @@ public final class TransferStrategyBuilder {
 
         channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
 
-        transferRetryBehavior = makeTransferRetryBehavior();
+        transferRetryDecorator = makeTransferRetryDecorator();
 
         numConcurrentTransferThreads = 1;
 
@@ -173,14 +183,14 @@ public final class TransferStrategyBuilder {
                     @Override
                     public BlobStrategy makeBlobStrategy(final Ds3Client client,
                                                          final MasterObjectList masterObjectList,
-                                                         final int retryAfter,
-                                                         final int retryDelay,
-                                                         final EventDispatcher eventDispatcher) {
+                                                         final EventDispatcher eventDispatcher)
+                    {
                         return new PutSequentialBlobStrategy(ds3Client,
                                 masterObjectList,
-                                numChunkAllocationRetries,
-                                retryDelayInSeconds,
-                                eventDispatcher);
+                                eventDispatcher,
+                                makeChunkAttemptRetryBehavior(),
+                                makeChunkAllocationRetryDelayBehavior()
+                                );
                     }
                 },
                 new TransferMethodMaker() {
@@ -191,12 +201,30 @@ public final class TransferStrategyBuilder {
                 });
     }
 
-    private TransferRetryBehavior makeTransferRetryBehavior() {
+    private TransferRetryDecorator makeTransferRetryDecorator() {
         if (numTransferRetries > 0) {
-            return new MaxNumObjectTransferAttemptsBehavior(numTransferRetries);
+            return new MaxNumObjectTransferAttemptsDecorator(numTransferRetries);
         }
 
-        return new ContinueForeverTransferRetryBehavior();
+        return new ContinueForeverTransferRetryDecorator();
+    }
+
+    private RetryBehavior makeChunkAttemptRetryBehavior() {
+        if (numChunkAllocationRetries > 0) {
+            return new MaxChunkAttemptsRetryBehavior(numChunkAllocationRetries);
+        }
+
+        return new ContinueForeverChunkAttemptsRetryBehavior();
+    }
+
+    private ChunkAllocationRetryDelayBehavior makeChunkAllocationRetryDelayBehavior() {
+        Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
+
+        if (chunkRetryDelayInSeconds > 0) {
+            return new ClientDefinedChunkAllocationRetyDelayBehavior(chunkRetryDelayInSeconds, eventDispatcher);
+        }
+
+        return new BlackPearlChunkAllocationRetryDelayBehavior(eventDispatcher);
     }
 
     private TransferStrategy makeTransferStrategy(final BlobStrategyMaker blobStrategyMaker,
@@ -209,7 +237,7 @@ public final class TransferStrategyBuilder {
         Preconditions.checkNotNull(blobStrategyMaker, "blobStrategyMaker may not be null.");
         Preconditions.checkNotNull(transferMethodMaker, "transferMethodMaker may not be null.");
         Preconditions.checkNotNull(channelStrategy, "channelStrategy may not be null");
-        Preconditions.checkNotNull(transferRetryBehavior, "transferRetryBehavior may not be null");
+        Preconditions.checkNotNull(transferRetryDecorator, "transferRetryDecorator may not be null");
 
         bucketName = masterObjectList.getBucketName();
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
@@ -219,8 +247,6 @@ public final class TransferStrategyBuilder {
 
         blobStrategy = blobStrategyMaker.makeBlobStrategy(ds3Client,
                 masterObjectList,
-                numChunkAllocationRetries,
-                retryDelayInSeconds,
                 eventDispatcher);
 
         eventDispatcher.attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
@@ -253,8 +279,8 @@ public final class TransferStrategyBuilder {
         final TransferMethod transferMethod = new PutJobTransferMethod(channelStrategy,
                 bucketName, jobId, eventDispatcher, checksumFunction, checksumType, metadataAccess);
 
-        if (transferRetryBehavior != null) {
-            return transferRetryBehavior.wrap(transferMethod);
+        if (transferRetryDecorator != null) {
+            return transferRetryDecorator.wrap(transferMethod);
         }
 
         return transferMethod;
@@ -289,7 +315,7 @@ public final class TransferStrategyBuilder {
                     eventDispatcher.emitFailureEvent(FailureEvent.builder()
                             .withObjectNamed(obj.getName())
                             .withCausalException(e)
-                            .usingSystemWithEndpoint(blobStrategy.getClient().getConnectionDetails().getEndpoint())
+                            .usingSystemWithEndpoint(ds3Client.getConnectionDetails().getEndpoint())
                             .doingWhat(FailureEvent.FailureActivity.ComputingChecksum)
                             .build());
                     LOG.error("Error computing checksum.", e);
@@ -307,7 +333,7 @@ public final class TransferStrategyBuilder {
 
         channelStrategy = new OriginalChannelStrategy(channelBuilder, rangesForBlobs, new TruncatingChannelPreparable());
 
-        transferRetryBehavior = makeTransferRetryBehavior();
+        transferRetryDecorator = makeTransferRetryDecorator();
 
         numConcurrentTransferThreads = 1;
 
@@ -316,14 +342,12 @@ public final class TransferStrategyBuilder {
                     @Override
                     public BlobStrategy makeBlobStrategy(final Ds3Client client,
                                                          final MasterObjectList masterObjectList,
-                                                         final int retryAfter,
-                                                         final int retryDelay,
                                                          final EventDispatcher eventDispatcher) {
                         return new GetSequentialBlobStrategy(ds3Client,
                                 masterObjectList,
-                                numChunkAllocationRetries,
-                                retryDelayInSeconds,
-                                eventDispatcher);
+                                eventDispatcher,
+                                makeChunkAttemptRetryBehavior(),
+                                makeChunkAllocationRetryDelayBehavior());
                     }
                 },
                 new TransferMethodMaker() {
@@ -340,8 +364,8 @@ public final class TransferStrategyBuilder {
         final TransferMethod transferMethod = new GetJobNetworkFailureRetryDecorator(channelStrategy,
                 bucketName, jobId, eventDispatcher, rangesForBlobs);
 
-        if (transferRetryBehavior != null) {
-            return transferRetryBehavior.wrap(transferMethod);
+        if (transferRetryDecorator != null) {
+            return transferRetryDecorator.wrap(transferMethod);
         }
 
         return transferMethod;

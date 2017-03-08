@@ -21,7 +21,6 @@ import com.google.common.collect.ImmutableMap;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.commands.spectrads3.AllocateJobChunkSpectraS3Request;
 import com.spectralogic.ds3client.commands.spectrads3.AllocateJobChunkSpectraS3Response;
-import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
@@ -40,20 +39,21 @@ import java.util.UUID;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.buildNodeMap;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
 
-public class PutSequentialBlobStrategy extends BlobStrategy {
-
+public class PutSequentialBlobStrategy extends AbstractBlobStrategy {
     private final static Logger LOG = LoggerFactory.getLogger(PutSequentialBlobStrategy.class);
 
     private final ImmutableMap<UUID, JobNode> uuidJobNodeImmutableMap;
     private final Iterator<Objects> filteredChunkIterator;
 
-    private int retryAfterLeft;
-
-    public PutSequentialBlobStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final EventDispatcher eventDispatcher) {
-        super(client, masterObjectList, retryAfter, retryDelay, eventDispatcher);
+    public PutSequentialBlobStrategy(final Ds3Client client,
+                                     final MasterObjectList masterObjectList,
+                                     final EventDispatcher eventDispatcher,
+                                     final RetryBehavior retryBehavior,
+                                     final ChunkAllocationRetryDelayBehavior chunkAllocationRetryDelayBehavior)
+    {
+        super(client, masterObjectList, eventDispatcher, retryBehavior, chunkAllocationRetryDelayBehavior);
         this.filteredChunkIterator = filterChunks(masterObjectList.getObjects()).iterator();
         this.uuidJobNodeImmutableMap = buildNodeMap(masterObjectList.getNodes());
-        retryAfterLeft = retryAfter;
     }
 
     @Override
@@ -89,28 +89,23 @@ public class PutSequentialBlobStrategy extends BlobStrategy {
                 getClient().allocateJobChunkSpectraS3(new AllocateJobChunkSpectraS3Request(filtered.getChunkId().toString()));
 
         LOG.info("AllocatedJobChunkResponse status: {}", response.getStatus().toString());
+
         switch (response.getStatus()) {
-        case ALLOCATED:
-            retryAfterLeft = getRetryAfter(); // Reset the number of retries to the initial value
-            return response.getObjectsResult();
-        case RETRYLATER:
-            try {
-                if (getRetryAfter() != -1 && retryAfterLeft == 0) {
-                    throw new Ds3NoMoreRetriesException(getRetryAfter());
+            case ALLOCATED:
+                getRetryBehavior().reset();
+                return response.getObjectsResult();
+            case RETRYLATER:
+                getRetryBehavior().invoke();
+
+                try {
+                    getChunkAllocationRetryDelayBehavior().delay(response.getRetryAfterSeconds());
+                } catch (final InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
-                retryAfterLeft--;
 
-                final int retryDelay = computeDelay(response.getRetryAfterSeconds());
-                getEventDispatcher().emitWaitingForChunksEvents(retryDelay);
-
-                LOG.debug("Will retry allocate chunk call after {} seconds", retryDelay);
-                Thread.sleep(retryDelay * 1000);
                 return null;
-            } catch (final InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        default:
-            assert false : "This line of code should be impossible to hit."; return null;
+            default:
+                assert false : "This line of code should be impossible to hit."; return null;
         }
     }
 }

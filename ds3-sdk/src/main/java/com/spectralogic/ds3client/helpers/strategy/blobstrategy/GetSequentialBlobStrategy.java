@@ -24,7 +24,6 @@ import com.google.common.collect.Iterables;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.commands.spectrads3.GetJobChunksReadyForClientProcessingSpectraS3Request;
 import com.spectralogic.ds3client.commands.spectrads3.GetJobChunksReadyForClientProcessingSpectraS3Response;
-import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
@@ -42,8 +41,10 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GetSequentialBlobStrategy extends BlobStrategy {
+public class GetSequentialBlobStrategy extends AbstractBlobStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(GetSequentialBlobStrategy.class);
+
+
 
     private final Set<UUID> processedChunks;
 
@@ -51,8 +52,13 @@ public class GetSequentialBlobStrategy extends BlobStrategy {
     private final Set<String> activeBlobs = new HashSet<>();
     private ImmutableList<JobPart> outstandingJobParts;
 
-    public GetSequentialBlobStrategy(final Ds3Client client, final MasterObjectList masterObjectList, final int retryAfter, final int retryDelay, final EventDispatcher eventDispatcher) {
-        super(client, masterObjectList, retryAfter, retryDelay, eventDispatcher);
+    public GetSequentialBlobStrategy(final Ds3Client client,
+                                     final MasterObjectList masterObjectList,
+                                     final EventDispatcher eventDispatcher,
+                                     final RetryBehavior retryBehavior,
+                                     final ChunkAllocationRetryDelayBehavior chunkAllocationRetryDelayBehavior)
+    {
+        super(client, masterObjectList, eventDispatcher, retryBehavior, chunkAllocationRetryDelayBehavior);
         this.processedChunks = new HashSet<>();
     }
 
@@ -66,6 +72,10 @@ public class GetSequentialBlobStrategy extends BlobStrategy {
             LOG.info("There is nothing to transfer for job " + jobId);
         }
 
+        return getJobPartsForBlobsNotYetProcessed(available);
+    }
+
+    private Iterable<JobPart> getJobPartsForBlobsNotYetProcessed(final MasterObjectList available) {
         final ImmutableMap<UUID, JobNode> jobNodes = StrategyUtils.buildNodeMap(available.getNodes());
 
         // filter any chunks that have been processed
@@ -132,22 +142,20 @@ public class GetSequentialBlobStrategy extends BlobStrategy {
     }
 
     private MasterObjectList getAvailable() throws IOException, InterruptedException {
-        int retryAfterLeft = getRetryAfter();
         do {
             final GetJobChunksReadyForClientProcessingSpectraS3Response availableJobChunks =
                     getClient().getJobChunksReadyForClientProcessingSpectraS3(new GetJobChunksReadyForClientProcessingSpectraS3Request(getMasterObjectList().getJobId().toString()));
+
             switch (availableJobChunks.getStatus()) {
                 case AVAILABLE: {
+                    getRetryBehavior().reset();
                     return availableJobChunks.getMasterObjectListResult();
                 }
                 case RETRYLATER: {
-                    if (retryAfterLeft == 0) {
-                        throw new Ds3NoMoreRetriesException(getRetryAfter());
-                    }
-                    retryAfterLeft--;
-                    final int secondsToDelay = computeDelay(availableJobChunks.getRetryAfterSeconds());
-                    getEventDispatcher().emitWaitingForChunksEvents(secondsToDelay);
-                    Thread.sleep(secondsToDelay * 1000);
+                    getRetryBehavior().invoke();
+
+                    getChunkAllocationRetryDelayBehavior().delay(availableJobChunks.getRetryAfterSeconds());
+
                     continue;
                 }
                 default:

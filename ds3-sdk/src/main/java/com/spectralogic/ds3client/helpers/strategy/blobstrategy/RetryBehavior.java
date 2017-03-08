@@ -13,8 +13,11 @@
  *  ****************************************************************************
  */
 
-package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
+package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
-public interface TransferRetryBehavior extends TransferMethod {
-    TransferMethod wrap(final TransferMethod transferMethod);
+import java.io.IOException;
+
+public interface RetryBehavior {
+    void invoke() throws IOException;
+    void reset();
 }
