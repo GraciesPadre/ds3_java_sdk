@@ -75,6 +75,29 @@ public class GetSequentialBlobStrategy extends AbstractBlobStrategy {
         return getJobPartsForBlobsNotYetProcessed(available);
     }
 
+    private MasterObjectList getAvailable() throws IOException, InterruptedException {
+        do {
+            final GetJobChunksReadyForClientProcessingSpectraS3Response availableJobChunks =
+                    client().getJobChunksReadyForClientProcessingSpectraS3(new GetJobChunksReadyForClientProcessingSpectraS3Request(masterObjectList().getJobId().toString()));
+
+            switch (availableJobChunks.getStatus()) {
+                case AVAILABLE: {
+                    retryBehavior().reset();
+                    return availableJobChunks.getMasterObjectListResult();
+                }
+                case RETRYLATER: {
+                    retryBehavior().invoke();
+
+                    chunkAttemptRetryDelayBehavior().delay(availableJobChunks.getRetryAfterSeconds());
+
+                    continue;
+                }
+                default:
+                    assert false : "This line of code should be impossible to hit.";
+            }
+        } while(true);
+    }
+
     private Iterable<JobPart> getJobPartsForBlobsNotYetProcessed(final MasterObjectList available) {
         final ImmutableMap<UUID, JobNode> jobNodes = StrategyUtils.buildNodeMap(available.getNodes());
 
@@ -97,7 +120,7 @@ public class GetSequentialBlobStrategy extends AbstractBlobStrategy {
                     @Override
                     public JobPart apply(@Nullable final BulkObject blob) {
                         return new JobPart(
-                                StrategyUtils.getClient(jobNodes, objects.getNodeId(), getClient()),
+                                StrategyUtils.getClient(jobNodes, objects.getNodeId(), client()),
                                 blob);
                     }
                 });
@@ -140,28 +163,4 @@ public class GetSequentialBlobStrategy extends AbstractBlobStrategy {
             activeBlobs.remove(bulkObject.getName());
         }
     }
-
-    private MasterObjectList getAvailable() throws IOException, InterruptedException {
-        do {
-            final GetJobChunksReadyForClientProcessingSpectraS3Response availableJobChunks =
-                    getClient().getJobChunksReadyForClientProcessingSpectraS3(new GetJobChunksReadyForClientProcessingSpectraS3Request(getMasterObjectList().getJobId().toString()));
-
-            switch (availableJobChunks.getStatus()) {
-                case AVAILABLE: {
-                    getRetryBehavior().reset();
-                    return availableJobChunks.getMasterObjectListResult();
-                }
-                case RETRYLATER: {
-                    getRetryBehavior().invoke();
-
-                    getChunkAttemptRetryDelayBehavior().delay(availableJobChunks.getRetryAfterSeconds());
-
-                    continue;
-                }
-                default:
-                    assert false : "This line of code should be impossible to hit.";
-            }
-        } while(true);
-    }
-
 }

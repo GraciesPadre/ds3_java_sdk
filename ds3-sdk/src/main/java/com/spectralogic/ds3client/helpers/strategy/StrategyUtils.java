@@ -66,13 +66,13 @@ public final class StrategyUtils {
     /**
      * Filters out chunks that have already been completed.  We will get the same chunk name back from the server, but it
      * will not have any objects in it, so we remove that from the list of objects that are returned.
-     * @param objectsList The list to be filtered
+     * @param chunks The list to be filtered
      * @return The filtered list
      */
-    public static ImmutableList<Objects> filterChunks(final Iterable<Objects> objectsList) {
+    public static ImmutableList<Objects> filterChunks(final Iterable<Objects> chunks) {
         final ImmutableList.Builder<Objects> builder = ImmutableList.builder();
-        for (final Objects objects : objectsList) {
-            final Objects filteredChunk = filterChunk(objects);
+        for (final Objects chunk : chunks) {
+            final Objects filteredChunk = filterChunk(chunk);
             if (filteredChunk.getObjects().size() > 0) {
                 builder.add(filteredChunk);
             }
@@ -80,29 +80,23 @@ public final class StrategyUtils {
         return builder.build();
     }
 
-    private static Objects filterChunk(final Objects objects) {
-        final Objects newObjects = new Objects();
-        newObjects.setChunkId(objects.getChunkId());
-        newObjects.setChunkNumber(objects.getChunkNumber());
-        newObjects.setNodeId(objects.getNodeId());
-        newObjects.setObjects(filterObjects(objects.getObjects()));
-        return newObjects;
+    private static Objects filterChunk(final Objects chunk) {
+        final Objects newChunk = new Objects();
+        newChunk.setChunkId(chunk.getChunkId());
+        newChunk.setChunkNumber(chunk.getChunkNumber());
+        newChunk.setNodeId(chunk.getNodeId());
+        newChunk.setObjects(filterObjects(chunk.getObjects()));
+        return newChunk;
     }
 
-    private static ImmutableList<BulkObject> filterObjects(final List<BulkObject> list) {
+    private static ImmutableList<BulkObject> filterObjects(final List<BulkObject> blobs) {
         final ImmutableList.Builder<BulkObject> builder = ImmutableList.builder();
-        for (final BulkObject obj : list) {
-            if (!obj.getInCache()) {
-                builder.add(obj);
+        for (final BulkObject blob : blobs) {
+            if (!blob.getInCache()) {
+                builder.add(blob);
             }
         }
         return builder.build();
-    }
-
-    public static InputStream makeResettableInputStream(final InputStream inputStream) {
-        final InputStream result = inputStream.markSupported() ? inputStream : new BufferedInputStream(inputStream);
-        result.mark(Integer.MAX_VALUE);
-        return result;
     }
 
     public static Path resolveForSymbolic(final Path path) throws IOException {
@@ -118,35 +112,6 @@ public final class StrategyUtils {
             return simLink;
         }
         return path;
-    }
-
-    public static Path extractPath(final Object anObject) {
-        Path result = Paths.get(".");
-
-        Object fieldValue = getFieldValue(anObject, "path");
-        if (fieldValue != null) {
-            result = (Path)fieldValue;
-        } else {
-            fieldValue = getFieldValue(anObject, "basePath");
-            if (fieldValue != null) {
-                final String fieldValueString = (String)fieldValue;
-                final URL resourceUrl = ResourceUtils.class.getClassLoader().getResource(fieldValueString);
-
-                try {
-                    result = Paths.get(resourceUrl.toURI());
-                } catch (final URISyntaxException e) {
-                    LOG.info("Could not buildBlockingQueueThrottlingStrategy path to resource.", e);
-                }
-            } else {
-                fieldValue = getFieldValue(anObject, "root");
-                if (fieldValue != null) {
-                    result = (Path)fieldValue;
-                }
-
-            }
-        }
-
-        return result;
     }
 
     private static Object getFieldValue(final Object anObject, final String fieldName) {

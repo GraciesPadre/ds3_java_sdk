@@ -15,19 +15,11 @@
 
 package com.spectralogic.ds3client.helpers;
 
-import com.google.common.collect.ImmutableList;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.Job;
-import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.ChecksumObserver;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.DataTransferredObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.FailureEventObserver;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.ObjectCompletedObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.WaitingForChunksObserver;
-import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.MasterObjectList;
 import com.spectralogic.ds3client.models.Objects;
 
@@ -35,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 
 abstract class JobImpl implements Job {
@@ -44,9 +35,7 @@ abstract class JobImpl implements Job {
     protected final Ds3Client client;
     protected final MasterObjectList masterObjectList;
     protected boolean running = false;
-    protected int maxParallelRequests = 10;
 
-    private final JobPartTracker jobPartTracker;
     private final EventDispatcher eventDispatcher;
 
     private final TransferStrategyBuilder transferStrategyBuilder;
@@ -54,15 +43,12 @@ abstract class JobImpl implements Job {
     public JobImpl(final TransferStrategyBuilder transferStrategyBuilder,
                    final Ds3Client client,
                    final MasterObjectList masterObjectList,
-                   final EventRunner eventRunner,
                    final EventDispatcher eventDispatcher)
     {
         this.transferStrategyBuilder = transferStrategyBuilder;
         this.client = client;
         this.masterObjectList = masterObjectList;
         this.eventDispatcher = eventDispatcher;
-
-        jobPartTracker = makeJobPartTracker(getChunks(masterObjectList), eventRunner);
     }
     
     @Override
@@ -154,10 +140,9 @@ abstract class JobImpl implements Job {
     @Override
     public void transfer(final Ds3ClientHelpers.ObjectChannelBuilder channelBuilder) throws IOException {
         transferStrategyBuilder.withChannelBuilder(channelBuilder);
-        transferStrategyBuilder.withJobPartTracker(getJobPartTracker());
     }
 
-    protected TransferStrategyBuilder getTransferStrategyBuilder() {
+    protected TransferStrategyBuilder transferStrategyBuilder() {
         return transferStrategyBuilder;
     }
 
@@ -187,22 +172,7 @@ abstract class JobImpl implements Job {
         return "unnamed object";
     }
 
-    protected static ImmutableList<BulkObject> getAllBlobApiBeans(final List<Objects> jobWithChunksApiBeans) {
-        final ImmutableList.Builder<BulkObject> builder = ImmutableList.builder();
-        for (final Objects objects : jobWithChunksApiBeans) {
-            builder.addAll(objects.getObjects());
-        }
-        return builder.build();
-    }
-
-    protected abstract List<Objects> getChunks(final MasterObjectList masterObjectList);
-    protected abstract JobPartTracker makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner);
-
     protected EventDispatcher getEventDispatcher() {
         return eventDispatcher;
-    }
-
-    protected JobPartTracker getJobPartTracker() {
-        return jobPartTracker != null ? jobPartTracker : new NullJobPartTracker();
     }
 }

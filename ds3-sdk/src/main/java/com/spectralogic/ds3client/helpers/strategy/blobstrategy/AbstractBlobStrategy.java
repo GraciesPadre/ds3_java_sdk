@@ -52,23 +52,23 @@ public abstract class AbstractBlobStrategy implements BlobStrategy {
 
     public abstract void blobCompleted(final BulkObject bulkObject);
 
-    public Ds3Client getClient() {
+    public Ds3Client client() {
         return client;
     }
 
-    public EventDispatcher getEventDispatcher() {
+    public EventDispatcher eventDispatcher() {
         return eventDispatcher;
     }
 
-    public MasterObjectList getMasterObjectList() {
+    public MasterObjectList masterObjectList() {
         return masterObjectList;
     }
 
-    public RetryBehavior getRetryBehavior() {
+    public RetryBehavior retryBehavior() {
         return retryBehavior;
     }
 
-    public ChunkAttemptRetryDelayBehavior getChunkAttemptRetryDelayBehavior() {
+    public ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior() {
         return chunkAttemptRetryDelayBehavior;
     }
 }

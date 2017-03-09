@@ -16,14 +16,20 @@
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Iterables;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
+import com.spectralogic.ds3client.helpers.JobPartTrackerFactory;
+import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.ObjectPart;
+import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
+import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlackPearlChunkAttemptRetryDelayBehavior;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategyMaker;
@@ -41,11 +47,13 @@ import com.spectralogic.ds3client.helpers.strategy.channelstrategy.TruncatingCha
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.models.MasterObjectList;
+import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.utils.Guard;
 import com.spectralogic.ds3client.utils.SeekableByteChannelInputStream;
 import com.spectralogic.ds3client.utils.hashing.ChecksumUtils;
 import com.spectralogic.ds3client.utils.hashing.Hasher;
+import com.spectralogic.ds3client.helpers.JobState;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +61,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.ByteChannel;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class TransferStrategyBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(TransferStrategyBuilder.class);
@@ -82,6 +92,7 @@ public final class TransferStrategyBuilder {
     private Ds3ClientHelpers.MetadataAccess metadataAccess;
     private RetryBehavior chunkAttemptRetryBehavior;
     private ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior;
+    private EventRunner eventRunner;
 
     public TransferStrategyBuilder withChannelStrategy(final ChannelStrategy channelStrategy) {
         this.channelStrategy = channelStrategy;
@@ -98,11 +109,6 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
-    public TransferStrategyBuilder withJobId(final String jobId) {
-        this.jobId = jobId;
-        return this;
-    }
-
     public TransferStrategyBuilder withChecksumFunction(final ChecksumFunction checksumFunction) {
         this.checksumFunction = checksumFunction;
         return this;
@@ -115,11 +121,6 @@ public final class TransferStrategyBuilder {
 
     public TransferStrategyBuilder withEventDispatcher(final EventDispatcher eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
-        return this;
-    }
-
-    public TransferStrategyBuilder withJobPartTracker(final JobPartTracker jobPartTracker) {
-        this.jobPartTracker = jobPartTracker;
         return this;
     }
 
@@ -150,6 +151,7 @@ public final class TransferStrategyBuilder {
 
     public TransferStrategyBuilder withMasterObjectList(final MasterObjectList masterObjectList) {
         this.masterObjectList = masterObjectList;
+        jobId = masterObjectList.getJobId().toString();
         return this;
     }
 
@@ -173,12 +175,19 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
+    public TransferStrategyBuilder withEventRunner(final EventRunner eventRunner) {
+        this.eventRunner = eventRunner;
+        return this;
+    }
+
     // TODO: implement these
     // public TransferStrategy makePutSequentialTransferStrategy() { }
     // public TransferStrategy makePutRandomTransferStrategy() { }
 
     public TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
+
+        makeJobStateForPutJob();
 
         channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
 
@@ -205,6 +214,43 @@ public final class TransferStrategyBuilder {
                         return makePutTransferMethod();
                     }
                 });
+    }
+
+    public JobState makeJobStateForPutJob() {
+        Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
+        Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
+        Preconditions.checkNotNull(eventRunner, "eventRunner may not be null.");
+
+        List<Objects> chunks = masterObjectList.getObjects();
+
+        if (chunks == null) {
+            chunks = new ArrayList<>();
+        }
+
+        final List<Objects> chunksNotYetCompleted = StrategyUtils.filterChunks(chunks);
+
+        if (jobPartTracker == null) {
+            final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(Iterables.concat(getBlobs(chunksNotYetCompleted)), eventRunner);
+
+            result.attachObjectCompletedListener(new ObjectCompletedListener() {
+                @Override
+                public void objectCompleted(final String name) {
+                    eventDispatcher.emitObjectCompletedEvent(name);
+                }
+            });
+
+            jobPartTracker = result;
+        }
+
+        return new JobState(chunksNotYetCompleted, jobPartTracker);
+    }
+
+    private static ImmutableList<BulkObject> getBlobs(final List<Objects> chunks) {
+        final ImmutableList.Builder<BulkObject> builder = ImmutableList.builder();
+        for (final Objects objects : chunks) {
+            builder.addAll(objects.getObjects());
+        }
+        return builder.build();
     }
 
     private TransferRetryDecorator getOrMakeTransferRetryDecorator() {
@@ -258,6 +304,7 @@ public final class TransferStrategyBuilder {
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
         Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null");
         Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
+        Preconditions.checkState( ! Guard.isStringNullOrEmpty(jobId), "jobId may not be null or an emptystring");
         Preconditions.checkNotNull(blobStrategyMaker, "blobStrategyMaker may not be null.");
         Preconditions.checkNotNull(transferMethodMaker, "transferMethodMaker may not be null.");
         Preconditions.checkNotNull(channelStrategy, "channelStrategy may not be null");
@@ -266,7 +313,6 @@ public final class TransferStrategyBuilder {
         bucketName = masterObjectList.getBucketName();
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
 
-        jobId = getJobId();
         Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
 
         blobStrategy = blobStrategyMaker.makeBlobStrategy(ds3Client,
@@ -291,14 +337,6 @@ public final class TransferStrategyBuilder {
         }
 
         return transferStrategy;
-    }
-
-    private String getJobId() {
-        if (Guard.isStringNullOrEmpty(jobId)) {
-            jobId = masterObjectList.getJobId().toString();
-        }
-
-        return jobId;
     }
 
     private TransferMethod makePutTransferMethod() {
@@ -367,6 +405,8 @@ public final class TransferStrategyBuilder {
 
         getOrMakeTransferRetryDecorator();
 
+        makeJobStateForGetJob();
+
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
                     @Override
@@ -386,6 +426,29 @@ public final class TransferStrategyBuilder {
                         return makeGetTransferMethod();
                     }
                 });
+    }
+
+    public JobState makeJobStateForGetJob() {
+        Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
+        Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
+        Preconditions.checkNotNull(eventRunner, "eventRunner may not be null.");
+
+        final List<Objects> chunks = masterObjectList.getObjects();
+
+        if (jobPartTracker == null) {
+            final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(getBlobs(chunks), eventRunner);
+
+            result.attachObjectCompletedListener(new ObjectCompletedListener() {
+                @Override
+                public void objectCompleted(final String name) {
+                    eventDispatcher.emitObjectCompletedEvent(name);
+                }
+            });
+
+            jobPartTracker = result;
+        }
+
+        return new JobState(chunks, jobPartTracker);
     }
 
     private TransferMethod makeGetTransferMethod() {

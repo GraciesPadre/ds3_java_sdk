@@ -22,7 +22,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
-class JobState {
+public class JobState {
     private final AtomicInteger objectsRemaining;
     private final JobPartTracker partTracker;
 

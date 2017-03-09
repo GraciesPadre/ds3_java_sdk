@@ -128,9 +128,10 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withNumTransferRetries(maxObjectTransferAttempts)
                 .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
                 .withChecksumType(options.getChecksumType())
+                .withEventRunner(eventRunner)
                 .withEventDispatcher(eventDispatcher);
 
-        return new WriteJobImpl(transferStrategyBuilder, client, putBulkJobSpectraS3Response.getResult(), eventRunner, eventDispatcher);
+        return new WriteJobImpl(transferStrategyBuilder, client, putBulkJobSpectraS3Response.getResult(), eventDispatcher);
     }
 
     @Override
@@ -165,13 +166,13 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withNumChunkAttemptRetries(maxChunkAttempts)
                 .withNumTransferRetries(maxObjectTransferAttempts)
                 .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
+                .withEventRunner(eventRunner)
                 .withEventDispatcher(eventDispatcher);
 
         return new ReadJobImpl(transferStrategyBuilder,
                 this.client,
                 getBulkJobSpectraS3Response.getResult(),
                 partialRanges,
-                this.eventRunner,
                 eventDispatcher);
     }
 
@@ -218,11 +219,12 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withNumTransferRetries(maxObjectTransferAttempts)
                 .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
                 .withChecksumType(ChecksumType.Type.NONE)
+                .withEventRunner(eventRunner)
                 .withEventDispatcher(eventDispatcher);
 
 
         return new WriteJobImpl(transferStrategyBuilder,
-                client, jobResponse.getMasterObjectListResult(), eventRunner, eventDispatcher);
+                client, jobResponse.getMasterObjectListResult(), eventDispatcher);
     }
 
     @Override
@@ -243,13 +245,13 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withNumChunkAttemptRetries(maxChunkAttempts)
                 .withNumTransferRetries(maxObjectTransferAttempts)
                 .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
+                .withEventRunner(eventRunner)
                 .withEventDispatcher(eventDispatcher);
 
         return new ReadJobImpl(transferStrategyBuilder,
                 this.client,
                 jobResponse.getMasterObjectListResult(),
                 ImmutableMultimap.<String, Range>of(),
-                this.eventRunner,
                 eventDispatcher);
     }
 

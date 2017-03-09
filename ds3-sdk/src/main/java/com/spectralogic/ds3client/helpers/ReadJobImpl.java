@@ -39,10 +39,9 @@ class ReadJobImpl extends JobImpl {
                        final Ds3Client client,
                        final MasterObjectList masterObjectList,
                        final ImmutableMultimap<String, Range> objectRanges,
-                       final EventRunner eventRunner,
                        final EventDispatcher eventDispatcher)
     {
-        super(transferStrategyBuilder, client, masterObjectList, eventRunner, eventDispatcher);
+        super(transferStrategyBuilder, client, masterObjectList, eventDispatcher);
 
         this.rangesForBlobs = PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), objectRanges);
     }
@@ -77,12 +76,12 @@ class ReadJobImpl extends JobImpl {
 
             super.transfer(channelBuilder);
 
-            getTransferStrategyBuilder().withRangesForBlobs(rangesForBlobs);
+            transferStrategyBuilder().withRangesForBlobs(rangesForBlobs);
 
             try {
-                final JobState jobState = new JobState(this.masterObjectList.getObjects(), getJobPartTracker());
+                final JobState jobState = transferStrategyBuilder().makeJobStateForGetJob();
 
-                try (final TransferStrategy transferStrategy = getTransferStrategyBuilder().makeOriginalSdkSemanticsGetTransferStrategy()) {
+                try (final TransferStrategy transferStrategy = transferStrategyBuilder().makeOriginalSdkSemanticsGetTransferStrategy()) {
                     while (jobState.hasObjects()) {
                         transferStrategy.transfer();
                     }
@@ -96,24 +95,5 @@ class ReadJobImpl extends JobImpl {
             emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.GettingObject, t, masterObjectList.getObjects().get(0)));
             throw t;
         }
-    }
-
-    @Override
-    protected List<Objects> getChunks(final MasterObjectList masterObjectList) {
-        return masterObjectList.getObjects();
-    }
-
-    @Override
-    protected JobPartTracker makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner) {
-        final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(getAllBlobApiBeans(chunks), eventRunner);
-
-        result.attachObjectCompletedListener(new ObjectCompletedListener() {
-            @Override
-            public void objectCompleted(final String name) {
-                getEventDispatcher().emitObjectCompletedEvent(name);
-            }
-        });
-
-        return result;
     }
 }

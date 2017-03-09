@@ -66,14 +66,9 @@ public class PutSequentialBlobStrategy extends AbstractBlobStrategy {
             @Override
             public JobPart apply(@Nullable final BulkObject input) {
 
-                return new JobPart(StrategyUtils.getClient(uuidJobNodeImmutableMap,nextChunk.getNodeId(), getClient()), input);
+                return new JobPart(StrategyUtils.getClient(uuidJobNodeImmutableMap,nextChunk.getNodeId(), client()), input);
             }
         });
-    }
-
-    @Override
-    public void blobCompleted(final BulkObject bulkObject) {
-
     }
 
     private Objects allocateChunk(final Objects filtered) throws IOException {
@@ -86,19 +81,19 @@ public class PutSequentialBlobStrategy extends AbstractBlobStrategy {
 
     private Objects tryAllocateChunk(final Objects filtered) throws IOException {
         final AllocateJobChunkSpectraS3Response response =
-                getClient().allocateJobChunkSpectraS3(new AllocateJobChunkSpectraS3Request(filtered.getChunkId().toString()));
+                client().allocateJobChunkSpectraS3(new AllocateJobChunkSpectraS3Request(filtered.getChunkId().toString()));
 
         LOG.info("AllocatedJobChunkResponse status: {}", response.getStatus().toString());
 
         switch (response.getStatus()) {
             case ALLOCATED:
-                getRetryBehavior().reset();
+                retryBehavior().reset();
                 return response.getObjectsResult();
             case RETRYLATER:
-                getRetryBehavior().invoke();
+                retryBehavior().invoke();
 
                 try {
-                    getChunkAttemptRetryDelayBehavior().delay(response.getRetryAfterSeconds());
+                    chunkAttemptRetryDelayBehavior().delay(response.getRetryAfterSeconds());
                 } catch (final InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -107,5 +102,10 @@ public class PutSequentialBlobStrategy extends AbstractBlobStrategy {
             default:
                 assert false : "This line of code should be impossible to hit."; return null;
         }
+    }
+
+    @Override
+    public void blobCompleted(final BulkObject bulkObject) {
+
     }
 }

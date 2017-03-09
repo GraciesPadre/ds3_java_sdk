@@ -15,44 +15,30 @@
 
 package com.spectralogic.ds3client.helpers;
 
-import com.google.common.collect.Iterables;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
-import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.models.*;
-import com.spectralogic.ds3client.models.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
-
-import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
 
 class WriteJobImpl extends JobImpl {
     static private final Logger LOG = LoggerFactory.getLogger(WriteJobImpl.class);
 
-    private List<Objects> filteredChunks;
-
     private Ds3ClientHelpers.MetadataAccess metadataAccess = null;
     private ChecksumFunction checksumFunction = null;
 
-    // TODO: Get rid of all the ctor args other transferStrategy when super no longer needs them
-    // TODO: May need to continue calling out event dispatcher separately.  Part of the job interface
-    // allows for attaching events before the user calls startWriteJob, which is what causes the
-    // creation of JobImpl.  May be have a jbb event dispatcher registrar?  The job id is in the master
-    // object list.
     public WriteJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
                         final Ds3Client client,
                         final MasterObjectList masterObjectList,
-                        final EventRunner eventRunner,
                         final EventDispatcher eventDispatcher)
     {
-        super(transferStrategyBuilder, client, masterObjectList, eventRunner, eventDispatcher);
+        super(transferStrategyBuilder, client, masterObjectList, eventDispatcher);
     }
 
     @Override
@@ -87,13 +73,13 @@ class WriteJobImpl extends JobImpl {
 
             LOG.debug("Starting job transfer");
 
-            getTransferStrategyBuilder().withChecksumFunction(checksumFunction);
-            getTransferStrategyBuilder().withMetadataAccess(metadataAccess);
+            transferStrategyBuilder().withChecksumFunction(checksumFunction);
+            transferStrategyBuilder().withMetadataAccess(metadataAccess);
 
             try {
-                final JobState jobState = new JobState(filteredChunks, getJobPartTracker());
+                final JobState jobState = transferStrategyBuilder().makeJobStateForPutJob();
 
-                try (final TransferStrategy transferStrategy = getTransferStrategyBuilder().makeOriginalSdkSemanticsPutTransferStrategy()) {
+                try (final TransferStrategy transferStrategy = transferStrategyBuilder().makeOriginalSdkSemanticsPutTransferStrategy()) {
                     while (jobState.hasObjects()) {
                         transferStrategy.transfer();
                     }
@@ -107,38 +93,6 @@ class WriteJobImpl extends JobImpl {
             emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.PuttingObject, t, masterObjectList.getObjects().get(0)));
             throw t;
         }
-    }
-
-    @Override
-    protected List<Objects> getChunks(final MasterObjectList masterObjectList) {
-        if (masterObjectList == null || masterObjectList.getObjects() == null) {
-            LOG.info("Job has no data to transfer");
-            return null;
-        }
-
-        LOG.info("Ready to start transfer for job {} with {} chunks", masterObjectList.getJobId().toString(), masterObjectList.getObjects().size());
-
-        filteredChunks = filterChunks(masterObjectList.getObjects());
-
-        return filteredChunks;
-    }
-
-    @Override
-    protected JobPartTracker makeJobPartTracker(final List<Objects> chunks, final EventRunner eventRunner) {
-        if (chunks == null) {
-            return null;
-        }
-
-        final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(Iterables.concat(getAllBlobApiBeans(filteredChunks)), eventRunner);
-
-        result.attachObjectCompletedListener(new ObjectCompletedListener() {
-            @Override
-            public void objectCompleted(final String name) {
-                getEventDispatcher().emitObjectCompletedEvent(name);
-            }
-        });
-
-        return result;
     }
 }
 
