@@ -15,7 +15,6 @@
 
 package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
-public interface ChunkAllocationRetryDelayBehavior {
+public interface ChunkAttemptRetryDelayBehavior {
     void delay(final int delayIntervalInSeconds) throws InterruptedException;
-    int getDelayIntervalInSeconds();
 }

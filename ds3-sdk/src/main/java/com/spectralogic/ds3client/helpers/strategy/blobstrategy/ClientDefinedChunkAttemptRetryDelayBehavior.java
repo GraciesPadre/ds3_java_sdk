@@ -6,14 +6,14 @@ import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatc
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ClientDefinedChunkAllocationRetyDelayBehavior implements ChunkAllocationRetryDelayBehavior {
-    private static final Logger LOG = LoggerFactory.getLogger(ClientDefinedChunkAllocationRetyDelayBehavior.class);
+public class ClientDefinedChunkAttemptRetryDelayBehavior implements ChunkAttemptRetryDelayBehavior {
+    private static final Logger LOG = LoggerFactory.getLogger(ClientDefinedChunkAttemptRetryDelayBehavior.class);
 
     private final int clientDefinedDelayInSeconds;
     private final EventDispatcher eventDispatcher;
 
-    public ClientDefinedChunkAllocationRetyDelayBehavior(final int clientDefinedDelayInSeconds,
-                                                         final EventDispatcher eventDispatcher)
+    public ClientDefinedChunkAttemptRetryDelayBehavior(final int clientDefinedDelayInSeconds,
+                                                       final EventDispatcher eventDispatcher)
     {
         Preconditions.checkState(clientDefinedDelayInSeconds >= 0, "clientDefinedDelayInSeconds must be >= 0");
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null");
@@ -31,10 +31,5 @@ public class ClientDefinedChunkAllocationRetyDelayBehavior implements ChunkAlloc
         eventDispatcher.emitWaitingForChunksEvents(clientDefinedDelayInSeconds);
 
         Thread.sleep(clientDefinedDelayInSeconds * 1000);
-    }
-
-    @Override
-    public int getDelayIntervalInSeconds() {
-        return clientDefinedDelayInSeconds;
     }
 }

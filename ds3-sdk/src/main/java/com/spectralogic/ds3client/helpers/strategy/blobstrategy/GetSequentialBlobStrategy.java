@@ -56,9 +56,9 @@ public class GetSequentialBlobStrategy extends AbstractBlobStrategy {
                                      final MasterObjectList masterObjectList,
                                      final EventDispatcher eventDispatcher,
                                      final RetryBehavior retryBehavior,
-                                     final ChunkAllocationRetryDelayBehavior chunkAllocationRetryDelayBehavior)
+                                     final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior)
     {
-        super(client, masterObjectList, eventDispatcher, retryBehavior, chunkAllocationRetryDelayBehavior);
+        super(client, masterObjectList, eventDispatcher, retryBehavior, chunkAttemptRetryDelayBehavior);
         this.processedChunks = new HashSet<>();
     }
 
@@ -154,7 +154,7 @@ public class GetSequentialBlobStrategy extends AbstractBlobStrategy {
                 case RETRYLATER: {
                     getRetryBehavior().invoke();
 
-                    getChunkAllocationRetryDelayBehavior().delay(availableJobChunks.getRetryAfterSeconds());
+                    getChunkAttemptRetryDelayBehavior().delay(availableJobChunks.getRetryAfterSeconds());
 
                     continue;
                 }

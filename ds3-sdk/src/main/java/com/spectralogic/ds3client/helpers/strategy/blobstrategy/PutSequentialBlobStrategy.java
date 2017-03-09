@@ -49,9 +49,9 @@ public class PutSequentialBlobStrategy extends AbstractBlobStrategy {
                                      final MasterObjectList masterObjectList,
                                      final EventDispatcher eventDispatcher,
                                      final RetryBehavior retryBehavior,
-                                     final ChunkAllocationRetryDelayBehavior chunkAllocationRetryDelayBehavior)
+                                     final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior)
     {
-        super(client, masterObjectList, eventDispatcher, retryBehavior, chunkAllocationRetryDelayBehavior);
+        super(client, masterObjectList, eventDispatcher, retryBehavior, chunkAttemptRetryDelayBehavior);
         this.filteredChunkIterator = filterChunks(masterObjectList.getObjects()).iterator();
         this.uuidJobNodeImmutableMap = buildNodeMap(masterObjectList.getNodes());
     }
@@ -98,7 +98,7 @@ public class PutSequentialBlobStrategy extends AbstractBlobStrategy {
                 getRetryBehavior().invoke();
 
                 try {
-                    getChunkAllocationRetryDelayBehavior().delay(response.getRetryAfterSeconds());
+                    getChunkAttemptRetryDelayBehavior().delay(response.getRetryAfterSeconds());
                 } catch (final InterruptedException e) {
                     throw new RuntimeException(e);
                 }

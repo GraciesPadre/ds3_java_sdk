@@ -16,14 +16,11 @@
 package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import com.spectralogic.ds3client.Ds3Client;
-import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.BlobTransferredEventObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.UpdateStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.MasterObjectList;
-
-import java.io.IOException;
 
 public abstract class AbstractBlobStrategy implements BlobStrategy {
 
@@ -31,19 +28,19 @@ public abstract class AbstractBlobStrategy implements BlobStrategy {
     private final MasterObjectList masterObjectList;
     private final EventDispatcher eventDispatcher;
     private final RetryBehavior retryBehavior;
-    private final ChunkAllocationRetryDelayBehavior chunkAllocationRetryDelayBehavior;
+    private final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior;
 
     public AbstractBlobStrategy(final Ds3Client client,
                                 final MasterObjectList masterObjectList,
                                 final EventDispatcher eventDispatcher,
                                 final RetryBehavior retryBehavior,
-                                final ChunkAllocationRetryDelayBehavior chunkAllocationRetryDelayBehavior)
+                                final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior)
     {
         this.client = client;
         this.masterObjectList = masterObjectList;
         this.eventDispatcher = eventDispatcher;
         this.retryBehavior = retryBehavior;
-        this.chunkAllocationRetryDelayBehavior = chunkAllocationRetryDelayBehavior;
+        this.chunkAttemptRetryDelayBehavior = chunkAttemptRetryDelayBehavior;
 
         eventDispatcher.attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
             @Override
@@ -71,7 +68,7 @@ public abstract class AbstractBlobStrategy implements BlobStrategy {
         return retryBehavior;
     }
 
-    public ChunkAllocationRetryDelayBehavior getChunkAllocationRetryDelayBehavior() {
-        return chunkAllocationRetryDelayBehavior;
+    public ChunkAttemptRetryDelayBehavior getChunkAttemptRetryDelayBehavior() {
+        return chunkAttemptRetryDelayBehavior;
     }
 }

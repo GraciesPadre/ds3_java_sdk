@@ -56,32 +56,32 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
     private final static int DEFAULT_LIST_OBJECTS_RETRIES = 5;
 
     private final Ds3Client client;
-    private final int maxNumChunkAllocationAttempts;
-    private final int secondsBetweenChunkAllocationAttempts;
-    private final int maxNumObjectTransferAttempts;
+    private final int maxChunkAttempts;
+    private final int secondsBetweenChunkAttempts;
+    private final int maxObjectTransferAttempts;
     private final EventRunner eventRunner;
 
     public Ds3ClientHelpersImpl(final Ds3Client client) {
-        this(client, TransferStrategyBuilder.DEFAULT_CHUNK_ALLOCATION_RETRY_ATTEMPTS);
+        this(client, TransferStrategyBuilder.DEFAULT_CHUNK_ATTEMPT_RETRY_ATTEMPTS);
     }
 
-    public Ds3ClientHelpersImpl(final Ds3Client client, final int maxNumChunkAllocationAttempts) {
-        this(client, maxNumChunkAllocationAttempts, TransferStrategyBuilder.DEFAULT_OBJECT_TRANSFER_ATTEMPTS);
+    public Ds3ClientHelpersImpl(final Ds3Client client, final int maxChunkAttempts) {
+        this(client, maxChunkAttempts, TransferStrategyBuilder.DEFAULT_OBJECT_TRANSFER_ATTEMPTS);
     }
 
-    public Ds3ClientHelpersImpl(final Ds3Client client, final int maxNumChunkAllocationAttempts, final int maxNumObjectTransferAttempts) {
-        this(client, maxNumChunkAllocationAttempts, maxNumObjectTransferAttempts, TransferStrategyBuilder.DEFAULT_CHUNK_ALLOCATION_RETRY_INTERVAL);
+    public Ds3ClientHelpersImpl(final Ds3Client client, final int maxChunkAttempts, final int maxObjectTransferAttempts) {
+        this(client, maxChunkAttempts, maxObjectTransferAttempts, TransferStrategyBuilder.DEFAULT_CHUNK_ATTEMPT_RETRY_INTERVAL);
     }
 
-    public Ds3ClientHelpersImpl(final Ds3Client client, final int maxNumChunkAllocationAttempts, final int maxNumObjectTransferAttempts, final int secondsBetweenChunkAllocationAttempts) {
-        this(client, maxNumChunkAllocationAttempts, maxNumObjectTransferAttempts, secondsBetweenChunkAllocationAttempts, new SameThreadEventRunner());
+    public Ds3ClientHelpersImpl(final Ds3Client client, final int maxChunkAttempts, final int maxObjectTransferAttempts, final int secondsBetweenChunkAttempts) {
+        this(client, maxChunkAttempts, maxObjectTransferAttempts, secondsBetweenChunkAttempts, new SameThreadEventRunner());
     }
 
-    public Ds3ClientHelpersImpl(final Ds3Client client, final int maxNumChunkAllocationAttempts, final int maxNumObjectTransferAttempts, final int secondsBetweenChunkAllocationAttempts, final EventRunner eventRunner) {
+    public Ds3ClientHelpersImpl(final Ds3Client client, final int maxChunkAttempts, final int maxObjectTransferAttempts, final int secondsBetweenChunkAttempts, final EventRunner eventRunner) {
         this.client = client;
-        this.maxNumChunkAllocationAttempts = maxNumChunkAllocationAttempts;
-        this.maxNumObjectTransferAttempts = maxNumObjectTransferAttempts;
-        this.secondsBetweenChunkAllocationAttempts = secondsBetweenChunkAllocationAttempts;
+        this.maxChunkAttempts = maxChunkAttempts;
+        this.maxObjectTransferAttempts = maxObjectTransferAttempts;
+        this.secondsBetweenChunkAttempts = secondsBetweenChunkAttempts;
         this.eventRunner = eventRunner;
     }
 
@@ -124,9 +124,9 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
         final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                 .withDs3Client(client)
                 .withMasterObjectList(putBulkJobSpectraS3Response.getResult())
-                .withNumChunkAllocationRetries(maxNumChunkAllocationAttempts)
-                .withNumTransferRetries(maxNumObjectTransferAttempts)
-                .withRetryDelayInSeconds(secondsBetweenChunkAllocationAttempts)
+                .withNumChunkAttemptRetries(maxChunkAttempts)
+                .withNumTransferRetries(maxObjectTransferAttempts)
+                .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
                 .withChecksumType(options.getChecksumType())
                 .withEventDispatcher(eventDispatcher);
 
@@ -162,9 +162,9 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
         final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                 .withDs3Client(client)
                 .withMasterObjectList(getBulkJobSpectraS3Response.getResult())
-                .withNumChunkAllocationRetries(maxNumChunkAllocationAttempts)
-                .withNumTransferRetries(maxNumObjectTransferAttempts)
-                .withRetryDelayInSeconds(secondsBetweenChunkAllocationAttempts)
+                .withNumChunkAttemptRetries(maxChunkAttempts)
+                .withNumTransferRetries(maxObjectTransferAttempts)
+                .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
                 .withEventDispatcher(eventDispatcher);
 
         return new ReadJobImpl(transferStrategyBuilder,
@@ -214,9 +214,9 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
         final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                 .withDs3Client(client)
                 .withMasterObjectList(jobResponse.getMasterObjectListResult())
-                .withNumChunkAllocationRetries(maxNumChunkAllocationAttempts)
-                .withNumTransferRetries(maxNumObjectTransferAttempts)
-                .withRetryDelayInSeconds(secondsBetweenChunkAllocationAttempts)
+                .withNumChunkAttemptRetries(maxChunkAttempts)
+                .withNumTransferRetries(maxObjectTransferAttempts)
+                .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
                 .withChecksumType(ChecksumType.Type.NONE)
                 .withEventDispatcher(eventDispatcher);
 
@@ -240,9 +240,9 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
         final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                 .withDs3Client(client)
                 .withMasterObjectList(jobResponse.getMasterObjectListResult())
-                .withNumChunkAllocationRetries(maxNumChunkAllocationAttempts)
-                .withNumTransferRetries(maxNumObjectTransferAttempts)
-                .withRetryDelayInSeconds(secondsBetweenChunkAllocationAttempts)
+                .withNumChunkAttemptRetries(maxChunkAttempts)
+                .withNumTransferRetries(maxObjectTransferAttempts)
+                .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
                 .withEventDispatcher(eventDispatcher);
 
         return new ReadJobImpl(transferStrategyBuilder,

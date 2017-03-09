@@ -6,13 +6,12 @@ import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatc
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BlackPearlChunkAllocationRetryDelayBehavior implements ChunkAllocationRetryDelayBehavior {
-    private static final Logger LOG = LoggerFactory.getLogger(BlackPearlChunkAllocationRetryDelayBehavior.class);
+public class BlackPearlChunkAttemptRetryDelayBehavior implements ChunkAttemptRetryDelayBehavior {
+    private static final Logger LOG = LoggerFactory.getLogger(BlackPearlChunkAttemptRetryDelayBehavior.class);
 
-    private int delayIntervalInSeconds;
     private final EventDispatcher eventDispatcher;
 
-    public BlackPearlChunkAllocationRetryDelayBehavior(final EventDispatcher eventDispatcher) {
+    public BlackPearlChunkAttemptRetryDelayBehavior(final EventDispatcher eventDispatcher) {
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
 
         this.eventDispatcher = eventDispatcher;
@@ -22,15 +21,8 @@ public class BlackPearlChunkAllocationRetryDelayBehavior implements ChunkAllocat
     public void delay(final int delayIntervalInSeconds) throws InterruptedException {
         LOG.debug("Will retry allocate chunk call after {} seconds", delayIntervalInSeconds);
 
-        this.delayIntervalInSeconds = delayIntervalInSeconds;
-
         eventDispatcher.emitWaitingForChunksEvents(delayIntervalInSeconds);
 
         Thread.sleep(delayIntervalInSeconds * 1000);
-    }
-
-    @Override
-    public int getDelayIntervalInSeconds() {
-        return delayIntervalInSeconds;
     }
 }
