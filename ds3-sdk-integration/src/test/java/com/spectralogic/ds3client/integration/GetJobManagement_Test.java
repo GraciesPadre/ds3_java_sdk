@@ -246,7 +246,7 @@ public class GetJobManagement_Test {
             assertTrue(checksumEventReceived.get());
             assertTrue(metadataEventReceived.get());
             assertFalse(waitingForChunksEventReceived.get());
-            assertFalse(failureEventReceived.get());
+            assertTrue(failureEventReceived.get());
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
             deleteBigFileFromBlackPearlBucket();
