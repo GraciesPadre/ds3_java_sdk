@@ -79,12 +79,8 @@ class ReadJobImpl extends JobImpl {
             transferStrategyBuilder().withRangesForBlobs(rangesForBlobs);
 
             try {
-                final JobState jobState = transferStrategyBuilder().makeJobStateForGetJob();
-
                 try (final TransferStrategy transferStrategy = transferStrategyBuilder().makeOriginalSdkSemanticsGetTransferStrategy()) {
-                    while (jobState.hasObjects()) {
-                        transferStrategy.transfer();
-                    }
+                    transferStrategy.transfer();
                 }
             } catch (final RuntimeException | IOException e) {
                 throw e;

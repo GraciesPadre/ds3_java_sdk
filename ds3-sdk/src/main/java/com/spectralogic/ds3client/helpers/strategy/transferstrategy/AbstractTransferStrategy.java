@@ -20,7 +20,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.spectralogic.ds3client.helpers.JobPart;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.AbstractBlobStrategy;
+import com.spectralogic.ds3client.helpers.JobState;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 
 import java.io.IOException;
@@ -29,13 +29,18 @@ import java.util.concurrent.ExecutionException;
 
 abstract class AbstractTransferStrategy implements TransferStrategy {
     private final BlobStrategy blobStrategy;
+    private final JobState jobState;
 
     private final ListeningExecutorService executorService;
 
     private TransferMethod transferMethod;
 
-    public AbstractTransferStrategy(final BlobStrategy blobStrategy, final ListeningExecutorService executorService) {
+    public AbstractTransferStrategy(final BlobStrategy blobStrategy,
+                                    final JobState jobState,
+                                    final ListeningExecutorService executorService)
+    {
         this.blobStrategy = blobStrategy;
+        this.jobState = jobState;
         this.executorService = executorService;
     }
 
@@ -46,21 +51,23 @@ abstract class AbstractTransferStrategy implements TransferStrategy {
 
     @Override
     public void transfer() throws IOException, InterruptedException {
-        final ImmutableList.Builder<ListenableFuture<Void>> transferTasksListBuilder = ImmutableList.builder();
+        while (jobState.hasObjects()) {
+            final ImmutableList.Builder<ListenableFuture<Void>> transferTasksListBuilder = ImmutableList.builder();
 
-        final Iterable<JobPart> workQueue = blobStrategy.getWork();
+            final Iterable<JobPart> workQueue = blobStrategy.getWork();
 
-        for (final JobPart jobPart : workQueue) {
-            transferTasksListBuilder.add(executorService.submit(new Callable<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    transferMethod.transferJobPart(jobPart);
-                    return null;
-                }
-            }));
+            for (final JobPart jobPart : workQueue) {
+                transferTasksListBuilder.add(executorService.submit(new Callable<Void>() {
+                    @Override
+                    public Void call() throws Exception {
+                        transferMethod.transferJobPart(jobPart);
+                        return null;
+                    }
+                }));
+            }
+
+            runTransferTasks(ImmutableList.copyOf(transferTasksListBuilder.build()));
         }
-
-        runTransferTasks(ImmutableList.copyOf(transferTasksListBuilder.build()));
     }
 
     private void runTransferTasks(final Iterable<ListenableFuture<Void>> transferTasks) throws IOException {

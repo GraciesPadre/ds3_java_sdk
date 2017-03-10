@@ -77,12 +77,8 @@ class WriteJobImpl extends JobImpl {
             transferStrategyBuilder().withMetadataAccess(metadataAccess);
 
             try {
-                final JobState jobState = transferStrategyBuilder().makeJobStateForPutJob();
-
                 try (final TransferStrategy transferStrategy = transferStrategyBuilder().makeOriginalSdkSemanticsPutTransferStrategy()) {
-                    while (jobState.hasObjects()) {
-                        transferStrategy.transfer();
-                    }
+                    transferStrategy.transfer();
                 }
             } catch (final IOException | RuntimeException e) {
                 throw e;

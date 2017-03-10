@@ -81,6 +81,7 @@ public final class TransferStrategyBuilder {
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
     private EventDispatcher eventDispatcher;
     private JobPartTracker jobPartTracker;
+    private JobState jobState;
     private int numTransferRetries = DEFAULT_OBJECT_TRANSFER_ATTEMPTS;
     private int numConcurrentTransferThreads = DEFAULT_MAX_CONCURRENT_TRANSFER_THREADS;
     private int numChunkAttemptRetries = DEFAULT_CHUNK_ATTEMPT_RETRY_ATTEMPTS;
@@ -187,11 +188,11 @@ public final class TransferStrategyBuilder {
     public TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
-        makeJobStateForPutJob();
-
         channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
 
         getOrMakeTransferRetryDecorator();
+
+        getOrMakeJobStateForPutJob();
 
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
@@ -216,7 +217,11 @@ public final class TransferStrategyBuilder {
                 });
     }
 
-    public JobState makeJobStateForPutJob() {
+    private JobState getOrMakeJobStateForPutJob() {
+        if (jobState != null) {
+            return jobState;
+        }
+
         Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
         Preconditions.checkNotNull(eventRunner, "eventRunner may not be null.");
@@ -229,23 +234,33 @@ public final class TransferStrategyBuilder {
 
         final List<Objects> chunksNotYetCompleted = StrategyUtils.filterChunks(chunks);
 
-        if (jobPartTracker == null) {
-            final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(Iterables.concat(getBlobs(chunksNotYetCompleted)), eventRunner);
+        getOrMakeJobPartTrackerForPutJob(chunksNotYetCompleted);
 
-            result.attachObjectCompletedListener(new ObjectCompletedListener() {
-                @Override
-                public void objectCompleted(final String name) {
-                    eventDispatcher.emitObjectCompletedEvent(name);
-                }
-            });
+        jobState = new JobState(chunksNotYetCompleted, jobPartTracker);
 
-            jobPartTracker = result;
-        }
-
-        return new JobState(chunksNotYetCompleted, jobPartTracker);
+        return jobState;
     }
 
-    private static ImmutableList<BulkObject> getBlobs(final List<Objects> chunks) {
+    private JobPartTracker getOrMakeJobPartTrackerForPutJob(final List<Objects> chunksNotYetCompleted) {
+        if (jobPartTracker != null) {
+            return jobPartTracker;
+        }
+
+        final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(Iterables.concat(getBlobs(chunksNotYetCompleted)), eventRunner);
+
+        result.attachObjectCompletedListener(new ObjectCompletedListener() {
+            @Override
+            public void objectCompleted(final String name) {
+                eventDispatcher.emitObjectCompletedEvent(name);
+            }
+        });
+
+        jobPartTracker = result;
+
+        return jobPartTracker;
+    }
+
+    private ImmutableList<BulkObject> getBlobs(final List<Objects> chunks) {
         final ImmutableList.Builder<BulkObject> builder = ImmutableList.builder();
         for (final Objects objects : chunks) {
             builder.addAll(objects.getObjects());
@@ -331,9 +346,13 @@ public final class TransferStrategyBuilder {
         final TransferStrategy transferStrategy;
 
         if (numConcurrentTransferThreads > 1) {
-            transferStrategy = new MultiThreadedTransferStrategy(blobStrategy, numConcurrentTransferThreads).withTransferMethod(transferMethod);
+            transferStrategy = new MultiThreadedTransferStrategy(blobStrategy,
+                    jobState,
+                    numConcurrentTransferThreads)
+                    .withTransferMethod(transferMethod);
         } else {
-            transferStrategy = new SingleThreadedTransferStrategy(blobStrategy).withTransferMethod(transferMethod);
+            transferStrategy = new SingleThreadedTransferStrategy(blobStrategy, jobState)
+                    .withTransferMethod(transferMethod);
         }
 
         return transferStrategy;
@@ -405,7 +424,7 @@ public final class TransferStrategyBuilder {
 
         getOrMakeTransferRetryDecorator();
 
-        makeJobStateForGetJob();
+        getOrMakeJobStateForGetJob();
 
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
@@ -428,27 +447,41 @@ public final class TransferStrategyBuilder {
                 });
     }
 
-    public JobState makeJobStateForGetJob() {
+    private JobState getOrMakeJobStateForGetJob() {
+        if (jobState != null) {
+            return jobState;
+        }
+
         Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
         Preconditions.checkNotNull(eventRunner, "eventRunner may not be null.");
 
         final List<Objects> chunks = masterObjectList.getObjects();
 
-        if (jobPartTracker == null) {
-            final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(getBlobs(chunks), eventRunner);
+        getOrMakeJobPartTrackerForGetJob(chunks);
 
-            result.attachObjectCompletedListener(new ObjectCompletedListener() {
-                @Override
-                public void objectCompleted(final String name) {
-                    eventDispatcher.emitObjectCompletedEvent(name);
-                }
-            });
+        jobState = new JobState(chunks, jobPartTracker);
 
-            jobPartTracker = result;
+        return jobState;
+    }
+
+    private JobPartTracker getOrMakeJobPartTrackerForGetJob(final List<Objects> chunks) {
+        if (jobPartTracker != null) {
+            return jobPartTracker;
         }
 
-        return new JobState(chunks, jobPartTracker);
+        final JobPartTracker result = JobPartTrackerFactory.buildPartTracker(getBlobs(chunks), eventRunner);
+
+        result.attachObjectCompletedListener(new ObjectCompletedListener() {
+            @Override
+            public void objectCompleted(final String name) {
+                eventDispatcher.emitObjectCompletedEvent(name);
+            }
+        });
+
+        jobPartTracker = result;
+
+        return jobPartTracker;
     }
 
     private TransferMethod makeGetTransferMethod() {
