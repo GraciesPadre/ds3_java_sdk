@@ -15,35 +15,25 @@
 
 package com.spectralogic.ds3client.helpers;
 
-import com.google.common.collect.*;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
-import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MetaDataReceivedObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
-import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.models.*;
-import com.spectralogic.ds3client.models.common.Range;
 
 import java.io.IOException;
-import java.util.List;
 
 class ReadJobImpl extends JobImpl {
-
-    private final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
 
     public ReadJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
                        final Ds3Client client,
                        final MasterObjectList masterObjectList,
-                       final ImmutableMultimap<String, Range> objectRanges,
                        final EventDispatcher eventDispatcher)
     {
         super(transferStrategyBuilder, client, masterObjectList, eventDispatcher);
-
-        this.rangesForBlobs = PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), objectRanges);
     }
 
     @Override
@@ -75,8 +65,6 @@ class ReadJobImpl extends JobImpl {
             running = true;
 
             super.transfer(channelBuilder);
-
-            transferStrategyBuilder().withRangesForBlobs(rangesForBlobs);
 
             try {
                 try (final TransferStrategy transferStrategy = transferStrategyBuilder().makeOriginalSdkSemanticsGetTransferStrategy()) {

@@ -160,19 +160,21 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
 
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(eventRunner);
 
+        final MasterObjectList masterObjectList = getBulkJobSpectraS3Response.getResult();
+
         final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                 .withDs3Client(client)
-                .withMasterObjectList(getBulkJobSpectraS3Response.getResult())
+                .withMasterObjectList(masterObjectList)
                 .withNumChunkAttemptRetries(maxChunkAttempts)
                 .withNumTransferRetries(maxObjectTransferAttempts)
                 .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
                 .withEventRunner(eventRunner)
-                .withEventDispatcher(eventDispatcher);
+                .withEventDispatcher(eventDispatcher)
+                .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), partialRanges));
 
         return new ReadJobImpl(transferStrategyBuilder,
                 this.client,
                 getBulkJobSpectraS3Response.getResult(),
-                partialRanges,
                 eventDispatcher);
     }
 
@@ -239,19 +241,21 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
 
         final EventDispatcher eventDispatcher = new EventDispatcherImpl(eventRunner);
 
+        final MasterObjectList masterObjectList = jobResponse.getMasterObjectListResult();
+
         final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
                 .withDs3Client(client)
-                .withMasterObjectList(jobResponse.getMasterObjectListResult())
+                .withMasterObjectList(masterObjectList)
                 .withNumChunkAttemptRetries(maxChunkAttempts)
                 .withNumTransferRetries(maxObjectTransferAttempts)
                 .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
                 .withEventRunner(eventRunner)
-                .withEventDispatcher(eventDispatcher);
+                .withEventDispatcher(eventDispatcher)
+                .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), ImmutableMultimap.<String, Range>of()));
 
         return new ReadJobImpl(transferStrategyBuilder,
                 this.client,
-                jobResponse.getMasterObjectListResult(),
-                ImmutableMultimap.<String, Range>of(),
+                masterObjectList,
                 eventDispatcher);
     }
 

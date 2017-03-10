@@ -29,6 +29,7 @@ import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
+import com.spectralogic.ds3client.helpers.events.SameThreadEventRunner;
 import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlackPearlChunkAttemptRetryDelayBehavior;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
@@ -76,10 +77,11 @@ public final class TransferStrategyBuilder {
     private ChannelStrategy channelStrategy;
     private String bucketName;
     private String jobId;
-    private TransferRetryDecorator transferRetryDecorator;
+    private TransferRetryDecorator transferRetryDecorator = new MaxNumObjectTransferAttemptsDecorator(DEFAULT_OBJECT_TRANSFER_ATTEMPTS);
     private ChecksumFunction checksumFunction;
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
-    private EventDispatcher eventDispatcher;
+    private EventRunner eventRunner = new SameThreadEventRunner();
+    private EventDispatcher eventDispatcher = new EventDispatcherImpl(eventRunner);
     private JobPartTracker jobPartTracker;
     private JobState jobState;
     private int numTransferRetries = DEFAULT_OBJECT_TRANSFER_ATTEMPTS;
@@ -93,7 +95,12 @@ public final class TransferStrategyBuilder {
     private Ds3ClientHelpers.MetadataAccess metadataAccess;
     private RetryBehavior chunkAttemptRetryBehavior;
     private ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior;
-    private EventRunner eventRunner;
+
+
+    public TransferStrategyBuilder withBlobStrategy(final BlobStrategy blobStrategy) {
+        this.blobStrategy = blobStrategy;
+        return this;
+    }
 
     public TransferStrategyBuilder withChannelStrategy(final ChannelStrategy channelStrategy) {
         this.channelStrategy = channelStrategy;
@@ -153,6 +160,7 @@ public final class TransferStrategyBuilder {
     public TransferStrategyBuilder withMasterObjectList(final MasterObjectList masterObjectList) {
         this.masterObjectList = masterObjectList;
         jobId = masterObjectList.getJobId().toString();
+        bucketName = masterObjectList.getBucketName();
         return this;
     }
 
@@ -192,7 +200,7 @@ public final class TransferStrategyBuilder {
 
         getOrMakeTransferRetryDecorator();
 
-        getOrMakeJobStateForPutJob();
+
 
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
@@ -217,29 +225,7 @@ public final class TransferStrategyBuilder {
                 });
     }
 
-    private JobState getOrMakeJobStateForPutJob() {
-        if (jobState != null) {
-            return jobState;
-        }
 
-        Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
-        Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
-        Preconditions.checkNotNull(eventRunner, "eventRunner may not be null.");
-
-        List<Objects> chunks = masterObjectList.getObjects();
-
-        if (chunks == null) {
-            chunks = new ArrayList<>();
-        }
-
-        final List<Objects> chunksNotYetCompleted = StrategyUtils.filterChunks(chunks);
-
-        getOrMakeJobPartTrackerForPutJob(chunksNotYetCompleted);
-
-        jobState = new JobState(chunksNotYetCompleted, jobPartTracker);
-
-        return jobState;
-    }
 
     private JobPartTracker getOrMakeJobPartTrackerForPutJob(final List<Objects> chunksNotYetCompleted) {
         if (jobPartTracker != null) {
@@ -317,7 +303,6 @@ public final class TransferStrategyBuilder {
     {
         Preconditions.checkNotNull(ds3Client, "ds3Client may not be null.");
         Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
-        Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null");
         Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
         Preconditions.checkState( ! Guard.isStringNullOrEmpty(jobId), "jobId may not be null or an emptystring");
         Preconditions.checkNotNull(blobStrategyMaker, "blobStrategyMaker may not be null.");
@@ -325,7 +310,6 @@ public final class TransferStrategyBuilder {
         Preconditions.checkNotNull(channelStrategy, "channelStrategy may not be null");
         Preconditions.checkNotNull(transferRetryDecorator, "transferRetryDecorator may not be null");
 
-        bucketName = masterObjectList.getBucketName();
         Guard.throwOnNullOrEmptyString(bucketName, "bucketName may not be null or empty.");
 
         Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
@@ -359,7 +343,7 @@ public final class TransferStrategyBuilder {
     }
 
     private TransferMethod makePutTransferMethod() {
-        Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
+        getOrMakeJobStateForPutJob();
 
         if (checksumType != ChecksumType.Type.NONE) {
             maybeAddChecksumFunction();
@@ -373,6 +357,30 @@ public final class TransferStrategyBuilder {
         }
 
         return transferMethod;
+    }
+
+    private JobState getOrMakeJobStateForPutJob() {
+        if (jobState != null) {
+            return jobState;
+        }
+
+        Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
+        Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
+        Preconditions.checkNotNull(eventRunner, "eventRunner may not be null.");
+
+        List<Objects> chunks = masterObjectList.getObjects();
+
+        if (chunks == null) {
+            chunks = new ArrayList<>();
+        }
+
+        final List<Objects> chunksNotYetCompleted = StrategyUtils.filterChunks(chunks);
+
+        getOrMakeJobPartTrackerForPutJob(chunksNotYetCompleted);
+
+        jobState = new JobState(chunksNotYetCompleted, jobPartTracker);
+
+        return jobState;
     }
 
     private void maybeAddChecksumFunction() {
@@ -424,7 +432,7 @@ public final class TransferStrategyBuilder {
 
         getOrMakeTransferRetryDecorator();
 
-        getOrMakeJobStateForGetJob();
+
 
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
@@ -447,24 +455,6 @@ public final class TransferStrategyBuilder {
                 });
     }
 
-    private JobState getOrMakeJobStateForGetJob() {
-        if (jobState != null) {
-            return jobState;
-        }
-
-        Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
-        Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
-        Preconditions.checkNotNull(eventRunner, "eventRunner may not be null.");
-
-        final List<Objects> chunks = masterObjectList.getObjects();
-
-        getOrMakeJobPartTrackerForGetJob(chunks);
-
-        jobState = new JobState(chunks, jobPartTracker);
-
-        return jobState;
-    }
-
     private JobPartTracker getOrMakeJobPartTrackerForGetJob(final List<Objects> chunks) {
         if (jobPartTracker != null) {
             return jobPartTracker;
@@ -485,7 +475,7 @@ public final class TransferStrategyBuilder {
     }
 
     private TransferMethod makeGetTransferMethod() {
-        Preconditions.checkNotNull(jobPartTracker, "jobPartTracker may not be null.");
+        getOrMakeJobStateForGetJob();
 
         final TransferMethod transferMethod = new GetJobNetworkFailureRetryDecorator(channelStrategy,
                 bucketName, jobId, eventDispatcher, rangesForBlobs);
@@ -495,5 +485,23 @@ public final class TransferStrategyBuilder {
         }
 
         return transferMethod;
+    }
+
+    private JobState getOrMakeJobStateForGetJob() {
+        if (jobState != null) {
+            return jobState;
+        }
+
+        Preconditions.checkNotNull(masterObjectList, "masterObjectList may not be null.");
+        Preconditions.checkNotNull(eventDispatcher, "eventDispatcher may not be null.");
+        Preconditions.checkNotNull(eventRunner, "eventRunner may not be null.");
+
+        final List<Objects> chunks = masterObjectList.getObjects();
+
+        getOrMakeJobPartTrackerForGetJob(chunks);
+
+        jobState = new JobState(chunks, jobPartTracker);
+
+        return jobState;
     }
 }
