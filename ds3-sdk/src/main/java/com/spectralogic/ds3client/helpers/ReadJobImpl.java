@@ -39,13 +39,13 @@ class ReadJobImpl extends JobImpl {
     @Override
     public void attachMetadataReceivedListener(final MetadataReceivedListener listener) {
         checkRunning();
-        getEventDispatcher().attachMetadataReceivedEventObserver(new MetaDataReceivedObserver(listener));
+        eventDispatcher().attachMetadataReceivedEventObserver(new MetaDataReceivedObserver(listener));
     }
 
     @Override
     public void removeMetadataReceivedListener(final MetadataReceivedListener listener) {
         checkRunning();
-        getEventDispatcher().removeMetadataReceivedEventObserver(new MetaDataReceivedObserver(listener));
+        eventDispatcher().removeMetadataReceivedEventObserver(new MetaDataReceivedObserver(listener));
     }
 
     @Override

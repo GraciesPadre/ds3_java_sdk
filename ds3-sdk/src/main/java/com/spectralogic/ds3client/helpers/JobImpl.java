@@ -157,12 +157,12 @@ abstract class JobImpl implements Job {
         return new FailureEvent.Builder()
                 .doingWhat(failureActivity)
                 .withCausalException(causalException)
-                .withObjectNamed(getLabelForChunk(chunk))
+                .withObjectNamed(labelForChunk(chunk))
                 .usingSystemWithEndpoint(client.getConnectionDetails().getEndpoint())
                 .build();
     }
 
-    protected String getLabelForChunk(final Objects chunk) {
+    protected String labelForChunk(final Objects chunk) {
         try {
             return chunk.getObjects().get(0).getName();
         } catch (final Throwable t) {
@@ -172,7 +172,7 @@ abstract class JobImpl implements Job {
         return "unnamed object";
     }
 
-    protected EventDispatcher getEventDispatcher() {
+    protected EventDispatcher eventDispatcher() {
         return eventDispatcher;
     }
 }
