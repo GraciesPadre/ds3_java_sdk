@@ -131,7 +131,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withEventRunner(eventRunner)
                 .withEventDispatcher(eventDispatcher);
 
-        return new WriteJobImpl(transferStrategyBuilder, client, putBulkJobSpectraS3Response.getResult(), eventDispatcher);
+        return new WriteJobImpl(transferStrategyBuilder);
     }
 
     @Override
@@ -172,10 +172,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withEventDispatcher(eventDispatcher)
                 .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), partialRanges));
 
-        return new ReadJobImpl(transferStrategyBuilder,
-                this.client,
-                getBulkJobSpectraS3Response.getResult(),
-                eventDispatcher);
+        return new ReadJobImpl(transferStrategyBuilder);
     }
 
     @Override
@@ -224,9 +221,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withEventRunner(eventRunner)
                 .withEventDispatcher(eventDispatcher);
 
-
-        return new WriteJobImpl(transferStrategyBuilder,
-                client, jobResponse.getMasterObjectListResult(), eventDispatcher);
+        return new WriteJobImpl(transferStrategyBuilder);
     }
 
     @Override
@@ -253,10 +248,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withEventDispatcher(eventDispatcher)
                 .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), ImmutableMultimap.<String, Range>of()));
 
-        return new ReadJobImpl(transferStrategyBuilder,
-                this.client,
-                masterObjectList,
-                eventDispatcher);
+        return new ReadJobImpl(transferStrategyBuilder);
     }
 
     @Override

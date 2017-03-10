@@ -33,6 +33,8 @@ import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.options.WriteJobOptions;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.integration.test.helpers.ABMTestHelper;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageIds;
@@ -1199,6 +1201,47 @@ public class PutJobManagement_Test {
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
+            deleteAllContents(client, BUCKET_NAME);
+        }
+    }
+
+    @Test
+    public void testPutJobUsingTransferStrategy() throws IOException, InterruptedException, URISyntaxException {
+        final String DIR_NAME = "books/";
+        final String[] FILE_NAMES = new String[]{"beowulf.txt"};
+
+        try {
+            final Path dirPath = ResourceUtils.loadFileResource(DIR_NAME);
+
+            final List<String> bookTitles = new ArrayList<>();
+            final List<Ds3Object> objectsToWrite = new ArrayList<>();
+            for (final String book : FILE_NAMES) {
+                final Path objPath = ResourceUtils.loadFileResource(DIR_NAME + book);
+                final long bookSize = Files.size(objPath);
+                final Ds3Object obj = new Ds3Object(book, bookSize);
+
+                bookTitles.add(book);
+                objectsToWrite.add(obj);
+            }
+
+            final PutBulkJobSpectraS3Request request = new PutBulkJobSpectraS3Request(BUCKET_NAME, Lists.newArrayList(objectsToWrite));
+            final PutBulkJobSpectraS3Response putBulkJobSpectraS3Response = client.putBulkJobSpectraS3(request);
+
+            final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder();
+            transferStrategyBuilder.withDs3Client(client);
+            transferStrategyBuilder.withMasterObjectList(putBulkJobSpectraS3Response.getResult());
+            transferStrategyBuilder.withChannelBuilder(new FileObjectPutter(dirPath));
+            final TransferStrategy transferStrategy = transferStrategyBuilder.makeOriginalSdkSemanticsPutTransferStrategy();
+
+            transferStrategy.transfer();
+
+            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(client);
+            final Iterable<Contents> bucketContentsIterable = ds3ClientHelpers.listObjects(BUCKET_NAME);
+
+            for (final Contents buckeContents : bucketContentsIterable) {
+                assertEquals(FILE_NAMES[0], buckeContents.getKey());
+            }
+        } finally {
             deleteAllContents(client, BUCKET_NAME);
         }
     }

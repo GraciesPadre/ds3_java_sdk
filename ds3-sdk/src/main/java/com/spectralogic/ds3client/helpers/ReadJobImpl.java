@@ -15,25 +15,18 @@
 
 package com.spectralogic.ds3client.helpers;
 
-import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MetaDataReceivedObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
-import com.spectralogic.ds3client.models.*;
 
 import java.io.IOException;
 
 class ReadJobImpl extends JobImpl {
 
-    public ReadJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
-                       final Ds3Client client,
-                       final MasterObjectList masterObjectList,
-                       final EventDispatcher eventDispatcher)
-    {
-        super(transferStrategyBuilder, client, masterObjectList, eventDispatcher);
+    public ReadJobImpl(final TransferStrategyBuilder transferStrategyBuilder) {
+        super(transferStrategyBuilder);
     }
 
     @Override
@@ -76,7 +69,7 @@ class ReadJobImpl extends JobImpl {
                 throw new RuntimeException(e);
             }
         } catch (final Throwable t) {
-            emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.GettingObject, t, masterObjectList.getObjects().get(0)));
+            emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.GettingObject, t, firstChunk()));
             throw t;
         }
     }

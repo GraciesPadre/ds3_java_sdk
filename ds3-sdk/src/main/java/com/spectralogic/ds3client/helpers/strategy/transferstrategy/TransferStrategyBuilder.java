@@ -132,6 +132,10 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
+    public EventDispatcher eventDispatcher() {
+        return eventDispatcher;
+    }
+
     public TransferStrategyBuilder withNumTransferRetries(final int numRetries) {
         this.numTransferRetries = numRetries;
         return this;
@@ -157,11 +161,19 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
+    public Ds3Client ds3Client() {
+        return ds3Client;
+    }
+
     public TransferStrategyBuilder withMasterObjectList(final MasterObjectList masterObjectList) {
         this.masterObjectList = masterObjectList;
         jobId = masterObjectList.getJobId().toString();
         bucketName = masterObjectList.getBucketName();
         return this;
+    }
+
+    public MasterObjectList masterObjectList() {
+        return masterObjectList;
     }
 
     public TransferStrategyBuilder withRangesForBlobs(final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs) {

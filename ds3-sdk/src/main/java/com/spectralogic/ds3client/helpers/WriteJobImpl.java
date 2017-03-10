@@ -15,30 +15,23 @@
 
 package com.spectralogic.ds3client.helpers;
 
-import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
-import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
-import com.spectralogic.ds3client.models.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-class WriteJobImpl extends JobImpl {
+public class WriteJobImpl extends JobImpl {
     static private final Logger LOG = LoggerFactory.getLogger(WriteJobImpl.class);
 
     private Ds3ClientHelpers.MetadataAccess metadataAccess = null;
     private ChecksumFunction checksumFunction = null;
 
-    public WriteJobImpl(final TransferStrategyBuilder transferStrategyBuilder,
-                        final Ds3Client client,
-                        final MasterObjectList masterObjectList,
-                        final EventDispatcher eventDispatcher)
-    {
-        super(transferStrategyBuilder, client, masterObjectList, eventDispatcher);
+    public WriteJobImpl(final TransferStrategyBuilder transferStrategyBuilder) {
+        super(transferStrategyBuilder);
     }
 
     @Override
@@ -86,7 +79,7 @@ class WriteJobImpl extends JobImpl {
                 throw new RuntimeException(e);
             }
         } catch (final Throwable t) {
-            emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.PuttingObject, t, masterObjectList.getObjects().get(0)));
+            emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.PuttingObject, t, firstChunk()));
             throw t;
         }
     }

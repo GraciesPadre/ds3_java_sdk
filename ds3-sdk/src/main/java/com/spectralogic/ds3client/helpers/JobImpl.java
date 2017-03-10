@@ -15,12 +15,10 @@
 
 package com.spectralogic.ds3client.helpers;
 
-import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.Job;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
-import com.spectralogic.ds3client.models.MasterObjectList;
 import com.spectralogic.ds3client.models.Objects;
 
 import org.slf4j.Logger;
@@ -32,39 +30,42 @@ import java.util.UUID;
 abstract class JobImpl implements Job {
     private static final Logger LOG = LoggerFactory.getLogger(JobImpl.class);
 
-    protected final Ds3Client client;
-    protected final MasterObjectList masterObjectList;
     protected boolean running = false;
 
-    private final EventDispatcher eventDispatcher;
+    private String clientEndpoint;
 
     private final TransferStrategyBuilder transferStrategyBuilder;
 
-    public JobImpl(final TransferStrategyBuilder transferStrategyBuilder,
-                   final Ds3Client client,
-                   final MasterObjectList masterObjectList,
-                   final EventDispatcher eventDispatcher)
+    public JobImpl(final TransferStrategyBuilder transferStrategyBuilder)
     {
         this.transferStrategyBuilder = transferStrategyBuilder;
-        this.client = client;
-        this.masterObjectList = masterObjectList;
-        this.eventDispatcher = eventDispatcher;
+
+        try {
+            clientEndpoint = transferStrategyBuilder.ds3Client().getConnectionDetails().getEndpoint();
+        } catch (final Throwable t) {
+            LOG.warn("Could not get client endpoint.", t);
+            clientEndpoint = "";
+        }
     }
     
     @Override
     public UUID getJobId() {
-        if (this.masterObjectList == null) {
+        try {
+            return transferStrategyBuilder.masterObjectList().getJobId();
+        } catch (final Throwable t) {
+            LOG.warn("Could not get job id.", t);
             return null;
         }
-        return this.masterObjectList.getJobId();
     }
 
     @Override
     public String getBucketName() {
-        if (this.masterObjectList == null) {
+        try {
+            return transferStrategyBuilder.masterObjectList().getBucketName();
+        } catch (final Throwable t) {
+            LOG.warn("Could not get bucket name.", t);
             return null;
         }
-        return this.masterObjectList.getBucketName();
     }
     
     @Override
@@ -80,61 +81,61 @@ abstract class JobImpl implements Job {
     @Override
     public void attachChecksumListener(final ChecksumListener listener) {
         checkRunning();
-        eventDispatcher.attachChecksumListener(listener);
+        eventDispatcher().attachChecksumListener(listener);
     }
 
     @Override
     public void removeChecksumListener(final ChecksumListener listener) {
         checkRunning();
-        eventDispatcher.removeChecksumListener(listener);
+        eventDispatcher().removeChecksumListener(listener);
     }
 
     @Override
     public void attachWaitingForChunksListener(final WaitingForChunksListener listener) {
         checkRunning();
-        eventDispatcher.attachWaitingForChunksListener(listener);
+        eventDispatcher().attachWaitingForChunksListener(listener);
     }
 
     @Override
     public void removeWaitingForChunksListener(final WaitingForChunksListener listener) {
         checkRunning();
-        eventDispatcher.removeWaitingForChunksListener(listener);
+        eventDispatcher().removeWaitingForChunksListener(listener);
     }
 
     @Override
     public void attachFailureEventListener(final FailureEventListener listener) {
         checkRunning();
-        eventDispatcher.attachFailureEventListener(listener);
+        eventDispatcher().attachFailureEventListener(listener);
     }
 
     @Override
     public void removeFailureEventListener(final FailureEventListener listener) {
         checkRunning();
-        eventDispatcher.removeFailureEventListener(listener);
+        eventDispatcher().removeFailureEventListener(listener);
     }
 
     @Override
     public void attachDataTransferredListener(final DataTransferredListener listener) {
         checkRunning();
-        eventDispatcher.attachDataTransferredListener(listener);
+        eventDispatcher().attachDataTransferredListener(listener);
     }
 
     @Override
     public void removeDataTransferredListener(final DataTransferredListener listener) {
         checkRunning();
-        eventDispatcher.removeDataTransferredListener(listener);
+        eventDispatcher().removeDataTransferredListener(listener);
     }
 
     @Override
     public void attachObjectCompletedListener(final ObjectCompletedListener listener) {
         checkRunning();
-        eventDispatcher.attachObjectCompletedListener(listener);
+        eventDispatcher().attachObjectCompletedListener(listener);
     }
 
     @Override
     public void removeObjectCompletedListener(final ObjectCompletedListener listener) {
         checkRunning();
-        eventDispatcher.removeObjectCompletedListener(listener);
+        eventDispatcher().removeObjectCompletedListener(listener);
     }
 
     @Override
@@ -147,7 +148,7 @@ abstract class JobImpl implements Job {
     }
 
     protected void emitFailureEvent(final FailureEvent failureEvent) {
-        eventDispatcher.emitFailureEvent(failureEvent);
+        eventDispatcher().emitFailureEvent(failureEvent);
     }
 
     protected FailureEvent makeFailureEvent(final FailureEvent.FailureActivity failureActivity,
@@ -158,7 +159,7 @@ abstract class JobImpl implements Job {
                 .doingWhat(failureActivity)
                 .withCausalException(causalException)
                 .withObjectNamed(labelForChunk(chunk))
-                .usingSystemWithEndpoint(client.getConnectionDetails().getEndpoint())
+                .usingSystemWithEndpoint(clientEndpoint)
                 .build();
     }
 
@@ -173,6 +174,10 @@ abstract class JobImpl implements Job {
     }
 
     protected EventDispatcher eventDispatcher() {
-        return eventDispatcher;
+        return transferStrategyBuilder.eventDispatcher();
+    }
+
+    protected Objects firstChunk() {
+        return transferStrategyBuilder.masterObjectList().getObjects().get(0);
     }
 }
