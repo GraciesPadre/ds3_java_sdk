@@ -95,7 +95,7 @@ public final class TransferStrategyBuilder {
     private Ds3ClientHelpers.MetadataAccess metadataAccess;
     private RetryBehavior chunkAttemptRetryBehavior;
     private ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior;
-
+    private TransferBehaviorType transferBehaviorType = TransferBehaviorType.OriginalSdkTransferBehavior;
 
     public TransferStrategyBuilder withBlobStrategy(final BlobStrategy blobStrategy) {
         this.blobStrategy = blobStrategy;
@@ -201,18 +201,40 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
+    public TransferStrategyBuilder usingStreamedTransferBehavior() {
+        transferBehaviorType = TransferBehaviorType.StreamingTransferBehavior;
+        return this;
+    }
+
+    public TransferStrategyBuilder usingRandomAccessTransferBehavior() {
+        transferBehaviorType = TransferBehaviorType.RandomAccessTransferBehavior;
+        return this;
+    }
+
     // TODO: implement these
     // public TransferStrategy makePutSequentialTransferStrategy() { }
     // public TransferStrategy makePutRandomTransferStrategy() { }
 
-    public TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
+    public TransferStrategy makeTransferStrategy() {
+        switch (transferBehaviorType) {
+            case StreamingTransferBehavior:
+                return null;
+
+            case RandomAccessTransferBehavior:
+                return null;
+
+            case OriginalSdkTransferBehavior:
+            default:
+                return makeOriginalSdkSemanticsPutTransferStrategy();
+        }
+    }
+
+    private TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
         Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
 
         channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
 
         getOrMakeTransferRetryDecorator();
-
-
 
         return makeTransferStrategy(
                 new BlobStrategyMaker() {
@@ -515,5 +537,11 @@ public final class TransferStrategyBuilder {
         jobState = new JobState(chunks, jobPartTracker);
 
         return jobState;
+    }
+
+    private enum TransferBehaviorType {
+        OriginalSdkTransferBehavior,
+        StreamingTransferBehavior,
+        RandomAccessTransferBehavior
     }
 }
