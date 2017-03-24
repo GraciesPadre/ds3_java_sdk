@@ -175,6 +175,18 @@ public abstract class Ds3ClientHelpers {
     public abstract Ds3ClientHelpers.Job startWriteJob(final String bucket, final Iterable<Ds3Object> objectsToWrite, final WriteJobOptions options)
             throws IOException;
 
+    public abstract Ds3ClientHelpers.Job startWriteJobUsingStreamedBehavior(final String bucket, final Iterable<Ds3Object> objectsToWrite)
+            throws IOException;
+
+    public abstract Ds3ClientHelpers.Job startWriteJobUsingStreamedBehavior(final String bucket, final Iterable<Ds3Object> objectsToWrite, final WriteJobOptions options)
+            throws IOException;
+
+    public abstract Ds3ClientHelpers.Job startWriteJobUsingRandomAccessBehavior(final String bucket, final Iterable<Ds3Object> objectsToWrite)
+            throws IOException;
+
+    public abstract Ds3ClientHelpers.Job startWriteJobUsingRandomAccessBehavior(final String bucket, final Iterable<Ds3Object> objectsToWrite, final WriteJobOptions options)
+            throws IOException;
+
     /**
      * Performs a bulk get job creation request and returns an {@link ReadJobImpl}.
      * See {@link ReadJobImpl} for information on how to read the objects for the job.
@@ -194,6 +206,18 @@ public abstract class Ds3ClientHelpers {
             final String bucket,
             final Iterable<Ds3Object> objectsToRead,
             final ReadJobOptions options)
+            throws IOException;
+
+    public abstract Ds3ClientHelpers.Job startReadJobUsingStreamedBehavior(final String bucket, final Iterable<Ds3Object> objectsToRead)
+            throws IOException;
+
+    public abstract Ds3ClientHelpers.Job startReadJobUsingStreamedBehavior(final String bucket, final Iterable<Ds3Object> objectsToRead, final ReadJobOptions options)
+            throws IOException;
+
+    public abstract Ds3ClientHelpers.Job startReadJobUsingRandomAccessBehavior(final String bucket, final Iterable<Ds3Object> objectsToRead)
+            throws IOException;
+
+    public abstract Ds3ClientHelpers.Job startReadJobUsingRandomAccessBehavior(final String bucket, final Iterable<Ds3Object> objectsToRead, final ReadJobOptions options)
             throws IOException;
 
     /**

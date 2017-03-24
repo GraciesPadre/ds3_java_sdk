@@ -70,7 +70,7 @@ public class WriteJobImpl extends JobImpl {
             transferStrategyBuilder().withMetadataAccess(metadataAccess);
 
             try {
-                try (final TransferStrategy transferStrategy = transferStrategyBuilder().makeTransferStrategy()) {
+                try (final TransferStrategy transferStrategy = transferStrategyBuilder().makePutTransferStrategy()) {
                     transferStrategy.transfer();
                 }
             } catch (final IOException | RuntimeException e) {

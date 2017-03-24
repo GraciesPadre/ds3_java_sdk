@@ -17,6 +17,7 @@ package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
+import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.models.BulkObject;
 
 import java.io.IOException;
@@ -28,12 +29,19 @@ public class SequentialChannelStrategy implements ChannelStrategy {
     private final Object lock = new Object();
 
     private final SetMultimap<String, Long> blobNameOffsetMap = HashMultimap.create();
-    private final Map<String, SeekableByteChannel> blobNameChannelMap = new HashMap<>();
+    private final Map<String, SeekableByteChannelDecorator> blobNameChannelMap = new HashMap<>();
 
     private final ChannelStrategy channelStrategyDelegate;
+    private final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder;
+    private final ChannelPreparable channelPreparer;
 
-    public SequentialChannelStrategy(final ChannelStrategy channelStrategy) {
+    public SequentialChannelStrategy(final ChannelStrategy channelStrategy,
+                                     final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder,
+                                     final ChannelPreparable channelPreparer)
+    {
         channelStrategyDelegate = channelStrategy;
+        this.objectChannelBuilder = objectChannelBuilder;
+        this.channelPreparer = channelPreparer;
     }
 
     @Override
@@ -54,11 +62,13 @@ public class SequentialChannelStrategy implements ChannelStrategy {
     }
 
     private SeekableByteChannel makeNewChannel(final BulkObject blob) throws IOException {
+        channelPreparer.prepareChannel(blob.getName(), objectChannelBuilder);
+
         final SeekableByteChannel seekableByteChannel = channelStrategyDelegate.acquireChannelForBlob(blob);
+        final SeekableByteChannelDecorator seekableByteChannelDecorator = new SeekableByteChannelDecorator(seekableByteChannel);
 
-        blobNameChannelMap.put(blob.getName(), seekableByteChannel);
-
-        return seekableByteChannel;
+        blobNameChannelMap.put(blob.getName(), seekableByteChannelDecorator);
+        return seekableByteChannelDecorator;
     }
 
     @Override
@@ -70,7 +80,7 @@ public class SequentialChannelStrategy implements ChannelStrategy {
 
             if (blobNameOffsetMap.get(blobName).size() == 0) {
                 blobNameChannelMap.remove(blobName);
-                channelStrategyDelegate.releaseChannelForBlob(seekableByteChannel, blob);
+                channelStrategyDelegate.releaseChannelForBlob(((SeekableByteChannelDecorator)seekableByteChannel).wrappedSeekableByteChannel(), blob);
             }
         }
     }

@@ -15,6 +15,8 @@
 
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
+import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
+import com.spectralogic.ds3client.helpers.FileObjectGetter;
 import com.spectralogic.ds3client.models.BulkObject;
 import org.junit.Test;
 
@@ -43,12 +45,15 @@ public class SequentialFileWriterChannelStrategy_Test {
                 fileOutputStream.write("0123456789".getBytes());
             }
 
-            final ChannelStrategy channelStrategy = new SequentialFileWriterChannelStrategy(Paths.get("."));
+            final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder = new FileObjectGetter(Paths.get("."));
+            final ChannelStrategy channelStrategy = new SequentialFileWriterChannelStrategy(objectChannelBuilder);
+            final ChannelStrategy sequentialFileWriterStrategy = new SequentialChannelStrategy(channelStrategy, objectChannelBuilder, new TruncatingChannelPreparable());
+
 
             final BulkObject blob = new BulkObject();
             blob.setName(channelName);
 
-            final ByteChannel byteChannel = channelStrategy.acquireChannelForBlob(blob);
+            final ByteChannel byteChannel = sequentialFileWriterStrategy.acquireChannelForBlob(blob);
 
             try {
                 final ByteBuffer writeBuffer = ByteBuffer.allocate(32);

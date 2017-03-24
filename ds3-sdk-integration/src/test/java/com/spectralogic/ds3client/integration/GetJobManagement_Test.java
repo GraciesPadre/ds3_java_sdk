@@ -18,7 +18,6 @@ package com.spectralogic.ds3client.integration;
 import com.google.common.collect.Lists;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.Ds3ClientImpl;
-import com.spectralogic.ds3client.commands.DeleteObjectRequest;
 import com.spectralogic.ds3client.commands.GetObjectRequest;
 import com.spectralogic.ds3client.commands.GetObjectResponse;
 import com.spectralogic.ds3client.commands.PutObjectRequest;
@@ -45,7 +44,6 @@ import com.spectralogic.ds3client.integration.test.helpers.TempStorageIds;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageUtil;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
-import com.spectralogic.ds3client.models.Contents;
 import com.spectralogic.ds3client.models.Priority;
 import com.spectralogic.ds3client.models.bulk.Ds3Object;
 import com.spectralogic.ds3client.models.bulk.PartialDs3Object;
@@ -54,6 +52,8 @@ import com.spectralogic.ds3client.networking.Metadata;
 import com.spectralogic.ds3client.utils.ResourceUtils;
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -75,6 +75,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.spectralogic.ds3client.integration.Util.RESOURCE_BASE_NAME;
 import static com.spectralogic.ds3client.integration.Util.deleteAllContents;
+import static com.spectralogic.ds3client.integration.Util.deleteBucketContents;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -116,10 +117,22 @@ public class GetJobManagement_Test {
     private static void setupBucket(final UUID dataPolicy) {
         try {
             HELPERS.ensureBucketExists(BUCKET_NAME, dataPolicy);
-            putBeowulf();
         } catch (final Exception e) {
             LOG.error("Setting up test environment failed: " + e.getMessage());
         }
+    }
+
+    @Before
+    public void setupForEachTest() throws Exception {
+        LOG.info("Setting up before test.");
+        putBigFiles();
+        putBeowulf();
+    }
+
+    @After
+    public void teardownForEachtest() throws IOException {
+        LOG.info("Tearing down after test.");
+        deleteBucketContents(client, BUCKET_NAME);
     }
 
     private static void putBeowulf() throws Exception {
@@ -161,8 +174,6 @@ public class GetJobManagement_Test {
 
     @Test
     public void createReadJobWithBigFile() throws IOException, URISyntaxException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        putBigFiles();
-
         final String tempPathPrefix = null;
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
@@ -249,13 +260,12 @@ public class GetJobManagement_Test {
             assertTrue(failureEventReceived.get());
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
-            deleteBigFileFromBlackPearlBucket();
         }
     }
 
-    private void putBigFiles() throws IOException, URISyntaxException {
+    private static void putBigFiles() throws IOException, URISyntaxException {
         final String DIR_NAME = "largeFiles/";
-        final String[] FILE_NAMES = new String[] { "lesmis-copies.txt", "GreatExpectations.txt" };
+        final String[] FILE_NAMES = new String[] {"lesmis.txt", "lesmis-copies.txt", "GreatExpectations.txt" };
 
         final Path dirPath = ResourceUtils.loadFileResource(DIR_NAME);
 
@@ -280,17 +290,6 @@ public class GetJobManagement_Test {
         writeJob.transfer(new FileObjectPutter(dirPath));
     }
 
-    private void deleteBigFileFromBlackPearlBucket() throws IOException {
-        final Ds3ClientHelpers helpers = Ds3ClientHelpers.wrap(client);
-
-        final Iterable<Contents> objects = helpers.listObjects(BUCKET_NAME);
-        for (final Contents contents : objects) {
-            if (contents.getKey().equals("lesmis-copies.txt") || contents.getKey().equals("GreatExpectations.txt")) {
-                client.deleteObject(new DeleteObjectRequest(BUCKET_NAME, contents.getKey()));
-            }
-        }
-    }
-
     @Test
     public void createReadJobWithPriorityOption() throws IOException,
             InterruptedException, URISyntaxException {
@@ -304,10 +303,34 @@ public class GetJobManagement_Test {
     }
 
     @Test
+    public void testCreatingStreamedReadJobWithPriorityOption() throws IOException,
+            InterruptedException, URISyntaxException {
+
+        final Ds3ClientHelpers.Job readJob = HELPERS.startReadJobUsingStreamedBehavior(BUCKET_NAME, Lists.newArrayList(
+                new Ds3Object("beowulf.txt", 10)), ReadJobOptions.create().withPriority(Priority.LOW));
+        final GetJobSpectraS3Response jobSpectraS3Response = client
+                .getJobSpectraS3(new GetJobSpectraS3Request(readJob.getJobId()));
+
+        assertThat(jobSpectraS3Response.getMasterObjectListResult().getPriority(), is(Priority.LOW));
+    }
+
+    @Test
     public void createReadJobWithNameOption() throws IOException,
             URISyntaxException, InterruptedException {
 
         final Ds3ClientHelpers.Job readJob = HELPERS.startReadJob(BUCKET_NAME, Lists.newArrayList(
+                new Ds3Object("beowulf.txt", 10)), ReadJobOptions.create().withName("test_job"));
+        final GetJobSpectraS3Response jobSpectraS3Response = client
+                .getJobSpectraS3(new GetJobSpectraS3Request(readJob.getJobId()));
+
+        assertThat(jobSpectraS3Response.getMasterObjectListResult().getName(), is("test_job"));
+    }
+
+    @Test
+    public void testCreatingStreamedReadJobWithNameOption() throws IOException,
+            URISyntaxException, InterruptedException {
+
+        final Ds3ClientHelpers.Job readJob = HELPERS.startReadJobUsingStreamedBehavior(BUCKET_NAME, Lists.newArrayList(
                 new Ds3Object("beowulf.txt", 10)), ReadJobOptions.create().withName("test_job"));
         final GetJobSpectraS3Response jobSpectraS3Response = client
                 .getJobSpectraS3(new GetJobSpectraS3Request(readJob.getJobId()));
@@ -330,9 +353,21 @@ public class GetJobManagement_Test {
     }
 
     @Test
-    public void testPartialRetriesWithInjectedFailures() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException, URISyntaxException {
-        putBigFiles();
+    public void testCreatingStreamedReadJobWithNameAndPriorityOption() throws IOException,
+            URISyntaxException, InterruptedException {
 
+        final Ds3ClientHelpers.Job readJob = HELPERS.startReadJobUsingStreamedBehavior(BUCKET_NAME, Lists.newArrayList(
+                new Ds3Object("beowulf.txt", 10)), ReadJobOptions.create()
+                .withName("test_job").withPriority(Priority.LOW));
+        final GetJobSpectraS3Response jobSpectraS3Response = client
+                .getJobSpectraS3(new GetJobSpectraS3Request(readJob.getJobId()));
+
+        assertThat(jobSpectraS3Response.getMasterObjectListResult().getName(), is("test_job"));
+        assertThat(jobSpectraS3Response.getMasterObjectListResult().getPriority(), is(Priority.LOW));
+    }
+
+    @Test
+    public void testPartialRetriesWithInjectedFailures() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException, URISyntaxException {
         final String tempPathPrefix = null;
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
@@ -400,7 +435,6 @@ public class GetJobManagement_Test {
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
-            deleteBigFileFromBlackPearlBucket();
         }
     }
 
@@ -408,8 +442,6 @@ public class GetJobManagement_Test {
     public void testFiringFailureHandlerWhenGettingChunks()
             throws URISyntaxException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, IOException
     {
-        putBigFiles();
-
         final String tempPathPrefix = null;
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
@@ -435,7 +467,6 @@ public class GetJobManagement_Test {
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
-            deleteBigFileFromBlackPearlBucket();
         }
     }
 
@@ -466,8 +497,6 @@ public class GetJobManagement_Test {
     public void testFiringFailureHandlerWhenGettingObject()
             throws URISyntaxException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, IOException
     {
-        putBigFiles();
-
         final String tempPathPrefix = null;
         final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
 
@@ -493,7 +522,124 @@ public class GetJobManagement_Test {
             }
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
-            deleteBigFileFromBlackPearlBucket();
         }
+    }
+
+    @Test
+    public void testCreatingReadJobWithStreamedBehavior() throws IOException, URISyntaxException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        doReadJobWithJobStarter(new ReadJobStarter() {
+            @Override
+            public Ds3ClientHelpers.Job startReadJob(final Ds3ClientHelpers ds3ClientHelpers, final String bucketName, final Iterable<Ds3Object> objectsToread)
+                throws IOException
+            {
+                return ds3ClientHelpers.startReadJobUsingStreamedBehavior(BUCKET_NAME, objectsToread);
+            }
+        });
+    }
+
+    private interface ReadJobStarter {
+        Ds3ClientHelpers.Job startReadJob(final Ds3ClientHelpers ds3ClientHelpers, final String bucketName, Iterable<Ds3Object> objectsToread) throws IOException;
+    }
+
+    private void doReadJobWithJobStarter(final ReadJobStarter readJobStarter) throws IOException, URISyntaxException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+
+        try {
+            final String DIR_NAME = "largeFiles/";
+            final String FILE_NAME = "lesmis.txt";
+
+            final Path objPath = ResourceUtils.loadFileResource(DIR_NAME + FILE_NAME);
+            final long bookSize = Files.size(objPath);
+            final Ds3Object obj = new Ds3Object(FILE_NAME, bookSize);
+
+            final Ds3ClientShim ds3ClientShim = new Ds3ClientShim((Ds3ClientImpl)client);
+
+            final int maxNumBlockAllocationRetries = 1;
+            final int maxNumObjectTransferAttempts = 3;
+            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(ds3ClientShim,
+                    maxNumBlockAllocationRetries,
+                    maxNumObjectTransferAttempts);
+
+            final Ds3ClientHelpers.Job readJob = readJobStarter.startReadJob(ds3ClientHelpers, BUCKET_NAME, Arrays.asList(obj));
+
+            final AtomicBoolean dataTransferredEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean objectCompletedEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean checksumEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean metadataEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean waitingForChunksEventReceived = new AtomicBoolean(false);
+            final AtomicBoolean failureEventReceived = new AtomicBoolean(false);
+
+            readJob.attachDataTransferredListener(new DataTransferredListener() {
+                @Override
+                public void dataTransferred(final long size) {
+                    dataTransferredEventReceived.set(true);
+                    assertEquals(bookSize, size);
+                }
+            });
+            readJob.attachObjectCompletedListener(new ObjectCompletedListener() {
+                @Override
+                public void objectCompleted(final String name) {
+                    objectCompletedEventReceived.set(true);
+                }
+            });
+            readJob.attachChecksumListener(new ChecksumListener() {
+                @Override
+                public void value(final BulkObject obj, final ChecksumType.Type type, final String checksum) {
+                    checksumEventReceived.set(true);
+                    assertEquals("69+JXWeZuzl2HFTM6Lbo8A==", checksum);
+                }
+            });
+            readJob.attachMetadataReceivedListener(new MetadataReceivedListener() {
+                @Override
+                public void metadataReceived(final String filename, final Metadata metadata) {
+                    metadataEventReceived.set(true);
+                }
+            });
+            readJob.attachWaitingForChunksListener(new WaitingForChunksListener() {
+                @Override
+                public void waiting(final int secondsToWait) {
+                    waitingForChunksEventReceived.set(true);
+                }
+            });
+            readJob.attachFailureEventListener(new FailureEventListener() {
+                @Override
+                public void onFailure(final FailureEvent failureEvent) {
+                    failureEventReceived.set(true);
+                }
+            });
+
+            final GetJobSpectraS3Response jobSpectraS3Response = ds3ClientShim
+                    .getJobSpectraS3(new GetJobSpectraS3Request(readJob.getJobId()));
+
+            assertThat(jobSpectraS3Response.getStatusCode(), is(200));
+
+            readJob.transfer(new FileObjectGetter(tempDirectory));
+
+            final File originalFile = ResourceUtils.loadFileResource(DIR_NAME + FILE_NAME).toFile();
+            final File fileCopiedFromBP = Paths.get(tempDirectory.toString(), FILE_NAME).toFile();
+            assertTrue(FileUtils.contentEquals(originalFile, fileCopiedFromBP));
+
+            assertTrue(dataTransferredEventReceived.get());
+            assertTrue(objectCompletedEventReceived.get());
+            assertTrue(checksumEventReceived.get());
+            assertTrue(metadataEventReceived.get());
+            assertFalse(waitingForChunksEventReceived.get());
+            assertFalse(failureEventReceived.get());
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+        }
+    }
+
+    @Test
+    public void testCreatingReadJobWithRandomAccessBehavior() throws IOException, URISyntaxException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        doReadJobWithJobStarter(new ReadJobStarter() {
+            @Override
+            public Ds3ClientHelpers.Job startReadJob(final Ds3ClientHelpers ds3ClientHelpers, final String bucketName, final Iterable<Ds3Object> objectsToread)
+                    throws IOException
+            {
+                return ds3ClientHelpers.startReadJobUsingRandomAccessBehavior(BUCKET_NAME, objectsToread);
+            }
+        });
     }
 }

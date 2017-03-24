@@ -15,6 +15,8 @@
 
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
+import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
+import com.spectralogic.ds3client.helpers.FileObjectPutter;
 import com.spectralogic.ds3client.models.BulkObject;
 import org.junit.Test;
 import java.io.File;
@@ -48,8 +50,9 @@ public class SequentialChannelStrategy_Test {
             blob.setName(blobName);
             blob.setOffset(0);
 
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
+            final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder = new FileObjectPutter(Paths.get("."));
+            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(objectChannelBuilder);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy, objectChannelBuilder, new NullChannelPreparable());
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             assertNotNull(seekableByteChannel);
@@ -79,8 +82,9 @@ public class SequentialChannelStrategy_Test {
             blob2.setName(blobName);
             blob2.setOffset(3);
 
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
+            final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder = new FileObjectPutter(Paths.get("."));
+            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(objectChannelBuilder);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy, objectChannelBuilder, new NullChannelPreparable());
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             final SeekableByteChannel seekableByteChannel2 = wrapperChannelStrategy.acquireChannelForBlob(blob2);
@@ -107,8 +111,9 @@ public class SequentialChannelStrategy_Test {
             blob.setName(blobName);
             blob.setOffset(0);
 
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
+            final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder = new FileObjectPutter(Paths.get("."));
+            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(objectChannelBuilder);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy, objectChannelBuilder, new NullChannelPreparable());
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             assertTrue(seekableByteChannel.isOpen());
@@ -139,8 +144,9 @@ public class SequentialChannelStrategy_Test {
             blob2.setName(blobName);
             blob2.setOffset(3);
 
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
+            final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder = new FileObjectPutter(Paths.get("."));
+            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(objectChannelBuilder);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy, objectChannelBuilder, new NullChannelPreparable());
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             final SeekableByteChannel seekableByteChannel2 = wrapperChannelStrategy.acquireChannelForBlob(blob2);
@@ -156,6 +162,7 @@ public class SequentialChannelStrategy_Test {
             file.delete();
         }
     }
+
 
     @Test
     public void testReleasingSameBlobOffsetForDifferentBlobs() throws IOException {
@@ -177,8 +184,9 @@ public class SequentialChannelStrategy_Test {
             blob2.setName(blobName);
             blob2.setOffset(3);
 
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
+            final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder = new FileObjectPutter(Paths.get("."));
+            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(objectChannelBuilder);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy, objectChannelBuilder, new NullChannelPreparable());
 
             final SeekableByteChannel seekableByteChannel = wrapperChannelStrategy.acquireChannelForBlob(blob);
             final SeekableByteChannel seekableByteChannel2 = wrapperChannelStrategy.acquireChannelForBlob(blob2);
@@ -209,11 +217,12 @@ public class SequentialChannelStrategy_Test {
             blob2.setName(blobName);
             blob2.setOffset(3);
 
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
+            final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder = new FileObjectPutter(Paths.get("."));
+            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(objectChannelBuilder);
 
             final ChannelStrategy mockSequentialFileReaderChannelStrategy = new MockSequentialChannelReaderStrategy(channelStrategy, blob2);
 
-            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(mockSequentialFileReaderChannelStrategy);
+            final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(mockSequentialFileReaderChannelStrategy, objectChannelBuilder, new NullChannelPreparable());
 
             final AtomicInteger numTimesIOExceptionCaught = new AtomicInteger(0);
 
@@ -280,8 +289,9 @@ public class SequentialChannelStrategy_Test {
         blob.setName(blobName);
         blob.setOffset(0);
 
-        final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
-        final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
+        final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder = new FileObjectPutter(Paths.get("."));
+        final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(objectChannelBuilder);
+        final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy, objectChannelBuilder, new NullChannelPreparable());
 
         final AtomicInteger numTimesIOExceptionCaught = new AtomicInteger(0);
 
@@ -303,8 +313,9 @@ public class SequentialChannelStrategy_Test {
         blob.setName(blobName);
         blob.setOffset(0);
 
-        final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("transfererJustBecauseICan"));
-        final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy);
+        final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder = new FileObjectPutter(Paths.get("transfererJustBecauseICan"));
+        final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(objectChannelBuilder);
+        final ChannelStrategy wrapperChannelStrategy = new SequentialChannelStrategy(channelStrategy, objectChannelBuilder, new NullChannelPreparable());
 
         final AtomicInteger numTimesIOExceptionCaught = new AtomicInteger(0);
 

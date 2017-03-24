@@ -15,6 +15,7 @@
 
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
+import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.models.BulkObject;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -26,18 +27,16 @@ import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.resolveF
 
 public class SequentialFileReaderChannelStrategy implements ChannelStrategy {
     private final Object lock = new Object();
-    private final Path directory;
+    private final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder;
 
-    public SequentialFileReaderChannelStrategy(final Path directory) {
-        this.directory = directory;
+    public SequentialFileReaderChannelStrategy(final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder) {
+        this.objectChannelBuilder = objectChannelBuilder;
     }
 
     @Override
     public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
         synchronized (lock) {
-            final Path path = directory.resolve(blob.getName());
-
-            return FileChannel.open(resolveForSymbolic(path), StandardOpenOption.READ);
+            return objectChannelBuilder.buildChannel(blob.getName());
         }
     }
 

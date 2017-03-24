@@ -60,7 +60,7 @@ class ReadJobImpl extends JobImpl {
             super.transfer(channelBuilder);
 
             try {
-                try (final TransferStrategy transferStrategy = transferStrategyBuilder().makeOriginalSdkSemanticsGetTransferStrategy()) {
+                try (final TransferStrategy transferStrategy = transferStrategyBuilder().makeGetTransferStrategy()) {
                     transferStrategy.transfer();
                 }
             } catch (final RuntimeException | IOException e) {

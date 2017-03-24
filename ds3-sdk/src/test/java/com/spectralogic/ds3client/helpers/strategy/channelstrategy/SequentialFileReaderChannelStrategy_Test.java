@@ -15,6 +15,7 @@
 
 package com.spectralogic.ds3client.helpers.strategy.channelstrategy;
 
+import com.spectralogic.ds3client.helpers.FileObjectPutter;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.BulkObjectList;
 import org.junit.Test;
@@ -47,7 +48,7 @@ public class SequentialFileReaderChannelStrategy_Test {
                 fileOutputStream.write(expectedText.getBytes());
             }
 
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
+            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(new FileObjectPutter(Paths.get(".")));
 
             final BulkObject blob = new BulkObject();
             blob.setName(channelName);
@@ -81,7 +82,7 @@ public class SequentialFileReaderChannelStrategy_Test {
         final File file = new File(Paths.get(".", channelName).toString());
 
         try {
-            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(Paths.get("."));
+            final ChannelStrategy channelStrategy = new SequentialFileReaderChannelStrategy(new FileObjectPutter(Paths.get(".")));
 
             final BulkObject blob = new BulkObject();
             blob.setName(channelName);

@@ -38,7 +38,6 @@ public class RandomAccessChannelStrategy implements ChannelStrategy {
     private final ChannelPreparable channelPreparer;
     private final Map<BulkObject, SeekableByteChannel> blobChannelMap;
 
-
     public RandomAccessChannelStrategy(final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder,
                                        final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs,
                                        final ChannelPreparable channelPreparer)

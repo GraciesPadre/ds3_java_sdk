@@ -553,6 +553,52 @@ public class PutJobManagement_Test {
     }
 
     @Test
+    public void testPutJobOptionsWithStreamingBehavior() throws IOException {
+
+        try {
+            final WriteJobOptions writeJobOptions = WriteJobOptions.create().withAggregating();
+
+            final Ds3ClientHelpers.Job jobOne = HELPERS.startWriteJobUsingStreamedBehavior(BUCKET_NAME,
+                    Lists.newArrayList(new Ds3Object("test", 2)),
+                    writeJobOptions);
+            final UUID jobOneId = jobOne.getJobId();
+
+            final Ds3ClientHelpers.Job jobTwo = HELPERS.startWriteJobUsingStreamedBehavior(BUCKET_NAME,
+                    Lists.newArrayList(new Ds3Object("test2", 2)),
+                    writeJobOptions);
+            final UUID jobTwoId = jobTwo.getJobId();
+
+            assertThat(jobOneId, is(jobTwoId));
+
+        } finally {
+            deleteAllContents(client, BUCKET_NAME);
+        }
+    }
+
+    @Test
+    public void testPutJobOptionsWithRandomAccessBehavior() throws IOException {
+
+        try {
+            final WriteJobOptions writeJobOptions = WriteJobOptions.create().withAggregating();
+
+            final Ds3ClientHelpers.Job jobOne = HELPERS.startWriteJobUsingRandomAccessBehavior(BUCKET_NAME,
+                    Lists.newArrayList(new Ds3Object("test", 2)),
+                    writeJobOptions);
+            final UUID jobOneId = jobOne.getJobId();
+
+            final Ds3ClientHelpers.Job jobTwo = HELPERS.startWriteJobUsingRandomAccessBehavior(BUCKET_NAME,
+                    Lists.newArrayList(new Ds3Object("test2", 2)),
+                    writeJobOptions);
+            final UUID jobTwoId = jobTwo.getJobId();
+
+            assertThat(jobOneId, is(jobTwoId));
+
+        } finally {
+            deleteAllContents(client, BUCKET_NAME);
+        }
+    }
+
+    @Test
     public void allocateJobChunk() throws IOException {
 
         try {
@@ -1231,15 +1277,81 @@ public class PutJobManagement_Test {
             transferStrategyBuilder.withDs3Client(client);
             transferStrategyBuilder.withMasterObjectList(putBulkJobSpectraS3Response.getResult());
             transferStrategyBuilder.withChannelBuilder(new FileObjectPutter(dirPath));
-            final TransferStrategy transferStrategy = transferStrategyBuilder.makeOriginalSdkSemanticsPutTransferStrategy();
+            final TransferStrategy transferStrategy = transferStrategyBuilder.makePutTransferStrategy();
 
             transferStrategy.transfer();
 
             final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(client);
             final Iterable<Contents> bucketContentsIterable = ds3ClientHelpers.listObjects(BUCKET_NAME);
 
-            for (final Contents buckeContents : bucketContentsIterable) {
-                assertEquals(FILE_NAMES[0], buckeContents.getKey());
+            for (final Contents bucketContents : bucketContentsIterable) {
+                assertEquals(FILE_NAMES[0], bucketContents.getKey());
+            }
+        } finally {
+            deleteAllContents(client, BUCKET_NAME);
+        }
+    }
+
+    @Test
+    public void testPutJobUsingStreamedTransferStrategy() throws IOException, URISyntaxException {
+        final String DIR_NAME = "books/";
+        final String[] FILE_NAMES = new String[]{"beowulf.txt"};
+
+        try {
+            final Path dirPath = ResourceUtils.loadFileResource(DIR_NAME);
+
+            final List<String> bookTitles = new ArrayList<>();
+            final List<Ds3Object> objectsToWrite = new ArrayList<>();
+            for (final String book : FILE_NAMES) {
+                final Path objPath = ResourceUtils.loadFileResource(DIR_NAME + book);
+                final long bookSize = Files.size(objPath);
+                final Ds3Object obj = new Ds3Object(book, bookSize);
+
+                bookTitles.add(book);
+                objectsToWrite.add(obj);
+            }
+
+            final Ds3ClientHelpers.Job writeJob = HELPERS.startWriteJobUsingStreamedBehavior(BUCKET_NAME, objectsToWrite);
+            writeJob.transfer(new FileObjectPutter(dirPath));
+
+            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(client);
+            final Iterable<Contents> bucketContentsIterable = ds3ClientHelpers.listObjects(BUCKET_NAME);
+
+            for (final Contents bucketContents : bucketContentsIterable) {
+                assertEquals(FILE_NAMES[0], bucketContents.getKey());
+            }
+        } finally {
+            deleteAllContents(client, BUCKET_NAME);
+        }
+    }
+
+    @Test
+    public void testPutJobUsingRandomAccessTransferStrategy() throws IOException, URISyntaxException {
+        final String DIR_NAME = "books/";
+        final String[] FILE_NAMES = new String[]{"beowulf.txt"};
+
+        try {
+            final Path dirPath = ResourceUtils.loadFileResource(DIR_NAME);
+
+            final List<String> bookTitles = new ArrayList<>();
+            final List<Ds3Object> objectsToWrite = new ArrayList<>();
+            for (final String book : FILE_NAMES) {
+                final Path objPath = ResourceUtils.loadFileResource(DIR_NAME + book);
+                final long bookSize = Files.size(objPath);
+                final Ds3Object obj = new Ds3Object(book, bookSize);
+
+                bookTitles.add(book);
+                objectsToWrite.add(obj);
+            }
+
+            final Ds3ClientHelpers.Job writeJob = HELPERS.startWriteJobUsingRandomAccessBehavior(BUCKET_NAME, objectsToWrite);
+            writeJob.transfer(new FileObjectPutter(dirPath));
+
+            final Ds3ClientHelpers ds3ClientHelpers = Ds3ClientHelpers.wrap(client);
+            final Iterable<Contents> bucketContentsIterable = ds3ClientHelpers.listObjects(BUCKET_NAME);
+
+            for (final Contents bucketContents : bucketContentsIterable) {
+                assertEquals(FILE_NAMES[0], bucketContents.getKey());
             }
         } finally {
             deleteAllContents(client, BUCKET_NAME);
