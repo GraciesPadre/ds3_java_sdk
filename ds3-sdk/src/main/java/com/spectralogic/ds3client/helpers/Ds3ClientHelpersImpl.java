@@ -268,8 +268,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
     }
 
     @Override
-    public Ds3ClientHelpers.Job startReadAllJob(final String bucket)
-            throws IOException {
+    public Ds3ClientHelpers.Job startReadAllJob(final String bucket) throws IOException {
         return innerStartReadAllJob(bucket, ReadJobOptions.create());
     }
 
@@ -282,13 +281,34 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
         return innerStartReadAllJob(bucket, options);
     }
 
-    private Ds3ClientHelpers.Job innerStartReadAllJob(final String bucket, final ReadJobOptions options)
-            throws IOException {
-        final Iterable<Contents> contentsList = this.listObjects(bucket);
+    private Ds3ClientHelpers.Job innerStartReadAllJob(final String bucket, final ReadJobOptions options) throws IOException {
+        return this.startReadJob(bucket, makeBlobList(bucket), options);
+    }
 
-        final Iterable<Ds3Object> ds3Objects = this.toDs3Iterable(contentsList, FolderNameFilter.filter());
+    private final Iterable<Ds3Object> makeBlobList(final String bucket) throws IOException {
+        final Iterable<Contents> contentsList = listObjects(bucket);
 
-        return this.startReadJob(bucket, ds3Objects, options);
+        return toDs3Iterable(contentsList, FolderNameFilter.filter());
+    }
+
+    public Ds3ClientHelpers.Job startReadAllJobUsingStreamedBehavior(final String bucket) throws IOException {
+        return startReadAllJobUsingStreamedBehavior(bucket, ReadJobOptions.create());
+    }
+
+    public Ds3ClientHelpers.Job startReadAllJobUsingStreamedBehavior(final String bucket, final ReadJobOptions options) throws IOException {
+        Preconditions.checkNotNull(options, "options may not be null.");
+
+        return startReadJobUsingStreamedBehavior(bucket, makeBlobList(bucket), options);
+    }
+
+    public Ds3ClientHelpers.Job startReadAllJobUsingRandomAccessBehavior(final String bucket) throws IOException {
+        return startReadAllJobUsingRandomAccessBehavior(bucket, ReadJobOptions.create());
+    }
+
+    public Ds3ClientHelpers.Job startReadAllJobUsingRandomAccessBehavior(final String bucket, final ReadJobOptions options) throws IOException {
+        Preconditions.checkNotNull(options, "options may not be null.");
+
+        return startReadJobUsingRandomAccessBehavior(bucket, makeBlobList(bucket), options);
     }
 
     // TODO Need to allow the user to pass in the checksumming information again

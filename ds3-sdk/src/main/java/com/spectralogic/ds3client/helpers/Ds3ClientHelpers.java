@@ -225,16 +225,19 @@ public abstract class Ds3ClientHelpers {
      *
      * @throws IOException
      */
-    public abstract Ds3ClientHelpers.Job startReadAllJob(final String bucket)
-            throws IOException;
+    public abstract Ds3ClientHelpers.Job startReadAllJob(final String bucket) throws IOException;
 
     /**
      * Performs a bulk get job creation request for all of the objects in the given bucket and returns an {@link ReadJobImpl}.
      *
      * @throws IOException
      */
-    public abstract Ds3ClientHelpers.Job startReadAllJob(final String bucket, final ReadJobOptions options)
-            throws IOException;
+    public abstract Ds3ClientHelpers.Job startReadAllJob(final String bucket, final ReadJobOptions options) throws IOException;
+
+    public abstract Ds3ClientHelpers.Job startReadAllJobUsingStreamedBehavior(final String bucket) throws IOException;
+    public abstract Ds3ClientHelpers.Job startReadAllJobUsingStreamedBehavior(final String bucket, final ReadJobOptions options) throws IOException;
+    public abstract Ds3ClientHelpers.Job startReadAllJobUsingRandomAccessBehavior(final String bucket) throws IOException;
+    public abstract Ds3ClientHelpers.Job startReadAllJobUsingRandomAccessBehavior(final String bucket, final ReadJobOptions options) throws IOException;
 
     /**
      * Queries job information based on job id and returns a {@link ReadJobImpl} that can resume the job.

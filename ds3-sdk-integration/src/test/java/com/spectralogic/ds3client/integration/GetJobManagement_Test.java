@@ -642,4 +642,72 @@ public class GetJobManagement_Test {
             }
         });
     }
+
+    @Test
+    public void testStartReadAllJobUsingStreamedBehavior() throws IOException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+
+        try {
+            final AtomicInteger numFailuresRecorded = new AtomicInteger(0);
+
+            final FailureEventListener failureEventListener = new FailureEventListener() {
+                @Override
+                public void onFailure(final FailureEvent failureEvent) {
+                    numFailuresRecorded.incrementAndGet();
+                    assertEquals(FailureEvent.FailureActivity.GettingObject, failureEvent.doingWhat());
+                }
+            };
+
+            final Ds3ClientHelpers.Job readJob = HELPERS.startReadAllJobUsingStreamedBehavior(BUCKET_NAME);
+            readJob.attachFailureEventListener(failureEventListener);
+            readJob.transfer(new FileObjectGetter(tempDirectory));
+
+            final Collection<File> filesInTempDirectory = FileUtils.listFiles(tempDirectory.toFile(), null, false);
+
+            final List<String> filesWeExpectToBeInTempDirectory = Arrays.asList("beowulf.txt", "lesmis.txt", "lesmis-copies.txt", "GreatExpectations.txt");
+
+            for (final File fileInTempDirectory : filesInTempDirectory) {
+                assertTrue(filesWeExpectToBeInTempDirectory.contains(fileInTempDirectory.getName()));
+            }
+
+            assertEquals(0, numFailuresRecorded.get());
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+        }
+    }
+
+    @Test
+    public void testStartReadAllJobUsingRandomAccessBehavior() throws IOException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+
+        try {
+            final AtomicInteger numFailuresRecorded = new AtomicInteger(0);
+
+            final FailureEventListener failureEventListener = new FailureEventListener() {
+                @Override
+                public void onFailure(final FailureEvent failureEvent) {
+                    numFailuresRecorded.incrementAndGet();
+                    assertEquals(FailureEvent.FailureActivity.GettingObject, failureEvent.doingWhat());
+                }
+            };
+
+            final Ds3ClientHelpers.Job readJob = HELPERS.startReadAllJobUsingRandomAccessBehavior(BUCKET_NAME);
+            readJob.attachFailureEventListener(failureEventListener);
+            readJob.transfer(new FileObjectGetter(tempDirectory));
+
+            final Collection<File> filesInTempDirectory = FileUtils.listFiles(tempDirectory.toFile(), null, false);
+
+            final List<String> filesWeExpectToBeInTempDirectory = Arrays.asList("beowulf.txt", "lesmis.txt", "lesmis-copies.txt", "GreatExpectations.txt");
+
+            for (final File fileInTempDirectory : filesInTempDirectory) {
+                assertTrue(filesWeExpectToBeInTempDirectory.contains(fileInTempDirectory.getName()));
+            }
+
+            assertEquals(0, numFailuresRecorded.get());
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+        }
+    }
 }
