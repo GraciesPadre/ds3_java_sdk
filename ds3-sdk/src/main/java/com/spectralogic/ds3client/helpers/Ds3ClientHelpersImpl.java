@@ -314,12 +314,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
     // TODO Need to allow the user to pass in the checksumming information again
     @Override
     public Ds3ClientHelpers.Job recoverWriteJob(final UUID jobId) throws IOException, JobRecoveryException {
-        final ModifyJobSpectraS3Response jobResponse = this.client.modifyJobSpectraS3(new ModifyJobSpectraS3Request(jobId.toString()));
-        if (JobRequestType.PUT != jobResponse.getMasterObjectListResult().getRequestType()) {
-            throw new JobRecoveryException(
-                    RequestType.PUT.toString(),
-                    jobResponse.getMasterObjectListResult().getRequestType().toString());
-        }
+        final ModifyJobSpectraS3Response jobResponse = modifyJobSpectraS3Response(jobId, JobRequestType.PUT);
 
         final TransferStrategyBuilder transferStrategyBuilder = makeTransferStrategyBuilder()
                 .withMasterObjectList(jobResponse.getMasterObjectListResult())
@@ -328,21 +323,76 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
         return new WriteJobImpl(transferStrategyBuilder);
     }
 
+    private ModifyJobSpectraS3Response modifyJobSpectraS3Response(final UUID jobId, final JobRequestType jobRequestType) throws IOException, JobRecoveryException {
+        final ModifyJobSpectraS3Response jobResponse = client.modifyJobSpectraS3(new ModifyJobSpectraS3Request(jobId.toString()));
+
+        if (jobRequestType != jobResponse.getMasterObjectListResult().getRequestType()) {
+            throw new JobRecoveryException(jobRequestType.toString(), jobResponse.getMasterObjectListResult().getRequestType().toString());
+        }
+
+        return jobResponse;
+    }
+
+    public Ds3ClientHelpers.Job recoverWriteJobUsingStreamedBehavior(final UUID jobId) throws IOException, JobRecoveryException {
+        final ModifyJobSpectraS3Response jobResponse = modifyJobSpectraS3Response(jobId, JobRequestType.PUT);
+
+        final TransferStrategyBuilder transferStrategyBuilder = makeTransferStrategyBuilder()
+                .withMasterObjectList(jobResponse.getMasterObjectListResult())
+                .withChecksumType(ChecksumType.Type.NONE)
+                .usingStreamedTransferBehavior();
+
+        return new WriteJobImpl(transferStrategyBuilder);
+    }
+
+    public Ds3ClientHelpers.Job recoverWriteJobUsingRandomAccessBehavior(final UUID jobId) throws IOException, JobRecoveryException {
+        final ModifyJobSpectraS3Response jobResponse = modifyJobSpectraS3Response(jobId, JobRequestType.PUT);
+
+        final TransferStrategyBuilder transferStrategyBuilder = makeTransferStrategyBuilder()
+                .withMasterObjectList(jobResponse.getMasterObjectListResult())
+                .withChecksumType(ChecksumType.Type.NONE)
+                .usingRandomAccessTransferBehavior();
+
+        return new WriteJobImpl(transferStrategyBuilder);
+    }
+
     @Override
     //TODO add a partial object read recovery method.  That method will require the list of partial objects.
     public Ds3ClientHelpers.Job recoverReadJob(final UUID jobId) throws IOException, JobRecoveryException {
-        final ModifyJobSpectraS3Response jobResponse = this.client.modifyJobSpectraS3(new ModifyJobSpectraS3Request(jobId.toString()));
-        if (JobRequestType.GET != jobResponse.getMasterObjectListResult().getRequestType()){
-            throw new JobRecoveryException(
-                    RequestType.GET.toString(),
-                    jobResponse.getMasterObjectListResult().getRequestType().toString() );
-        }
-
-        final MasterObjectList masterObjectList = jobResponse.getMasterObjectListResult();
+        final MasterObjectList masterObjectList = masterObjectListForGetJob(jobId);
 
         final TransferStrategyBuilder transferStrategyBuilder = makeTransferStrategyBuilder()
                 .withMasterObjectList(masterObjectList)
                 .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), ImmutableMultimap.<String, Range>of()));
+
+        return new ReadJobImpl(transferStrategyBuilder);
+    }
+
+    private MasterObjectList masterObjectListForGetJob(final UUID jobId) throws IOException, JobRecoveryException {
+        final ModifyJobSpectraS3Response jobResponse = modifyJobSpectraS3Response(jobId, JobRequestType.GET);
+
+        return jobResponse.getMasterObjectListResult();
+    }
+
+    @Override
+    public Job recoverReadJobsingStreamedBehavior(final UUID jobId) throws IOException, JobRecoveryException {
+        final MasterObjectList masterObjectList = masterObjectListForGetJob(jobId);
+
+        final TransferStrategyBuilder transferStrategyBuilder = makeTransferStrategyBuilder()
+                .withMasterObjectList(masterObjectList)
+                .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), ImmutableMultimap.<String, Range>of()))
+                .usingStreamedTransferBehavior();
+
+        return new ReadJobImpl(transferStrategyBuilder);
+    }
+
+    @Override
+    public Job recoverReadJobUsingRandomAccessBehavior(final UUID jobId) throws IOException, JobRecoveryException {
+        final MasterObjectList masterObjectList = masterObjectListForGetJob(jobId);
+
+        final TransferStrategyBuilder transferStrategyBuilder = makeTransferStrategyBuilder()
+                .withMasterObjectList(masterObjectList)
+                .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), ImmutableMultimap.<String, Range>of()))
+                .usingRandomAccessTransferBehavior();
 
         return new ReadJobImpl(transferStrategyBuilder);
     }

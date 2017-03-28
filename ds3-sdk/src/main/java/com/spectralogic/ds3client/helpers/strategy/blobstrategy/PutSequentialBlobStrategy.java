@@ -16,13 +16,13 @@
 package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import com.google.common.base.Function;
+import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.commands.spectrads3.AllocateJobChunkSpectraS3Request;
 import com.spectralogic.ds3client.commands.spectrads3.AllocateJobChunkSpectraS3Response;
 import com.spectralogic.ds3client.helpers.JobPart;
-import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.JobNode;
@@ -61,12 +61,23 @@ public class PutSequentialBlobStrategy extends AbstractBlobStrategy {
         final Objects nextChunk = allocateChunk(filteredChunkIterator.next());
 
         LOG.debug("Allocating chunk: {}", nextChunk.getChunkId().toString());
-        return FluentIterable.from(nextChunk.getObjects()).transform(new Function<BulkObject, JobPart>() {
+        return FluentIterable.from(nextChunk.getObjects()).filter(new Predicate<BulkObject>() {
+            @Override
+            public boolean apply(@Nullable final BulkObject input) {
+                return !input.getInCache();
+            }
+        }).transform(new Function<BulkObject, JobPart>() {
             @Nullable
             @Override
-            public JobPart apply(@Nullable final BulkObject input) {
+            public JobPart apply(@Nullable final BulkObject blob) {
+                return new JobPart(client(), blob);
 
-                return new JobPart(StrategyUtils.getClient(uuidJobNodeImmutableMap,nextChunk.getNodeId(), client()), input);
+                // TODO: When we get to the point where BP enables clustering, we'll want to be able to get the
+                // client connection info correct for the server on which a chunk resides. StrategyUtils.getClient
+                // appears to work to support the clustering scenario, but we don't need it right now, and holding
+                // connection info in a collection potentially exposes lifetime management issues that we haven't
+                // fully explored.
+                // return new JobPart(StrategyUtils.getClient(uuidJobNodeImmutableMap,nextChunk.getNodeId(), getClient()), input);
             }
         });
     }

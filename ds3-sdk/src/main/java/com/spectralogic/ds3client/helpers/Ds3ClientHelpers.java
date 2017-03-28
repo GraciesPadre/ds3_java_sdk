@@ -244,16 +244,19 @@ public abstract class Ds3ClientHelpers {
      * @throws IOException
      * @throws JobRecoveryException
      */
-    public abstract Ds3ClientHelpers.Job recoverWriteJob(final UUID jobId)
-            throws IOException, JobRecoveryException;
+    public abstract Ds3ClientHelpers.Job recoverWriteJob(final UUID jobId) throws IOException, JobRecoveryException;
+
+    public abstract Ds3ClientHelpers.Job recoverWriteJobUsingStreamedBehavior(final UUID jobId) throws IOException, JobRecoveryException;
+    public abstract Ds3ClientHelpers.Job recoverWriteJobUsingRandomAccessBehavior(final UUID jobId) throws IOException, JobRecoveryException;
 
     /**
      * Queries job information based on job id and returns a {@link WriteJobImpl} that can resume the job.
      * @throws IOException
      * @throws JobRecoveryException
      */
-    public abstract Ds3ClientHelpers.Job recoverReadJob(final UUID jobId)
-            throws IOException, JobRecoveryException;
+    public abstract Ds3ClientHelpers.Job recoverReadJob(final UUID jobId) throws IOException, JobRecoveryException;
+    public abstract Ds3ClientHelpers.Job recoverReadJobsingStreamedBehavior(final UUID jobId) throws IOException, JobRecoveryException;
+    public abstract Ds3ClientHelpers.Job recoverReadJobUsingRandomAccessBehavior(final UUID jobId) throws IOException, JobRecoveryException;
 
     /**
      * Ensures that a bucket exists.  The the bucket does not exist, it will be created.
