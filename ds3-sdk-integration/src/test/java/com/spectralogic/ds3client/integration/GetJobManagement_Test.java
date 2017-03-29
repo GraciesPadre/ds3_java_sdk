@@ -21,6 +21,8 @@ import com.spectralogic.ds3client.Ds3ClientImpl;
 import com.spectralogic.ds3client.commands.GetObjectRequest;
 import com.spectralogic.ds3client.commands.GetObjectResponse;
 import com.spectralogic.ds3client.commands.PutObjectRequest;
+import com.spectralogic.ds3client.commands.spectrads3.GetBulkJobSpectraS3Request;
+import com.spectralogic.ds3client.commands.spectrads3.GetBulkJobSpectraS3Response;
 import com.spectralogic.ds3client.commands.spectrads3.GetJobSpectraS3Request;
 import com.spectralogic.ds3client.commands.spectrads3.GetJobSpectraS3Response;
 import com.spectralogic.ds3client.helpers.ChecksumListener;
@@ -30,13 +32,31 @@ import com.spectralogic.ds3client.helpers.FailureEventListener;
 import com.spectralogic.ds3client.helpers.FileObjectGetter;
 import com.spectralogic.ds3client.helpers.FileObjectPutter;
 
+import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.MetadataReceivedListener;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 
+import com.spectralogic.ds3client.helpers.events.SameThreadEventRunner;
 import com.spectralogic.ds3client.helpers.options.ReadJobOptions;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.ChunkAttemptRetryBehavior;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.ChunkAttemptRetryDelayBehavior;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.ClientDefinedChunkAttemptRetryDelayBehavior;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialBlobStrategy;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.MaxChunkAttemptsRetryBehavior;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFileWriterChannelStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcherImpl;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MaxNumObjectTransferAttemptsDecorator;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferMethod;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferRetryDecorator;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
+import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.integration.test.helpers.ABMTestHelper;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShim;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory;
@@ -44,6 +64,7 @@ import com.spectralogic.ds3client.integration.test.helpers.TempStorageIds;
 import com.spectralogic.ds3client.integration.test.helpers.TempStorageUtil;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
+import com.spectralogic.ds3client.models.MasterObjectList;
 import com.spectralogic.ds3client.models.Priority;
 import com.spectralogic.ds3client.models.bulk.Ds3Object;
 import com.spectralogic.ds3client.models.bulk.PartialDs3Object;
@@ -709,5 +730,393 @@ public class GetJobManagement_Test {
         } finally {
             FileUtils.deleteDirectory(tempDirectory.toFile());
         }
+    }
+
+    @Test
+    public void testGetJobUsingTransferStrategy() throws IOException, InterruptedException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+        final String fileName = "beowulf.txt";
+
+        try {
+            final List<Ds3Object> objects = Lists.newArrayList(new Ds3Object(fileName));
+
+            final GetBulkJobSpectraS3Request getBulkJobSpectraS3Request = new GetBulkJobSpectraS3Request(BUCKET_NAME, objects);
+
+            final GetBulkJobSpectraS3Response getBulkJobSpectraS3Response = client.getBulkJobSpectraS3(getBulkJobSpectraS3Request);
+
+            final MasterObjectList masterObjectList = getBulkJobSpectraS3Response.getResult();
+
+            final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+                    .withDs3Client(client)
+                    .withMasterObjectList(masterObjectList)
+                    .withChannelBuilder(new FileObjectGetter(tempDirectory))
+                    .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(),
+                            PartialObjectHelpers.getPartialObjectsRanges(objects)));
+
+            final TransferStrategy transferStrategy = transferStrategyBuilder.makeGetTransferStrategy();
+
+            transferStrategy.transfer();
+
+            final Collection<File> filesInTempDirectory = FileUtils.listFiles(tempDirectory.toFile(), null, false);
+
+            for (final File file : filesInTempDirectory) {
+                assertEquals(fileName, file.getName());
+            }
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+        }
+    }
+
+    @Test
+    public void testGetJobWithUserSuppliedBlobStrategy() throws IOException, InterruptedException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+        final String fileName = "beowulf.txt";
+
+        try {
+            final List<Ds3Object> objects = Lists.newArrayList(new Ds3Object(fileName));
+
+            final GetBulkJobSpectraS3Request getBulkJobSpectraS3Request = new GetBulkJobSpectraS3Request(BUCKET_NAME, objects);
+
+            final GetBulkJobSpectraS3Response getBulkJobSpectraS3Response = client.getBulkJobSpectraS3(getBulkJobSpectraS3Request);
+
+            final MasterObjectList masterObjectList = getBulkJobSpectraS3Response.getResult();
+
+            final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+
+            final AtomicInteger numChunkAllocationAttempts = new AtomicInteger(0);
+
+            final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+                    .withDs3Client(client)
+                    .withMasterObjectList(masterObjectList)
+                    .withChannelBuilder(new FileObjectGetter(tempDirectory))
+                    .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(),
+                            PartialObjectHelpers.getPartialObjectsRanges(objects)))
+                    .withBlobStrategy(new UserSuppliedPutBlobStrategy(client,
+                            masterObjectList,
+                            eventDispatcher,
+                            new MaxChunkAttemptsRetryBehavior(5),
+                            new ClientDefinedChunkAttemptRetryDelayBehavior(1, eventDispatcher),
+                            new Monitorable() {
+                                @Override
+                                public void monitor() {
+                                    numChunkAllocationAttempts.getAndIncrement();
+                                }
+                            }));
+
+            final TransferStrategy transferStrategy = transferStrategyBuilder.makeGetTransferStrategy();
+
+            transferStrategy.transfer();
+
+            final Collection<File> filesInTempDirectory = FileUtils.listFiles(tempDirectory.toFile(), null, false);
+
+            for (final File file : filesInTempDirectory) {
+                assertEquals(fileName, file.getName());
+            }
+
+            assertEquals(1, numChunkAllocationAttempts.get());
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+        }
+    }
+
+    private interface Monitorable {
+        void monitor();
+    }
+
+    private class UserSuppliedPutBlobStrategy implements BlobStrategy {
+        private final BlobStrategy wrappedBlobStrategy;
+        private final Monitorable monitorable;
+
+        private UserSuppliedPutBlobStrategy(final Ds3Client client,
+                                            final MasterObjectList masterObjectList,
+                                            final EventDispatcher eventDispatcher,
+                                            final ChunkAttemptRetryBehavior retryBehavior,
+                                            final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior,
+                                            final Monitorable monitorable)
+        {
+            this.monitorable = monitorable;
+
+            wrappedBlobStrategy = new GetSequentialBlobStrategy(client, masterObjectList, eventDispatcher,
+                    retryBehavior, chunkAttemptRetryDelayBehavior);
+        }
+
+        @Override
+        public Iterable<JobPart> getWork() throws IOException, InterruptedException {
+            monitorable.monitor();
+
+            return wrappedBlobStrategy.getWork();
+        }
+    }
+
+    @Test
+    public void testGetJobWithUserSuppliedChannelStrategy() throws IOException, InterruptedException {
+        testGetJobWithUserSuppliedChannelStrategy(new TransferStrategyBuilderModifiable() {
+            @Override
+            public TransferStrategyBuilder modify(final TransferStrategyBuilder transferStrategyBuilder) {
+                return transferStrategyBuilder;
+            }
+        });
+    }
+
+    private void testGetJobWithUserSuppliedChannelStrategy(final TransferStrategyBuilderModifiable transferStrategyBuilderModifiable) throws IOException, InterruptedException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+        final String fileName = "beowulf.txt";
+
+        try {
+            final List<Ds3Object> objects = Lists.newArrayList(new Ds3Object(fileName));
+
+            final GetBulkJobSpectraS3Request getBulkJobSpectraS3Request = new GetBulkJobSpectraS3Request(BUCKET_NAME, objects);
+
+            final GetBulkJobSpectraS3Response getBulkJobSpectraS3Response = client.getBulkJobSpectraS3(getBulkJobSpectraS3Request);
+
+            final MasterObjectList masterObjectList = getBulkJobSpectraS3Response.getResult();
+
+            final AtomicInteger numTimesChannelOpened = new AtomicInteger(0);
+            final AtomicInteger numTimesChannelClosed = new AtomicInteger(0);
+
+            TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+                    .withDs3Client(client)
+                    .withMasterObjectList(masterObjectList)
+                    .withChannelBuilder(new FileObjectGetter(tempDirectory))
+                    .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(),
+                            PartialObjectHelpers.getPartialObjectsRanges(objects)))
+                    .withChannelStrategy(new UserSuppliedPutChannelStrategy(new FileObjectGetter(tempDirectory),
+                            new ChannelMonitorable() {
+                                @Override
+                                public void acquired() {
+                                    numTimesChannelOpened.getAndIncrement();
+                                }
+
+                                @Override
+                                public void released() {
+                                    numTimesChannelClosed.getAndIncrement();
+                                }
+                            }));
+
+            transferStrategyBuilder = transferStrategyBuilderModifiable.modify(transferStrategyBuilder);
+
+            final TransferStrategy transferStrategy = transferStrategyBuilder.makeGetTransferStrategy();
+
+            transferStrategy.transfer();
+
+            final Collection<File> filesInTempDirectory = FileUtils.listFiles(tempDirectory.toFile(), null, false);
+
+            for (final File file : filesInTempDirectory) {
+                assertEquals(fileName, file.getName());
+            }
+
+            assertEquals(1, numTimesChannelOpened.get());
+            assertEquals(1, numTimesChannelClosed.get());
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+        }
+    }
+
+    private interface TransferStrategyBuilderModifiable {
+        TransferStrategyBuilder modify(final TransferStrategyBuilder transferStrategyBuilder);
+    }
+
+    private interface ChannelMonitorable {
+        void acquired();
+        void released();
+    }
+
+    private class UserSuppliedPutChannelStrategy implements ChannelStrategy {
+        final ChannelMonitorable channelMonitorable;
+        final ChannelStrategy wrappedPutStrategy;
+
+        private UserSuppliedPutChannelStrategy(final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder,
+                                               final ChannelMonitorable channelMonitorable)
+        {
+            this.channelMonitorable = channelMonitorable;
+            wrappedPutStrategy = new SequentialFileWriterChannelStrategy(objectChannelBuilder);
+        }
+
+        @Override
+        public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
+            channelMonitorable.acquired();
+            return wrappedPutStrategy.acquireChannelForBlob(blob);
+        }
+
+        @Override
+        public void releaseChannelForBlob(final SeekableByteChannel seekableByteChannel, final BulkObject blob) throws IOException {
+            channelMonitorable.released();
+            wrappedPutStrategy.releaseChannelForBlob(seekableByteChannel, blob);
+        }
+    }
+
+    @Test
+    public void testStreamedGetJobWithUserSuppliedChannelStrategy() throws IOException, InterruptedException {
+        testGetJobWithUserSuppliedChannelStrategy(new TransferStrategyBuilderModifiable() {
+            @Override
+            public TransferStrategyBuilder modify(final TransferStrategyBuilder transferStrategyBuilder) {
+                return transferStrategyBuilder.usingStreamedTransferBehavior();
+            }
+        });
+    }
+
+    @Test
+    public void testRandomAccessGetJobWithUserSuppliedChannelStrategy() throws IOException, InterruptedException {
+        testGetJobWithUserSuppliedChannelStrategy(new TransferStrategyBuilderModifiable() {
+            @Override
+            public TransferStrategyBuilder modify(final TransferStrategyBuilder transferStrategyBuilder) {
+                return transferStrategyBuilder.usingRandomAccessTransferBehavior();
+            }
+        });
+    }
+
+    @Test
+    public void testGetJobUserSuppliedTransferRetryDecorator() throws IOException, InterruptedException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+        final String fileName = "beowulf.txt";
+
+        try {
+            final List<Ds3Object> objects = Lists.newArrayList(new Ds3Object(fileName));
+
+            final GetBulkJobSpectraS3Request getBulkJobSpectraS3Request = new GetBulkJobSpectraS3Request(BUCKET_NAME, objects);
+
+            final GetBulkJobSpectraS3Response getBulkJobSpectraS3Response = client.getBulkJobSpectraS3(getBulkJobSpectraS3Request);
+
+            final MasterObjectList masterObjectList = getBulkJobSpectraS3Response.getResult();
+
+            final AtomicInteger numTimesTransferCalled = new AtomicInteger(0);
+
+            final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+                    .withDs3Client(client)
+                    .withMasterObjectList(masterObjectList)
+                    .withChannelBuilder(new FileObjectGetter(tempDirectory))
+                    .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(),
+                            PartialObjectHelpers.getPartialObjectsRanges(objects)))
+                    .withTransferRetryDecorator(new UserSuppliedTransferRetryDecorator(
+                            new Monitorable() {
+                                @Override
+                                public void monitor() {
+                                    numTimesTransferCalled.getAndIncrement();
+                                }
+                            }
+                    ));
+
+            final TransferStrategy transferStrategy = transferStrategyBuilder.makeGetTransferStrategy();
+
+            transferStrategy.transfer();
+
+            final Collection<File> filesInTempDirectory = FileUtils.listFiles(tempDirectory.toFile(), null, false);
+
+            for (final File file : filesInTempDirectory) {
+                assertEquals(fileName, file.getName());
+            }
+
+            assertEquals(1, numTimesTransferCalled.get());
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+        }
+    }
+
+    private class UserSuppliedTransferRetryDecorator implements TransferRetryDecorator {
+        private final TransferRetryDecorator transferRetryDecorator;
+        private final Monitorable monitorable;
+
+        private UserSuppliedTransferRetryDecorator(final Monitorable monitorable) {
+            this.transferRetryDecorator = new MaxNumObjectTransferAttemptsDecorator(5);
+            this.monitorable = monitorable;
+        }
+
+        @Override
+        public TransferMethod wrap(final TransferMethod transferMethod) {
+            transferRetryDecorator.wrap(transferMethod);
+            return this;
+        }
+
+        @Override
+        public void transferJobPart(final JobPart jobPart) throws IOException {
+            monitorable.monitor();
+            transferRetryDecorator.transferJobPart(jobPart);
+        }
+    }
+
+    @Test
+    public void testGetJobUserSuppliedChunkAttemptRetryBehavior() throws IOException, InterruptedException {
+        final String tempPathPrefix = null;
+        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
+        final String fileName = "beowulf.txt";
+
+        try {
+            final List<Ds3Object> objects = Lists.newArrayList(new Ds3Object(fileName));
+
+            final GetBulkJobSpectraS3Request getBulkJobSpectraS3Request = new GetBulkJobSpectraS3Request(BUCKET_NAME, objects);
+
+            final GetBulkJobSpectraS3Response getBulkJobSpectraS3Response = client.getBulkJobSpectraS3(getBulkJobSpectraS3Request);
+
+            final MasterObjectList masterObjectList = getBulkJobSpectraS3Response.getResult();
+
+            final AtomicInteger numTimesInvokeCalled = new AtomicInteger(0);
+            final AtomicInteger numTimesResetCalled = new AtomicInteger(0);
+
+            final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+                    .withDs3Client(client)
+                    .withMasterObjectList(masterObjectList)
+                    .withChannelBuilder(new FileObjectGetter(tempDirectory))
+                    .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(),
+                            PartialObjectHelpers.getPartialObjectsRanges(objects)))
+                    .withChunkAttemptRetryBehavior(new UserSuppliedChunkAttemptRetryBehavior(
+                            new ChunkAttemptRetryBehaviorMonitorable() {
+                                @Override
+                                public void invoke() {
+                                    numTimesInvokeCalled.getAndIncrement();
+                                }
+
+                                @Override
+                                public void reset() {
+                                    numTimesResetCalled.getAndIncrement();
+                                }
+                            }
+                    ));
+
+            final TransferStrategy transferStrategy = transferStrategyBuilder.makeGetTransferStrategy();
+
+            transferStrategy.transfer();
+
+            final Collection<File> filesInTempDirectory = FileUtils.listFiles(tempDirectory.toFile(), null, false);
+
+            for (final File file : filesInTempDirectory) {
+                assertEquals(fileName, file.getName());
+            }
+
+            assertEquals(0, numTimesInvokeCalled.get());
+            assertEquals(1, numTimesResetCalled.get());
+        } finally {
+            FileUtils.deleteDirectory(tempDirectory.toFile());
+        }
+    }
+
+    private class UserSuppliedChunkAttemptRetryBehavior implements ChunkAttemptRetryBehavior {
+        private final ChunkAttemptRetryBehaviorMonitorable chunkAttemptRetryBehaviorMonitorable;
+        private final ChunkAttemptRetryBehavior wrappedChunkAttemptRetryBehavior;
+
+        private UserSuppliedChunkAttemptRetryBehavior(final ChunkAttemptRetryBehaviorMonitorable chunkAttemptRetryBehaviorMonitorable) {
+            this.chunkAttemptRetryBehaviorMonitorable = chunkAttemptRetryBehaviorMonitorable;
+            wrappedChunkAttemptRetryBehavior = new MaxChunkAttemptsRetryBehavior(5);
+        }
+
+        @Override
+        public void invoke() throws IOException {
+            chunkAttemptRetryBehaviorMonitorable.invoke();
+            wrappedChunkAttemptRetryBehavior.invoke();
+        }
+
+        @Override
+        public void reset() {
+            chunkAttemptRetryBehaviorMonitorable.reset();
+            wrappedChunkAttemptRetryBehavior.reset();
+        }
+    }
+
+    private interface ChunkAttemptRetryBehaviorMonitorable {
+        void invoke();
+        void reset();
     }
 }

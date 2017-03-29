@@ -1511,8 +1511,7 @@ public class PutJobManagement_Test {
         testPutJobWithUserSuppliedChannelStrategy(new TransferStrategyBuilderModifiable() {
             @Override
             public TransferStrategyBuilder modify(final TransferStrategyBuilder transferStrategyBuilder) {
-                transferStrategyBuilder.usingStreamedTransferBehavior();
-                return transferStrategyBuilder;
+                return transferStrategyBuilder.usingStreamedTransferBehavior();
             }
         });
     }
@@ -1522,8 +1521,7 @@ public class PutJobManagement_Test {
         testPutJobWithUserSuppliedChannelStrategy(new TransferStrategyBuilderModifiable() {
             @Override
             public TransferStrategyBuilder modify(final TransferStrategyBuilder transferStrategyBuilder) {
-                transferStrategyBuilder.usingRandomAccessTransferBehavior();
-                return transferStrategyBuilder;
+                return transferStrategyBuilder.usingRandomAccessTransferBehavior();
             }
         });
     }
