@@ -114,20 +114,6 @@ public final class StrategyUtils {
         return path;
     }
 
-    private static Object getFieldValue(final Object anObject, final String fieldName) {
-        Object result = null;
-
-        try {
-            final Field field = anObject.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            result = field.get(anObject);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            LOG.info("Could not get field info.", e);
-        }
-
-        return result;
-    }
-
     public static ImmutableCollection<Range> getRangesForBlob(final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs,
                                                        final BulkObject blob) {
         final ImmutableMultimap<BulkObject, Range> rangesForBlob = rangesForBlobs.get(blob.getName());
