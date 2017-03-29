@@ -55,7 +55,7 @@ public class GetSequentialBlobStrategy extends AbstractBlobStrategy {
     public GetSequentialBlobStrategy(final Ds3Client client,
                                      final MasterObjectList masterObjectList,
                                      final EventDispatcher eventDispatcher,
-                                     final RetryBehavior retryBehavior,
+                                     final ChunkAttemptRetryBehavior retryBehavior,
                                      final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior)
     {
         super(client, masterObjectList, eventDispatcher, retryBehavior, chunkAttemptRetryDelayBehavior);

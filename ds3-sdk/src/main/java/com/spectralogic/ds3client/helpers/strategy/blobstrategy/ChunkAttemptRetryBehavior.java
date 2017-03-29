@@ -17,7 +17,7 @@ package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import java.io.IOException;
 
-public interface RetryBehavior {
+public interface ChunkAttemptRetryBehavior {
     void invoke() throws IOException;
     void reset();
 }

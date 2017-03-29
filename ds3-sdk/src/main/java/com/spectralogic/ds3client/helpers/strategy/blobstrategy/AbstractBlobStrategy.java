@@ -27,13 +27,13 @@ public abstract class AbstractBlobStrategy implements BlobStrategy {
     private final Ds3Client client;
     private final MasterObjectList masterObjectList;
     private final EventDispatcher eventDispatcher;
-    private final RetryBehavior retryBehavior;
+    private final ChunkAttemptRetryBehavior retryBehavior;
     private final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior;
 
     public AbstractBlobStrategy(final Ds3Client client,
                                 final MasterObjectList masterObjectList,
                                 final EventDispatcher eventDispatcher,
-                                final RetryBehavior retryBehavior,
+                                final ChunkAttemptRetryBehavior retryBehavior,
                                 final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior)
     {
         this.client = client;
@@ -64,7 +64,7 @@ public abstract class AbstractBlobStrategy implements BlobStrategy {
         return masterObjectList;
     }
 
-    public RetryBehavior retryBehavior() {
+    public ChunkAttemptRetryBehavior retryBehavior() {
         return retryBehavior;
     }
 

@@ -17,7 +17,7 @@ package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import java.io.IOException;
 
-public class ContinueForeverChunkAttemptsRetryBehavior implements RetryBehavior {
+public class ContinueForeverChunkAttemptsRetryBehavior implements ChunkAttemptRetryBehavior {
     @Override
     public void invoke() throws IOException {
         // intentionally not implemented

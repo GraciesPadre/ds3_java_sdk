@@ -5,7 +5,7 @@ import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MaxChunkAttemptsRetryBehavior implements RetryBehavior {
+public class MaxChunkAttemptsRetryBehavior implements ChunkAttemptRetryBehavior {
     private final int maxAttempts;
     private final AtomicInteger currentAttempt = new AtomicInteger(0);
 

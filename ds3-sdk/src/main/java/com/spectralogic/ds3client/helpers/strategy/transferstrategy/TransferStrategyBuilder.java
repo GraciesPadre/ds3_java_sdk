@@ -40,7 +40,7 @@ import com.spectralogic.ds3client.helpers.strategy.blobstrategy.ContinueForeverC
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.GetSequentialBlobStrategy;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.MaxChunkAttemptsRetryBehavior;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.PutSequentialBlobStrategy;
-import com.spectralogic.ds3client.helpers.strategy.blobstrategy.RetryBehavior;
+import com.spectralogic.ds3client.helpers.strategy.blobstrategy.ChunkAttemptRetryBehavior;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.ChannelStrategy;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.NullChannelPreparable;
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.RandomAccessChannelStrategy;
@@ -96,7 +96,7 @@ public final class TransferStrategyBuilder {
     private Ds3ClientHelpers.ObjectChannelBuilder channelBuilder;
     private ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs;
     private Ds3ClientHelpers.MetadataAccess metadataAccess;
-    private RetryBehavior chunkAttemptRetryBehavior;
+    private ChunkAttemptRetryBehavior chunkAttemptRetryBehavior;
     private ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior;
     private TransferBehaviorType transferBehaviorType = TransferBehaviorType.OriginalSdkTransferBehavior;
 
@@ -189,7 +189,7 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
-    public TransferStrategyBuilder withChunkAttemptRetryBehavior(final RetryBehavior chunkAttemptRetryBehavior) {
+    public TransferStrategyBuilder withChunkAttemptRetryBehavior(final ChunkAttemptRetryBehavior chunkAttemptRetryBehavior) {
         this.chunkAttemptRetryBehavior = chunkAttemptRetryBehavior;
         return this;
     }
@@ -229,11 +229,7 @@ public final class TransferStrategyBuilder {
     }
 
     private TransferStrategy makeStreamingPutTransferStrategy() {
-        Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
-
-        channelStrategy = new SequentialChannelStrategy(new SequentialFileReaderChannelStrategy(channelBuilder),
-                channelBuilder, new NullChannelPreparable());
-
+        maybeMakeStreamedPutChannelStrategy();
         getOrMakeTransferRetryDecorator();
 
         return makeTransferStrategy(
@@ -257,6 +253,15 @@ public final class TransferStrategyBuilder {
                         return makePutTransferMethod();
                     }
                 });
+    }
+
+    private void maybeMakeStreamedPutChannelStrategy() {
+        if (channelStrategy == null) {
+            Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
+
+            channelStrategy = new SequentialChannelStrategy(new SequentialFileReaderChannelStrategy(channelBuilder),
+                    channelBuilder, new NullChannelPreparable());
+        }
     }
 
     private TransferRetryDecorator getOrMakeTransferRetryDecorator() {
@@ -289,9 +294,7 @@ public final class TransferStrategyBuilder {
 
         Guard.throwOnNullOrEmptyString(jobId, "jobId may not be null or empty.");
 
-        blobStrategy = blobStrategyMaker.makeBlobStrategy(ds3Client,
-                masterObjectList,
-                eventDispatcher);
+        maybeMakeBlobStrategy(blobStrategyMaker);
 
         eventDispatcher.attachBlobTransferredEventObserver(new BlobTransferredEventObserver(new UpdateStrategy<BulkObject>() {
             @Override
@@ -301,6 +304,12 @@ public final class TransferStrategyBuilder {
         }));
 
         return makeTransferStrategy(transferMethodMaker.makeTransferMethod());
+    }
+
+    private void maybeMakeBlobStrategy(final BlobStrategyMaker blobStrategyMaker) {
+        if (blobStrategy == null) {
+            blobStrategy = blobStrategyMaker.makeBlobStrategy(ds3Client, masterObjectList, eventDispatcher);
+        }
     }
 
     private TransferStrategy makeTransferStrategy(final TransferMethod transferMethod) {
@@ -321,7 +330,7 @@ public final class TransferStrategyBuilder {
         }
     }
 
-    private RetryBehavior getOrMakeChunkAttemptRetryBehavior() {
+    private ChunkAttemptRetryBehavior getOrMakeChunkAttemptRetryBehavior() {
         if (chunkAttemptRetryBehavior != null) {
             return chunkAttemptRetryBehavior;
         }
@@ -352,10 +361,7 @@ public final class TransferStrategyBuilder {
     }
 
     private TransferStrategy makeOriginalSdkSemanticsPutTransferStrategy() {
-        Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
-
-        channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
-
+        maybeMakeRandomAccessPutChannelStrategy();
         getOrMakeTransferRetryDecorator();
 
         return makeTransferStrategy(
@@ -381,7 +387,12 @@ public final class TransferStrategyBuilder {
                 });
     }
 
-
+    private void maybeMakeRandomAccessPutChannelStrategy() {
+        if (channelStrategy == null) {
+            Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
+            channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
+        }
+    }
 
     private TransferMethod makePutTransferMethod() {
         getOrMakeJobStateForPutJob();
@@ -506,10 +517,7 @@ public final class TransferStrategyBuilder {
     }
 
     private TransferStrategy makeRandomAccessPutTransferStrategy() {
-        Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
-
-        channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new NullChannelPreparable());
-
+        maybeMakeRandomAccessPutChannelStrategy();
         getOrMakeTransferRetryDecorator();
 
         return makeTransferStrategy(
@@ -548,11 +556,7 @@ public final class TransferStrategyBuilder {
     }
 
     private TransferStrategy makeStreamingGetTransferStrategy() {
-        Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
-
-        channelStrategy = new SequentialChannelStrategy(new SequentialFileWriterChannelStrategy(channelBuilder),
-                channelBuilder, new TruncatingChannelPreparable());
-
+        maybeMakeSequentialGetChannelStrategy();
         getOrMakeTransferRetryDecorator();
 
         return makeTransferStrategy(
@@ -572,6 +576,15 @@ public final class TransferStrategyBuilder {
                         return makeGetTransferMethod();
                     }
                 });
+    }
+
+    private void maybeMakeSequentialGetChannelStrategy() {
+        if (channelStrategy == null) {
+            Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
+
+            channelStrategy = new SequentialChannelStrategy(new SequentialFileWriterChannelStrategy(channelBuilder),
+                    channelBuilder, new TruncatingChannelPreparable());
+        }
     }
 
     private TransferMethod makeGetTransferMethod() {
@@ -625,10 +638,7 @@ public final class TransferStrategyBuilder {
     }
 
     private TransferStrategy makeOriginalSdkSemanticsGetTransferStrategy() {
-        Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
-
-        channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new TruncatingChannelPreparable());
-
+        maybeMakeRandomAccessGetChannelStrategy();
         getOrMakeTransferRetryDecorator();
 
         return makeTransferStrategy(
@@ -650,6 +660,14 @@ public final class TransferStrategyBuilder {
                         return makeGetTransferMethod();
                     }
                 });
+    }
+
+    private void maybeMakeRandomAccessGetChannelStrategy() {
+        if (channelStrategy == null) {
+            Preconditions.checkNotNull(channelBuilder, "channelBuilder my not be null");
+
+            channelStrategy = new RandomAccessChannelStrategy(channelBuilder, rangesForBlobs, new TruncatingChannelPreparable());
+        }
     }
 
     private enum TransferBehaviorType {

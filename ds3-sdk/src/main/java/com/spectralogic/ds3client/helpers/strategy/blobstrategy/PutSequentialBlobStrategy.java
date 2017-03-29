@@ -48,7 +48,7 @@ public class PutSequentialBlobStrategy extends AbstractBlobStrategy {
     public PutSequentialBlobStrategy(final Ds3Client client,
                                      final MasterObjectList masterObjectList,
                                      final EventDispatcher eventDispatcher,
-                                     final RetryBehavior retryBehavior,
+                                     final ChunkAttemptRetryBehavior retryBehavior,
                                      final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior)
     {
         super(client, masterObjectList, eventDispatcher, retryBehavior, chunkAttemptRetryDelayBehavior);
