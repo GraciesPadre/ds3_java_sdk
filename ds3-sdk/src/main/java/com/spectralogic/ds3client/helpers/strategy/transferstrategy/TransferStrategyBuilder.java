@@ -122,6 +122,7 @@ public final class TransferStrategyBuilder {
     private ChunkAttemptRetryBehavior chunkAttemptRetryBehavior;
     private ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior;
     private TransferBehaviorType transferBehaviorType = TransferBehaviorType.OriginalSdkTransferBehavior;
+    private FailureEvent.FailureActivity failureActivity = FailureEvent.FailureActivity.PuttingObject;
 
     /**
      * Use an instance of {@link BlobStrategy} you wish to create or retrieve blobs from a Black Pearl.  There are
@@ -339,6 +340,8 @@ public final class TransferStrategyBuilder {
     }
 
     public TransferStrategy makePutTransferStrategy() {
+        failureActivity = FailureEvent.FailureActivity.PuttingObject;
+
         switch (transferBehaviorType) {
             case StreamingTransferBehavior:
                 return makeStreamingPutTransferStrategy();
@@ -439,13 +442,20 @@ public final class TransferStrategyBuilder {
     private TransferStrategy makeTransferStrategy(final TransferMethod transferMethod) {
         switch (transferBehaviorType) {
             case StreamingTransferBehavior:
-                return new SingleThreadedTransferStrategy(blobStrategy, jobState)
+                return new SingleThreadedTransferStrategy(blobStrategy,
+                        jobState,
+                        eventDispatcher,
+                        masterObjectList,
+                        failureActivity)
                         .withTransferMethod(transferMethod);
 
             case RandomAccessTransferBehavior:
                 return new MultiThreadedTransferStrategy(blobStrategy,
                         jobState,
-                        numConcurrentTransferThreads)
+                        numConcurrentTransferThreads,
+                        eventDispatcher,
+                        masterObjectList,
+                        failureActivity)
                         .withTransferMethod(transferMethod);
 
             case OriginalSdkTransferBehavior:
@@ -569,10 +579,17 @@ public final class TransferStrategyBuilder {
         if (numConcurrentTransferThreads > 1) {
             return new MultiThreadedTransferStrategy(blobStrategy,
                     jobState,
-                    numConcurrentTransferThreads)
+                    numConcurrentTransferThreads,
+                    eventDispatcher,
+                    masterObjectList,
+                    failureActivity)
                     .withTransferMethod(transferMethod);
         } else {
-            return new SingleThreadedTransferStrategy(blobStrategy, jobState)
+            return new SingleThreadedTransferStrategy(blobStrategy,
+                    jobState,
+                    eventDispatcher,
+                    masterObjectList,
+                    failureActivity)
                     .withTransferMethod(transferMethod);
         }
     }
@@ -668,6 +685,8 @@ public final class TransferStrategyBuilder {
     }
 
     public TransferStrategy makeGetTransferStrategy() {
+        failureActivity = FailureEvent.FailureActivity.GettingObject;
+
         switch (transferBehaviorType) {
             case StreamingTransferBehavior:
                 return makeStreamingGetTransferStrategy();

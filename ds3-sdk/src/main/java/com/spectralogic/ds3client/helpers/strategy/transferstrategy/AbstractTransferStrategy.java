@@ -21,27 +21,43 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.JobState;
+import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
+import com.spectralogic.ds3client.models.MasterObjectList;
+import com.spectralogic.ds3client.models.Objects;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 abstract class AbstractTransferStrategy implements TransferStrategy {
+    private static final Logger LOG = LoggerFactory.getLogger(AbstractTransferStrategy.class);
+
     private final BlobStrategy blobStrategy;
     private final JobState jobState;
-
     private final ListeningExecutorService executorService;
+    private final EventDispatcher eventDispatcher;
+    private final MasterObjectList masterObjectList;
+    private final FailureEvent.FailureActivity failureActivity;
 
     private TransferMethod transferMethod;
 
     public AbstractTransferStrategy(final BlobStrategy blobStrategy,
                                     final JobState jobState,
-                                    final ListeningExecutorService executorService)
+                                    final ListeningExecutorService executorService,
+                                    final EventDispatcher eventDispatcher,
+                                    final MasterObjectList masterObjectList,
+                                    final FailureEvent.FailureActivity failureActivity)
     {
         this.blobStrategy = blobStrategy;
         this.jobState = jobState;
         this.executorService = executorService;
+        this.eventDispatcher = eventDispatcher;
+        this.masterObjectList = masterObjectList;
+        this.failureActivity = failureActivity;
     }
 
     public AbstractTransferStrategy withTransferMethod(final TransferMethod transferMethod) {
@@ -50,23 +66,38 @@ abstract class AbstractTransferStrategy implements TransferStrategy {
     }
 
     @Override
-    public void transfer() throws IOException, InterruptedException {
+    public void transfer() throws IOException {
         while (jobState.hasObjects()) {
-            final ImmutableList.Builder<ListenableFuture<Void>> transferTasksListBuilder = ImmutableList.builder();
+            transferJobParts();
+        }
+    }
 
-            final Iterable<JobPart> workQueue = blobStrategy.getWork();
+    private void transferJobParts() {
+        try {
+            try {
+                final ImmutableList.Builder<ListenableFuture<Void>> transferTasksListBuilder = ImmutableList.builder();
 
-            for (final JobPart jobPart : workQueue) {
-                transferTasksListBuilder.add(executorService.submit(new Callable<Void>() {
-                    @Override
-                    public Void call() throws Exception {
-                        transferMethod.transferJobPart(jobPart);
-                        return null;
-                    }
-                }));
+                final Iterable<JobPart> workQueue = blobStrategy.getWork();
+
+                for (final JobPart jobPart : workQueue) {
+                    transferTasksListBuilder.add(executorService.submit(new Callable<Void>() {
+                        @Override
+                        public Void call() throws Exception {
+                            transferMethod.transferJobPart(jobPart);
+                            return null;
+                        }
+                    }));
+                }
+
+                runTransferTasks(ImmutableList.copyOf(transferTasksListBuilder.build()));
+            } catch (final IOException | RuntimeException e) {
+                throw e;
+            } catch (final Exception e) {
+                throw new RuntimeException(e);
             }
-
-            runTransferTasks(ImmutableList.copyOf(transferTasksListBuilder.build()));
+        } catch (final Throwable t) {
+            emitFailureEvent(makeFailureEvent(failureActivity, t, firstChunk()));
+            throw t;
         }
     }
 
@@ -91,6 +122,36 @@ abstract class AbstractTransferStrategy implements TransferStrategy {
                 throw new RuntimeException(cause);
             }
         }
+    }
+
+    private void emitFailureEvent(final FailureEvent failureEvent) {
+        eventDispatcher.emitFailureEvent(failureEvent);
+    }
+
+    private FailureEvent makeFailureEvent(final FailureEvent.FailureActivity failureActivity,
+                                            final Throwable causalException,
+                                            final Objects chunk)
+    {
+        return new FailureEvent.Builder()
+                .doingWhat(failureActivity)
+                .withCausalException(causalException)
+                .withObjectNamed(labelForChunk(chunk))
+                .usingSystemWithEndpoint(masterObjectList.getNodes().get(0).getEndPoint())
+                .build();
+    }
+
+    private String labelForChunk(final Objects chunk) {
+        try {
+            return chunk.getObjects().get(0).getName();
+        } catch (final Throwable t) {
+            LOG.error("Failed to get label for chunk.", t);
+        }
+
+        return "unnamed object";
+    }
+
+    private Objects firstChunk() {
+        return masterObjectList.getObjects().get(0);
     }
 
     @Override

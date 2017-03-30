@@ -16,7 +16,6 @@
 package com.spectralogic.ds3client.helpers;
 
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
-import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 
@@ -64,20 +63,8 @@ public class WriteJobImpl extends JobImpl {
     }
 
     public void transfer(final TransferStrategy transferStrategy) throws IOException {
-        try {
-            running = true;
-
-            try {
-                transferStrategy.transfer();
-            } catch (final IOException | RuntimeException e) {
-                throw e;
-            } catch (final Exception e) {
-                throw new RuntimeException(e);
-            }
-        } catch (final Throwable t) {
-            emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.PuttingObject, t, firstChunk()));
-            throw t;
-        }
+        running = true;
+        transferStrategy.transfer();
     }
 }
 

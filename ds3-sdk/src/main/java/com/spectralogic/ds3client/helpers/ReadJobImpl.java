@@ -16,7 +16,6 @@
 package com.spectralogic.ds3client.helpers;
 
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
-import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.MetaDataReceivedObserver;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
@@ -53,27 +52,13 @@ class ReadJobImpl extends JobImpl {
 
     @Override
     public void transfer(final ObjectChannelBuilder channelBuilder) throws IOException {
-        running = true;
-
         super.transfer(channelBuilder);
 
         transfer(transferStrategyBuilder().makeGetTransferStrategy());
     }
 
     public void transfer(final TransferStrategy transferStrategy) throws IOException {
-        try {
-            running = true;
-
-            try {
-                transferStrategy.transfer();
-            } catch (final RuntimeException | IOException e) {
-                throw e;
-            } catch (final Exception e) {
-                throw new RuntimeException(e);
-            }
-        } catch (final Throwable t) {
-            emitFailureEvent(makeFailureEvent(FailureEvent.FailureActivity.GettingObject, t, firstChunk()));
-            throw t;
-        }
+        running = true;
+        transferStrategy.transfer();
     }
 }

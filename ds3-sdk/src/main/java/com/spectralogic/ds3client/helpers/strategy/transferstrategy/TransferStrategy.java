@@ -19,5 +19,5 @@ import java.io.Closeable;
 import java.io.IOException;
 
 public interface TransferStrategy extends Closeable {
-    void transfer() throws IOException, InterruptedException;
+    void transfer() throws IOException;
 }

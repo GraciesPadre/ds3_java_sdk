@@ -16,10 +16,8 @@
 package com.spectralogic.ds3client.helpers;
 
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.Job;
-import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
-import com.spectralogic.ds3client.models.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,22 +30,12 @@ abstract class JobImpl implements Job {
 
     protected boolean running = false;
 
-    private String clientEndpoint;
-
     private final TransferStrategyBuilder transferStrategyBuilder;
 
-    public JobImpl(final TransferStrategyBuilder transferStrategyBuilder)
-    {
+    public JobImpl(final TransferStrategyBuilder transferStrategyBuilder) {
         this.transferStrategyBuilder = transferStrategyBuilder;
-
-        try {
-            clientEndpoint = transferStrategyBuilder.ds3Client().getConnectionDetails().getEndpoint();
-        } catch (final Throwable t) {
-            LOG.warn("Could not get client endpoint.", t);
-            clientEndpoint = "";
-        }
     }
-    
+
     @Override
     public UUID getJobId() {
         try {
@@ -67,7 +55,7 @@ abstract class JobImpl implements Job {
             return null;
         }
     }
-    
+
     @Override
     public Job withMaxParallelRequests(final int maxParallelRequests) {
         transferStrategyBuilder.withNumConcurrentTransferThreads(maxParallelRequests);
@@ -147,37 +135,7 @@ abstract class JobImpl implements Job {
         return transferStrategyBuilder;
     }
 
-    protected void emitFailureEvent(final FailureEvent failureEvent) {
-        eventDispatcher().emitFailureEvent(failureEvent);
-    }
-
-    protected FailureEvent makeFailureEvent(final FailureEvent.FailureActivity failureActivity,
-                                            final Throwable causalException,
-                                            final Objects chunk)
-    {
-        return new FailureEvent.Builder()
-                .doingWhat(failureActivity)
-                .withCausalException(causalException)
-                .withObjectNamed(labelForChunk(chunk))
-                .usingSystemWithEndpoint(clientEndpoint)
-                .build();
-    }
-
-    protected String labelForChunk(final Objects chunk) {
-        try {
-            return chunk.getObjects().get(0).getName();
-        } catch (final Throwable t) {
-            LOG.error("Failed to get label for chunk.", t);
-        }
-
-        return "unnamed object";
-    }
-
     protected EventDispatcher eventDispatcher() {
         return transferStrategyBuilder.eventDispatcher();
-    }
-
-    protected Objects firstChunk() {
-        return transferStrategyBuilder.masterObjectList().getObjects().get(0);
     }
 }
