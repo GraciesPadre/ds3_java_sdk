@@ -72,7 +72,7 @@ abstract class AbstractTransferStrategy implements TransferStrategy {
         }
     }
 
-    private void transferJobParts() {
+    private void transferJobParts() throws IOException {
         try {
             try {
                 final ImmutableList.Builder<ListenableFuture<Void>> transferTasksListBuilder = ImmutableList.builder();
