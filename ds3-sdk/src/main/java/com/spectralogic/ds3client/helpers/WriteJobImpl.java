@@ -19,14 +19,10 @@ import com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 public class WriteJobImpl extends JobImpl {
-    static private final Logger LOG = LoggerFactory.getLogger(WriteJobImpl.class);
-
     private Ds3ClientHelpers.MetadataAccess metadataAccess = null;
     private ChecksumFunction checksumFunction = null;
 
@@ -59,20 +55,20 @@ public class WriteJobImpl extends JobImpl {
 
     @Override
     public void transfer(final ObjectChannelBuilder channelBuilder) throws IOException {
+        super.transfer(channelBuilder);
+
+        transferStrategyBuilder().withChecksumFunction(checksumFunction);
+        transferStrategyBuilder().withMetadataAccess(metadataAccess);
+
+        transfer(transferStrategyBuilder().makePutTransferStrategy());
+    }
+
+    public void transfer(final TransferStrategy transferStrategy) throws IOException {
         try {
             running = true;
 
-            super.transfer(channelBuilder);
-
-            LOG.debug("Starting job transfer");
-
-            transferStrategyBuilder().withChecksumFunction(checksumFunction);
-            transferStrategyBuilder().withMetadataAccess(metadataAccess);
-
             try {
-                try (final TransferStrategy transferStrategy = transferStrategyBuilder().makePutTransferStrategy()) {
-                    transferStrategy.transfer();
-                }
+                transferStrategy.transfer();
             } catch (final IOException | RuntimeException e) {
                 throw e;
             } catch (final Exception e) {

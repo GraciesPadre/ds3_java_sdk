@@ -18,9 +18,12 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 
+/**
+ * This class emits an event when chunks we are creating or retrieving from a Black Pearl
+ * are not yet available. The event reports the number of seconds we will wait before
+ * trying again.
+ */
 public class WaitingForChunksObserver extends AbstractObserver<Integer> {
-    private WaitingForChunksListener waitingForChunksListener;
-
     public WaitingForChunksObserver(final WaitingForChunksListener waitingForChunksListener) {
         super(new UpdateStrategy<Integer>() {
             @Override
@@ -30,8 +33,6 @@ public class WaitingForChunksObserver extends AbstractObserver<Integer> {
         });
 
         Preconditions.checkNotNull(waitingForChunksListener, "waitingForChunksListener may not be null.");
-
-        this.waitingForChunksListener = waitingForChunksListener;
     }
 
     public WaitingForChunksObserver(final UpdateStrategy<Integer> updateStrategy) {

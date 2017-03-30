@@ -15,5 +15,9 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
+/**
+ * This is a marker class intended to allow for building different ways of emitting events.
+ * @param <T> The context supplied to an observer registered to receive events.
+ */
 public interface UpdateStrategy<T> extends Observer<T> {
 }

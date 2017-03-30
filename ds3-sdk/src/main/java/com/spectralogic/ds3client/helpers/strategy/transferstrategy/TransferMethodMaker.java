@@ -15,6 +15,6 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
-public interface TransferMethodMaker {
+interface TransferMethodMaker {
     TransferMethod makeTransferMethod();
 }

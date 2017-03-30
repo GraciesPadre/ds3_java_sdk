@@ -50,6 +50,7 @@ import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFil
 import com.spectralogic.ds3client.helpers.strategy.channelstrategy.TruncatingChannelPreparable;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
+import com.spectralogic.ds3client.models.JobChunkClientProcessingOrderGuarantee;
 import com.spectralogic.ds3client.models.MasterObjectList;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
@@ -68,6 +69,28 @@ import java.nio.channels.ByteChannel;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class allows for building configurable behavior when putting objects to or getting objects
+ * from a Black Pearl.  The intent is to provide the ability for transfers to be "streamed" or "random access".
+ * Streaming, as used in a transfer strategy, means that a channels and blobs are read or written sequentially.
+ * You would use a streaming strategy when it is important that the source or destination channel is read or
+ * written in a predictable, sequential order while a transfer is in progress.
+ * Random access means that channels and blobs are read and written in no particular order.  You would use
+ * a random access strategy when it is not important that a source or destination channel is read or written
+ * in a predictable order while a transfer is in progress.  Once a transfer is complete, the destination channel
+ * and Black Pearl objects are ordered as was the original archived object.
+ *
+ * You specify that you want streamed behavior by calling {@link TransferStrategyBuilder#usingStreamedTransferBehavior()}
+ * and random access behavior by calling {@link TransferStrategyBuilder#usingRandomAccessTransferBehavior()}.  If you
+ * specify neither, the transfer strategy used will behave as this SDK behaved before introducing the ability
+ * to specify transfer behavior.
+ *
+ * The 2 methods to call to get an instance of a {@link TransferStrategy}, which is the interface that performs data
+ * movement, are {@link TransferStrategyBuilder#makePutTransferStrategy()} and
+ * {@link TransferStrategyBuilder#makeGetTransferStrategy()}.  Once you have a TransferStrategy
+ * interface instance, calling {@link TransferStrategy#transfer()} on the TransferStrategy interface initiates
+ * data movement.
+ */
 public final class TransferStrategyBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(TransferStrategyBuilder.class);
 
@@ -100,50 +123,151 @@ public final class TransferStrategyBuilder {
     private ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior;
     private TransferBehaviorType transferBehaviorType = TransferBehaviorType.OriginalSdkTransferBehavior;
 
+    /**
+     * Use an instance of {@link BlobStrategy} you wish to create or retrieve blobs from a Black Pearl.  There are
+     * 2 primary implementations: {@link PutSequentialBlobStrategy}; and {@link GetSequentialBlobStrategy}.  Blob
+     * retrieval order is specified in the
+     * {@link com.spectralogic.ds3client.commands.spectrads3.GetBulkJobSpectraS3Request#withChunkClientProcessingOrderGuarantee(JobChunkClientProcessingOrderGuarantee)}
+     * HTTP request.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish,
+     * for example:
+     * <pre>
+     *     {@code
+     *     final PutBulkJobSpectraS3Request request = new PutBulkJobSpectraS3Request(BUCKET_NAME, Lists.newArrayList(objectsToWrite));
+     *     final PutBulkJobSpectraS3Response putBulkJobSpectraS3Response = client.putBulkJobSpectraS3(request);
+     *
+     *     final MasterObjectList masterObjectList = putBulkJobSpectraS3Response.getResult();
+     *
+     *     final EventDispatcher eventDispatcher = new EventDispatcherImpl(new SameThreadEventRunner());
+     *
+     *     final AtomicInteger numChunkAllocationAttempts = new AtomicInteger(0);
+     *
+     *     final BlobStrategy blobStrategy = new UserSuppliedPutBlobStrategy(client,
+     *                                                                       masterObjectList,
+     *                                                                       eventDispatcher,
+     *                                                                       new MaxChunkAttemptsRetryBehavior(5),
+     *                                                                       new ClientDefinedChunkAttemptRetryDelayBehavior(1, eventDispatcher),
+     *                                                                           new Monitorable() {
+     *                                                                               @Override
+     *                                                                                   public void monitor() {
+     *                                                                                       numChunkAllocationAttempts.incrementAndGet();
+     *                                                                                   }
+     *                                                                           });
+     *
+     *     final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+     *         .withDs3Client(Ds3ClientBuilder.fromEnv().withHttps(false).build())
+     *         .withMasterObjectList(masterObjectList)
+     *         .withChannelBuilder(new FileObjectPutter(dirPath))
+     *         .withBlobStrategy(blobStrategy);
+     *
+     *     final TransferStrategy transferStrategy = transferStrategyBuilder.makePutTransferStrategy();
+     *     transferStrategy.transfer();
+     * </pre>
+     */
     public TransferStrategyBuilder withBlobStrategy(final BlobStrategy blobStrategy) {
         this.blobStrategy = blobStrategy;
         return this;
     }
 
+    /**
+     * Use an instance of {@link ChannelStrategy} you wish to manage the source or destination of a transfer.
+     * The 2 primary channel strategies are {@link RandomAccessChannelStrategy} and {@link SequentialChannelStrategy}.
+     * A channel strategy normally has a {@link Ds3ClientHelpers.ObjectChannelBuilder} that allocates the
+     * source or destination.  Random access behavior creates a channel per blob; streamed access creates a single
+     * channel to reference all blobs associated with a DS3 object.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withChannelStrategy(final ChannelStrategy channelStrategy) {
         this.channelStrategy = channelStrategy;
         return this;
     }
 
+    /**
+     * The {@link Ds3ClientHelpers.ObjectChannelBuilder} you wish to use to allocate source or destination
+     * channels.  This is used in a {@link ChannelStrategy} to manage streamed or random access behavior.
+     * This is the same interface used in {@link Ds3ClientHelpers.Job#transfer(Ds3ClientHelpers.ObjectChannelBuilder)}.
+     * The 2 primary implementations of this interface are {@link com.spectralogic.ds3client.helpers.FileObjectGetter}
+     * and {@link com.spectralogic.ds3client.helpers.FileObjectPutter}.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withChannelBuilder(final Ds3ClientHelpers.ObjectChannelBuilder channelBuilder) {
         this.channelBuilder = channelBuilder;
         return this;
     }
 
+    /**
+     * The {@link TransferRetryDecorator} to use when retrying a failed transfer attempt.  If not specified directly,
+     * the builder will create a retry decorator based on the value specified in
+     * {@link TransferStrategyBuilder#withNumTransferRetries(int)}.  The 2 primary transfer retry decorators
+     * are {@link MaxNumObjectTransferAttemptsDecorator} and {@link ContinueForeverTransferRetryDecorator}
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withTransferRetryDecorator(final TransferRetryDecorator transferRetryDecorator) {
         this.transferRetryDecorator = transferRetryDecorator;
         return this;
     }
 
+    /**
+     * The transfer function to use when putting an object to a Black Pearl when the value in
+     * {@link TransferStrategyBuilder#withChecksumType(ChecksumType.Type)} is not
+     * {@link ChecksumType.None}.  This builder will make a checksum function of the correct type
+     * if you specify a checksum type other than {@link ChecksumType.None} but do not specify a
+     * checksum function.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withChecksumFunction(final ChecksumFunction checksumFunction) {
         this.checksumFunction = checksumFunction;
         return this;
     }
 
+    /**
+     * The {@link ChecksumType.None} you would like to compute and include in the payload sent to a
+     * Black Pearl when putting an object.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withChecksumType(final ChecksumType.Type checksumType) {
         this.checksumType = checksumType;
         return this;
     }
 
+    /**
+     * The {@link EventDispatcher} you would like to use when registering as an event observer and emitting
+     * events.  The primary event dispatcher, {@link EventDispatcherImpl}, uses an {@link EventRunner} to deliver events.
+     * You specify the event runner behavior you want by calling {@link TransferStrategyBuilder#withEventRunner(EventRunner)}.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withEventDispatcher(final EventDispatcher eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
         return this;
     }
 
+    /**
+     * {@link Ds3ClientHelpers.Job} uses the event dispatcher configured into this builder to emit events
+     * during a transfer.
+     */
     public EventDispatcher eventDispatcher() {
         return eventDispatcher;
     }
 
+    /**
+     * When not directly specifying a {@link TransferRetryDecorator}, this property is used to make a transfer
+     * retry decorator instance.  Doing so uses the behavior this SDK used prior to introducing transfer behavior
+     * configuration: a value less than 0 causes a failed transfer to be retried indefinitely; a value greater than 0
+     * causes a failed transfer to be retried no more than the value specified before giving up.  If you do not
+     * specify a value, this builder will use the same value as used in this SDK prior to introducing transfer behavior.
+     * @param numRetries
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withNumTransferRetries(final int numRetries) {
         this.numTransferRetries = numRetries;
         return this;
     }
 
+    /**
+     * The number of threads used to transfer blobs.  Random access behavior uses the number of threads you
+     * specify in this property.  Streamed behavior uses a single thread when transferring blobs.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withNumConcurrentTransferThreads(final int numConcurrentTransferThreads) {
         this.numConcurrentTransferThreads = numConcurrentTransferThreads;
         return this;

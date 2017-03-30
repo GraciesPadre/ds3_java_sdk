@@ -52,17 +52,20 @@ class ReadJobImpl extends JobImpl {
     }
 
     @Override
-    public void transfer(final ObjectChannelBuilder channelBuilder)
-            throws IOException {
+    public void transfer(final ObjectChannelBuilder channelBuilder) throws IOException {
+        running = true;
+
+        super.transfer(channelBuilder);
+
+        transfer(transferStrategyBuilder().makeGetTransferStrategy());
+    }
+
+    public void transfer(final TransferStrategy transferStrategy) throws IOException {
         try {
             running = true;
 
-            super.transfer(channelBuilder);
-
             try {
-                try (final TransferStrategy transferStrategy = transferStrategyBuilder().makeGetTransferStrategy()) {
-                    transferStrategy.transfer();
-                }
+                transferStrategy.transfer();
             } catch (final RuntimeException | IOException e) {
                 throw e;
             } catch (final Exception e) {
