@@ -17,7 +17,14 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.spectralogic.ds3client.models.BulkObject;
 
+/**
+ * This class provides the ability to emit an event when a blob transfer has completed.
+ */
 public class BlobTransferredEventObserver extends AbstractObserver<BulkObject> {
+    /**
+     * @param updateStrategy The interface whose implementation determines how to handle emitting an event
+     *                       when a blob transfer completes.
+     */
     public BlobTransferredEventObserver(final UpdateStrategy<BulkObject> updateStrategy) {
         super(updateStrategy);
     }

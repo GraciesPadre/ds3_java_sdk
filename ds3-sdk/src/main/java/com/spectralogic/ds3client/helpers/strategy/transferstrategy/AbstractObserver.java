@@ -17,6 +17,10 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * An observer implementation that provides a default update method.
+ * @param <T> The context data to send with an update.
+ */
 public abstract class AbstractObserver<T> implements UpdateStrategy<T> {
     private final UpdateStrategy<T> updateStrategy;
 

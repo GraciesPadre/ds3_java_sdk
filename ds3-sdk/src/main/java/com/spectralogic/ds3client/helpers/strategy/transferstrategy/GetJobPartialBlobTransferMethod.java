@@ -12,6 +12,11 @@ import com.spectralogic.ds3client.models.common.Range;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 
+/**
+ * When a blob transfer retrieves less data than is needed to compete the transfer, the {@link GetJobNetworkFailureRetryDecorator}
+ * that recognizes that situation will create an instance of this class.  This class aggregates the data needed to
+ * transfer the remainder of blob data.
+ */
 public class GetJobPartialBlobTransferMethod implements TransferMethod {
     private final ChannelStrategy channelStrategy;
     private final String bucketName;
@@ -38,6 +43,11 @@ public class GetJobPartialBlobTransferMethod implements TransferMethod {
         this.destinationChannelOffset = destinationChannelOffset;
     }
 
+    /**
+     * @param jobPart An instance of {@link JobPart}, which tells us which Black Pearl is the source
+     *                or destination for a blob transfer.
+     * @throws IOException
+     */
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
         final BulkObject blob = jobPart.getBulkObject();

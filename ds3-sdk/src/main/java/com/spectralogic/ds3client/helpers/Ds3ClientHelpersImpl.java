@@ -34,7 +34,6 @@ import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatc
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 import com.spectralogic.ds3client.helpers.util.PartialObjectHelpers;
 import com.spectralogic.ds3client.models.*;
-import com.spectralogic.ds3client.models.bulk.RequestType;
 import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.models.bulk.*;
 import com.spectralogic.ds3client.networking.FailedRequestException;
@@ -113,7 +112,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
                 .withDs3Client(client)
                 .withNumChunkAttemptRetries(maxChunkAttempts)
                 .withNumTransferRetries(maxObjectTransferAttempts)
-                .withRetryDelayInSeconds(secondsBetweenChunkAttempts)
+                .withChunkRetryDelayInSeconds(secondsBetweenChunkAttempts)
                 .withEventRunner(eventRunner)
                 .withEventDispatcher(eventDispatcher);
 

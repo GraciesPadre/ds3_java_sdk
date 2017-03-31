@@ -7,6 +7,10 @@ import com.google.common.collect.UnmodifiableIterator;
 import com.spectralogic.ds3client.models.common.Range;
 import com.spectralogic.ds3client.utils.Guard;
 
+/**
+ * A class used in calculating the remaining data offset(s) and length(s) when we transfer less than an entire
+ * blob during a get.
+ */
 final class RangeHelper {
     private RangeHelper() {}
 

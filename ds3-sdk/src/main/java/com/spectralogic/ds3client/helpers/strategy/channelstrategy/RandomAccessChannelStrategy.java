@@ -30,6 +30,10 @@ import java.nio.channels.SeekableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * A subclass of {@link ChannelStrategy} that creates a channel per blob positioned at the offset
+ * correct for the current blob offset.
+ */
 public class RandomAccessChannelStrategy implements ChannelStrategy {
     private final Object lock = new Object();
 
@@ -38,6 +42,15 @@ public class RandomAccessChannelStrategy implements ChannelStrategy {
     private final ChannelPreparable channelPreparer;
     private final Map<BulkObject, SeekableByteChannel> blobChannelMap;
 
+    /**
+     * @param objectChannelBuilder An instance of {@link com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder};
+     *                             usually an instance of {@link com.spectralogic.ds3client.helpers.FileObjectPutter}
+     *                             or {@link com.spectralogic.ds3client.helpers.FileObjectGetter}.
+     * @param rangesForBlobs A map that associates a blob's name with the {@link Range}(s) transfered as part of a get.  This
+     *                       parameter may be null.
+     * @param channelPreparer An instance of {@link ChannelPreparable} used to prepare a channel prior to moving data, most likely
+     *                        either {@link TruncatingChannelPreparable} or {@link NullChannelPreparable}.
+     */
     public RandomAccessChannelStrategy(final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder,
                                        final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs,
                                        final ChannelPreparable channelPreparer)
@@ -51,6 +64,14 @@ public class RandomAccessChannelStrategy implements ChannelStrategy {
         blobChannelMap  = new HashMap<>();
     }
 
+    /**
+     * For a blob to be transferred, create a channel that will be the source for or destination
+     * of that transferred blob.
+     * @param blob The blob to be transferred.
+     * @return A {@link SeekableByteChannel} that will be the source for or destination
+     * of that transferred blob.
+     * @throws IOException
+     */
     @Override
     public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
         synchronized (lock) {
@@ -83,6 +104,14 @@ public class RandomAccessChannelStrategy implements ChannelStrategy {
         return rangesForABlob;
     }
 
+    /**
+     * When a blob has been transferred, release the source or destination channel associated with that
+     * blob.
+     * @param seekableByteChannel A {@link SeekableByteChannel} that had been allocated as the source for or destination
+     *                            of a blob transfer.
+     * @param blob The blob {@code seekableByteChannel} was allocated to source or sink {@code blob}'s data.
+     * @throws IOException
+     */
     @Override
     public void releaseChannelForBlob(final SeekableByteChannel seekableByteChannel, final BulkObject blob) throws IOException {
         synchronized (lock) {

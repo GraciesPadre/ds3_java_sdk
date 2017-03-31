@@ -20,7 +20,27 @@ import com.spectralogic.ds3client.models.BulkObject;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 
+/**
+ * An interface whose concrete subclasses specify the behavior used to read or write a channel.
+ */
 public interface ChannelStrategy {
+    /**
+     * For a blob to be transferred, create a channel that will be the source for or destination
+     * of that transferred blob.
+     * @param blob The blob to be transferred.
+     * @return A {@link SeekableByteChannel} that will be the source for or destination
+     * of that transferred blob.
+     * @throws IOException
+     */
     SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException;
+
+    /**
+     * When a blob has been transferred, release the source or destination channel associated with that
+     * blob.
+     * @param seekableByteChannel A {@link SeekableByteChannel} that had been allocated as the source for or destination
+     *                            of a blob transfer.
+     * @param blob The blob {@code seekableByteChannel} was allocated to source or sink {@code blob}'s data.
+     * @throws IOException
+     */
     void releaseChannelForBlob(final SeekableByteChannel seekableByteChannel, final BulkObject blob) throws IOException;
 }

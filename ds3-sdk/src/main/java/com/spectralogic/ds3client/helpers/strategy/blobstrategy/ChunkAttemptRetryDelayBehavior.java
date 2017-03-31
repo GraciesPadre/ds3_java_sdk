@@ -15,6 +15,15 @@
 
 package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
+/**
+ * An interface whose concrete subclasses determine the delay between retries when a
+ * chunk operation does not complete.
+ */
 public interface ChunkAttemptRetryDelayBehavior {
+    /**
+     * @param delayIntervalInSeconds The delay in seconds, between chunk operation retry attempts, that comes from a Black Pearl payload returned
+     *                               when a chunk operation does not complete.
+     * @throws InterruptedException
+     */
     void delay(final int delayIntervalInSeconds) throws InterruptedException;
 }

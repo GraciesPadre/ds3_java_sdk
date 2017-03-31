@@ -15,6 +15,10 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
+/**
+ * An interface to allow for sending events.
+ * @param <T> The context data to send with an event.
+ */
 public interface Observer<T> {
     void update(final T eventData);
 }

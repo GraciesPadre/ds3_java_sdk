@@ -18,9 +18,16 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.ChecksumListener;
 
+/**
+ * This class provides the ability to emit an event when we have computed the checksum value for a blob to be
+ * transferred to a Black Pearl.
+ */
 public class ChecksumObserver extends AbstractObserver<ChecksumEvent> {
     private  ChecksumListener checksumListener;
 
+    /**
+     * @param checksumListener An instance of {@link ChecksumListener} wrapped in an event updater.
+     */
     public ChecksumObserver(final ChecksumListener checksumListener) {
         super(new UpdateStrategy<ChecksumEvent>() {
                   @Override
@@ -34,6 +41,10 @@ public class ChecksumObserver extends AbstractObserver<ChecksumEvent> {
         this.checksumListener = checksumListener;
     }
 
+    /**
+     * @param updateStrategy The interface whose implementation determines how to handle emitting an event
+     *                       when we compute the checksum for a blob.
+     */
     public ChecksumObserver(final UpdateStrategy<ChecksumEvent> updateStrategy) {
         super(updateStrategy);
     }

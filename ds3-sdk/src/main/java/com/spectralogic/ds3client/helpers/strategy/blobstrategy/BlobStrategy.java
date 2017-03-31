@@ -16,9 +16,20 @@
 package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import com.spectralogic.ds3client.helpers.JobPart;
+import com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder;
 
 import java.io.IOException;
 
+/**
+ * An interface whose concrete implementation is used in chunk retrieval or allocation.  When using streamed behavior,
+ * {@link TransferStrategyBuilder#usingStreamedTransferBehavior()}, blobs are retrieved sequentially, from the beginning
+ * of an object's range.
+ */
 public interface BlobStrategy {
+    /**
+     * @return An iterable listing the blobs and the client(s) those blobs reside on when doing a put or get.
+     * @throws IOException
+     * @throws InterruptedException
+     */
     Iterable<JobPart> getWork() throws IOException, InterruptedException;
 }

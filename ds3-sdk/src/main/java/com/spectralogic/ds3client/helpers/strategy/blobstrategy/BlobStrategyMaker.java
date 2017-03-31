@@ -19,6 +19,10 @@ import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.EventDispatcher;
 import com.spectralogic.ds3client.models.MasterObjectList;
 
+/**
+ * An interface used as an intermediate when building a {@link com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategy}
+ * instance as part of getting a transfer strategy from a {@link com.spectralogic.ds3client.helpers.strategy.transferstrategy.TransferStrategyBuilder}.
+ */
 public interface BlobStrategyMaker {
     BlobStrategy makeBlobStrategy(final Ds3Client client,
                                   final MasterObjectList masterObjectList,

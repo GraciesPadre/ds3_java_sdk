@@ -21,6 +21,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 
+/**
+ * An instance of {@link SeekableByteChannel} used to decorate another SeekableByteChannel in the
+ * situation where we re-use the same channel for more than 1 blob.  This subclass prevents closing
+ * a channel when there are other blobs still referencing the shared channel.
+ */
 class SeekableByteChannelDecorator implements SeekableByteChannel {
     private final SeekableByteChannel seekableByteChannel;
 

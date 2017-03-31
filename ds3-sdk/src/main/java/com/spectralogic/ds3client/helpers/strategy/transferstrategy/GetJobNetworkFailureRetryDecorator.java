@@ -13,6 +13,10 @@ import com.spectralogic.ds3client.models.common.Range;
 
 import java.io.IOException;
 
+/**
+ * An implementation of {@link TransferMethod} that wraps another instance of TransferMethod to provide the
+ * ability to resume a get operation that transfers less data than is needed for a blob transfer to complete.
+ */
 public class GetJobNetworkFailureRetryDecorator implements TransferMethod {
     private final ChannelStrategy channelStrategy;
     private final String bucketName;
@@ -46,7 +50,7 @@ public class GetJobNetworkFailureRetryDecorator implements TransferMethod {
         try {
             transferMethod.transferJobPart(jobPart);
         } catch (final ContentLengthNotMatchException contentLengthNotMatchException) {
-            makeNewItemTransferrer(jobPart.getBulkObject(), contentLengthNotMatchException.getTotalBytes());
+            makeNewTransferMethod(jobPart.getBulkObject(), contentLengthNotMatchException.getTotalBytes());
             eventDispatcher.emitContentLengthMismatchFailureEvent(jobPart.getBulkObject(),
                     jobPart.getClient().getConnectionDetails().getEndpoint(),
                     contentLengthNotMatchException);
@@ -54,7 +58,7 @@ public class GetJobNetworkFailureRetryDecorator implements TransferMethod {
         }
     }
 
-    private void makeNewItemTransferrer(final BulkObject ds3Object, final long numBytesTransferred) {
+    private void makeNewTransferMethod(final BulkObject ds3Object, final long numBytesTransferred) {
         initializeRangesAndTransferSize(ds3Object);
         updateRanges(numBytesTransferred);
         destinationChannelOffset += numBytesTransferred;

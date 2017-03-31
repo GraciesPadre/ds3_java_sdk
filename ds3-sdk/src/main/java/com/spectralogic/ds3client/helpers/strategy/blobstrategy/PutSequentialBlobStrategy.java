@@ -39,6 +39,9 @@ import java.util.UUID;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.buildNodeMap;
 import static com.spectralogic.ds3client.helpers.strategy.StrategyUtils.filterChunks;
 
+/**
+ * A subclass of {@link BlobStrategy} used in put transfers.
+ */
 public class PutSequentialBlobStrategy extends AbstractBlobStrategy {
     private final static Logger LOG = LoggerFactory.getLogger(PutSequentialBlobStrategy.class);
 

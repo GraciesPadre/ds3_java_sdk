@@ -17,7 +17,19 @@ package com.spectralogic.ds3client.helpers.strategy.blobstrategy;
 
 import java.io.IOException;
 
+/**
+ * An interface whose concrete subclasses determine the retry behavior when a chunk
+ * operation does not complete.
+ */
 public interface ChunkAttemptRetryBehavior {
+    /**
+     * Perform a retry.
+     * @throws IOException
+     */
     void invoke() throws IOException;
+
+    /**
+     * A chunk operation succeeded; reset the retry logic.
+     */
     void reset();
 }

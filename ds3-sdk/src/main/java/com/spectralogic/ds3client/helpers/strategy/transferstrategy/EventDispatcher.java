@@ -26,6 +26,11 @@ import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 import com.spectralogic.ds3client.networking.Metadata;
 
+/**
+ * An interface to provide the ability to register for and emit events.  In prior versions of this SDK,
+ * clients needed to hold an instance of a listener implementation to later unregister its receipt of events.
+ * This interface allows for just keeping a reference to an observer to unregister.
+ */
 public interface EventDispatcher {
     /**
      * Attaches an event handler that is invoked when a blob is successfully
@@ -60,9 +65,16 @@ public interface EventDispatcher {
     FailureEventObserver attachFailureEventObserver(final FailureEventObserver failureEventObserver);
     void removeFailureEventObserver(final FailureEventObserver failureEventObserver);
 
+    /**
+     * Attaches an event handler invoked when we receive metadata from an object get.
+     */
     MetaDataReceivedObserver attachMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver);
     void removeMetadataReceivedEventObserver(final MetaDataReceivedObserver metaDataReceivedObserver);
 
+    /**
+     * Attaches an event invoked when a blob transfer completes. The primary use for this event is to remove
+     * a blob from the list of those to transfer when a blob transfer completes.
+     */
     BlobTransferredEventObserver attachBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver);
     void removeBlobTransferredEventObserver(final BlobTransferredEventObserver blobTransferredEventObserver);
 
@@ -114,5 +126,13 @@ public interface EventDispatcher {
     void emitObjectCompletedEvent(final String blobName);
     void emitMetaDataReceivedEvent(final String objectName, final Metadata metadata);
     void emitBlobTransferredEvent(final BulkObject blob);
+
+    /**
+     * Emit an event when a get transfers less content than was intended.  This event is triggered by catching
+     * a {@link com.spectralogic.ds3client.exceptions.ContentLengthNotMatchException}.
+     * @param ds3Object The blob whose content was only partially transferred.
+     * @param endpoint The host name or IP address of the Black Pearl involved in a transfer that only partially completed.
+     * @param t The {@link com.spectralogic.ds3client.exceptions.ContentLengthNotMatchException}.
+     */
     void emitContentLengthMismatchFailureEvent(final BulkObject ds3Object, final String endpoint, final Throwable t);
 }

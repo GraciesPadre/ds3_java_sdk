@@ -21,6 +21,9 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
 import com.spectralogic.ds3client.Ds3Client;
+import com.spectralogic.ds3client.Ds3ClientBuilder;
+import com.spectralogic.ds3client.commands.spectrads3.GetBulkJobSpectraS3Request;
+import com.spectralogic.ds3client.commands.spectrads3.PutBulkJobSpectraS3Request;
 import com.spectralogic.ds3client.helpers.ChecksumFunction;
 import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 import com.spectralogic.ds3client.helpers.JobPartTracker;
@@ -72,7 +75,7 @@ import java.util.List;
 /**
  * This class allows for building configurable behavior when putting objects to or getting objects
  * from a Black Pearl.  The intent is to provide the ability for transfers to be "streamed" or "random access".
- * Streaming, as used in a transfer strategy, means that a channels and blobs are read or written sequentially.
+ * Streaming, as used in a transfer strategy, means that channels and blobs are read or written sequentially.
  * You would use a streaming strategy when it is important that the source or destination channel is read or
  * written in a predictable, sequential order while a transfer is in progress.
  * Random access means that channels and blobs are read and written in no particular order.  You would use
@@ -90,6 +93,19 @@ import java.util.List;
  * {@link TransferStrategyBuilder#makeGetTransferStrategy()}.  Once you have a TransferStrategy
  * interface instance, calling {@link TransferStrategy#transfer()} on the TransferStrategy interface initiates
  * data movement.
+ *
+ * If using a {@link TransferStrategy} directly, as oppsed to going through a {@link Ds3ClientHelpers.Job}, the minimum
+ * needed as configuration items in a put transfer strategy builder are:
+ * <ul>
+ *     <li>{@link TransferStrategyBuilder#withDs3Client(Ds3Client)}</li>
+ *     <li>{@link TransferStrategyBuilder#withMasterObjectList(MasterObjectList)}</li>
+ *     <li>{@link TransferStrategyBuilder#withChannelBuilder(Ds3ClientHelpers.ObjectChannelBuilder)}</li>
+ * </ul>
+ *
+ * When doing a get using a transfer strategy directly, you also need to specify:
+ * <ul>
+ *     <li>{@link TransferStrategyBuilder#withRangesForBlobs(ImmutableMap)}</li>
+ * </ul>
  */
 public final class TransferStrategyBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(TransferStrategyBuilder.class);
@@ -274,25 +290,49 @@ public final class TransferStrategyBuilder {
         return this;
     }
 
+    /**
+     * When not directly using {@link TransferStrategyBuilder#withChunkAttemptRetryBehavior(ChunkAttemptRetryBehavior)},
+     * this property is used to make a {@link ChunkAttemptRetryBehavior} instance.  Doing so uses the behavior this SDK used prior to introducing transfer behavior
+     * configuration: a value less than 0 causes a failed chunk operation to be retried indefinitely; a value greater than 0
+     * causes a failed chunk operation to be retried no more than the value specified before giving up.  If you do not
+     * specify a value, this builder will use the same value as used in this SDK prior to introducing transfer behavior.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withNumChunkAttemptRetries(final int numChunkAttemptRetries) {
         this.numChunkAttemptRetries = numChunkAttemptRetries;
         return this;
     }
 
-    public TransferStrategyBuilder withRetryDelayInSeconds(final int retryDelayInSeconds) {
+    /**
+     * When not directly using {@link TransferStrategyBuilder#withChunkAttemptRetryDelayBehavior(ChunkAttemptRetryDelayBehavior)},
+     * this property is used to create a {@link ChunkAttemptRetryDelayBehavior} instance.  Doing so uses the behavior this SDK used prior to introducing transfer behavior
+     * configuration: a value less than 0 causes a failed chunk operation to use the retry delay value a Black Pearl returns
+     * as part of the chunk operation failure response; a value greater than 0
+     * causes a failed chunk operation to the value specified in the {@code retryDelayInSeconds} parameter.  If you do not
+     * specify a value, this builder will use the same value as used in this SDK prior to introducing transfer behavior.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
+    public TransferStrategyBuilder withChunkRetryDelayInSeconds(final int retryDelayInSeconds) {
         this.chunkRetryDelayInSeconds = retryDelayInSeconds;
         return this;
     }
 
+    /**
+     * The {@link Ds3Client} instance representing the Black Pearl you want to work with.  The primary way to
+     * get a client instance is to call {@link Ds3ClientBuilder#fromEnv()}.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withDs3Client(final Ds3Client ds3Client) {
         this.ds3Client = ds3Client;
         return this;
     }
 
-    public Ds3Client ds3Client() {
-        return ds3Client;
-    }
-
+    /**
+     * The {@link MasterObjectList} returned primarily retrieved from a call to {@link Ds3Client#putBulkJobSpectraS3(PutBulkJobSpectraS3Request)}
+     * or {@link Ds3Client#getBulkJobSpectraS3(GetBulkJobSpectraS3Request)}.  The master object list is used in
+     * creating the ability to work with a blob strategy.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withMasterObjectList(final MasterObjectList masterObjectList) {
         this.masterObjectList = masterObjectList;
         jobId = masterObjectList.getJobId().toString();
@@ -304,41 +344,116 @@ public final class TransferStrategyBuilder {
         return masterObjectList;
     }
 
+    /**
+     * When getting portions of objects from a Black Pearl, object ranges are the mechanism used to tell the Blavk Pearl
+     * which portions of obejcts to get.
+     * @param rangesForBlobs When retrieving whole objects, you supply an empty range, e.g.:
+     *                       <pre>
+     *                       {@code
+     *                       final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+     *                           .withDs3Client(client)
+     *                           .withMasterObjectList(masterObjectList)
+     *                           .withChannelBuilder(new FileObjectGetter(tempDirectory))
+     *                           .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(),
+     *                               PartialObjectHelpers.getPartialObjectsRanges(objects)));
+     *                       }
+     *                       </pre>
+     *
+     *                       When retrieving partial objects, you can build a list by doing something like:
+     *                       <pre>
+     *                       {@code
+     *                       final List<Ds3Object> filesToGet = new ArrayList<>();
+     *                       final int offsetIntoFirstRange = 10;
+     *                       filesToGet.add(new PartialDs3Object(FILE_NAME, Range.byLength(200000, 100000)));
+     *                       filesToGet.add(new PartialDs3Object(FILE_NAME, Range.byLength(100000, 100000)));
+     *                       filesToGet.add(new PartialDs3Object(FILE_NAME, Range.byLength(offsetIntoFirstRange, 100000)));
+     *
+     *                       final TransferStrategyBuilder transferStrategyBuilder = new TransferStrategyBuilder()
+     *                           .withDs3Client(client)
+     *                           .withMasterObjectList(masterObjectList)
+     *                           .withChannelBuilder(new FileObjectGetter(tempDirectory))
+     *                           .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(),
+     *                               PartialObjectHelpers.getPartialObjectsRanges(filesToGet)));
+     *                       }
+     *                       </pre>
+     *
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withRangesForBlobs(final ImmutableMap<String, ImmutableMultimap<BulkObject, Range>> rangesForBlobs) {
         this.rangesForBlobs = rangesForBlobs;
         return this;
     }
 
+    /**
+     * Supply an instance of {@link Ds3ClientHelpers.MetadataAccess} to record metadata as part pf a put transfer.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withMetadataAccess(final Ds3ClientHelpers.MetadataAccess metadataAccess) {
         this.metadataAccess = metadataAccess;
         return this;
     }
 
+    /**
+     * Supply an instance of {@link ChunkAttemptRetryBehavior} when you need to have specialized control over retrying
+     * a failed chunk operation.  The 2 primary implementations for this are {@link MaxChunkAttemptsRetryBehavior}
+     * and {@link ContinueForeverChunkAttemptsRetryBehavior}.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withChunkAttemptRetryBehavior(final ChunkAttemptRetryBehavior chunkAttemptRetryBehavior) {
         this.chunkAttemptRetryBehavior = chunkAttemptRetryBehavior;
         return this;
     }
 
+    /**
+     * Supply an instance of {@link ChunkAttemptRetryDelayBehavior} when you need to have specialized control over the length
+     * of time to delay between retrying a filed chunk operation.  The 2 primary implementations are {@link ClientDefinedChunkAttemptRetryDelayBehavior},
+     * which will always use the delay interval a client specifies, and {@link BlackPearlChunkAttemptRetryDelayBehavior},
+     * which will use the retry delay a Black Pearl returns in its payload when a chunk operation cannot be completed.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withChunkAttemptRetryDelayBehavior(final ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior) {
         this.chunkAttemptRetryDelayBehavior = chunkAttemptRetryDelayBehavior;
         return this;
     }
 
+    /**
+     * Specify an {@link EventRunner} to use when dispatching events.  The primary reason for specifying this is to determine
+     * which threading model is used to deliver events.  If it is important that events are delivered on the same thread,
+     * meaning that the deleivery order is deterministic, use {@link SameThreadEventRunner}, which is the event runner instance this SDK uses.
+     * You may specify the {@link com.spectralogic.ds3client.helpers.events.ConcurrentEventRunner} if you want events
+     * delivered on separate threads.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder withEventRunner(final EventRunner eventRunner) {
         this.eventRunner = eventRunner;
         return this;
     }
 
+    /**
+     * Setting this property causes this SDK to read and write channels from beginning to end sequentially and causes
+     * blob retrieval to be in order.  Transfers happen on a single-threaded executor.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder usingStreamedTransferBehavior() {
         transferBehaviorType = TransferBehaviorType.StreamingTransferBehavior;
         return this;
     }
 
+    /**
+     * Setting this property causes this SDK to read and write channels in no particular order and
+     * specifies no order in retrieving blobs.  Transfers happen in a multi-threaded executor.
+     * @return The instance of this builder, with the intent that you can string together the behaviors you wish.
+     */
     public TransferStrategyBuilder usingRandomAccessTransferBehavior() {
         transferBehaviorType = TransferBehaviorType.RandomAccessTransferBehavior;
         return this;
     }
 
+    /**
+     * Get an instance of {@link TransferStrategy} configured with this builders current settings.  Once you
+     * have an instance, you initiate a put by calling {@link TransferStrategy#transfer()}.
+     * @return Once you have an instance, you initiate a get by calling {@link TransferStrategy#transfer()}.
+     */
     public TransferStrategy makePutTransferStrategy() {
         failureActivity = FailureEvent.FailureActivity.PuttingObject;
 
@@ -684,6 +799,10 @@ public final class TransferStrategyBuilder {
                 });
     }
 
+    /**
+     * Get an instance of {@link TransferStrategy} configured with this builders current settings.
+     * @return  Once you have an instance, you initiate a get by calling {@link TransferStrategy#transfer()}.
+     */
     public TransferStrategy makeGetTransferStrategy() {
         failureActivity = FailureEvent.FailureActivity.GettingObject;
 

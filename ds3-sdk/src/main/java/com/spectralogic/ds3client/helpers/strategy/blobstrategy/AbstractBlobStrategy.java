@@ -50,6 +50,10 @@ public abstract class AbstractBlobStrategy implements BlobStrategy {
         }));
     }
 
+    /**
+     * Emit an event when a blob is transferred.
+     * @param bulkObject The transferred blob.
+     */
     public abstract void blobCompleted(final BulkObject bulkObject);
 
     public Ds3Client client() {

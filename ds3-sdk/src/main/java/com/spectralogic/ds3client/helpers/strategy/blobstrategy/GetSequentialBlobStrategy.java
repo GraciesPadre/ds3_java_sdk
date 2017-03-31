@@ -41,6 +41,9 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A subclass of {@link BlobStrategy} used in get transfers.
+ */
 public class GetSequentialBlobStrategy extends AbstractBlobStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(GetSequentialBlobStrategy.class);
 
@@ -157,6 +160,10 @@ public class GetSequentialBlobStrategy extends AbstractBlobStrategy {
         return Iterables.concat(outstandingJobParts, jobParts);
     }
 
+    /**
+     * Emit an event when a blob is transferred.
+     * @param bulkObject The transferred blob.
+     */
     @Override
     public void blobCompleted(final BulkObject bulkObject) {
         synchronized (lock) {

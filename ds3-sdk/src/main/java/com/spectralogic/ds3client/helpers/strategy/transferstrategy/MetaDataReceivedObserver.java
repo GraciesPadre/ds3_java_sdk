@@ -19,9 +19,16 @@ import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.MetadataReceivedListener;
 import com.spectralogic.ds3client.helpers.events.MetadataEvent;
 
+/**
+ * This class provides the ability to emit an event when we receive metadata during a get operation.
+ */
 public class MetaDataReceivedObserver extends AbstractObserver<MetadataEvent> {
     private MetadataReceivedListener metadataReceivedListener;
 
+    /**
+     * @param metadataReceivedListener An instance of {@link MetadataReceivedListener} wrapped in an event
+     *                                 updater.
+     */
     public MetaDataReceivedObserver(final MetadataReceivedListener metadataReceivedListener) {
         super(new UpdateStrategy<MetadataEvent>() {
             @Override
@@ -35,6 +42,10 @@ public class MetaDataReceivedObserver extends AbstractObserver<MetadataEvent> {
         this.metadataReceivedListener = metadataReceivedListener;
     }
 
+    /**
+     * @param updateStrategy An {@link UpdateStrategy} whose implementation determines how to emit a metadata
+     *                       event.
+     */
     public MetaDataReceivedObserver(final UpdateStrategy<MetadataEvent> updateStrategy) {
         super(updateStrategy);
     }

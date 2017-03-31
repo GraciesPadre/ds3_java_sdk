@@ -25,6 +25,12 @@ import java.nio.channels.SeekableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * A subclass of {@link ChannelStrategy} used to provide "streamed" access to a channel,
+ * where streamed means that the channel will be accessed in sequentially increasing offsets.
+ * This class acts as an aggregator that references 1 underlying channel for any number of blobs that
+ * reference the channel.
+ */
 public class SequentialChannelStrategy implements ChannelStrategy {
     private final Object lock = new Object();
 
@@ -35,6 +41,15 @@ public class SequentialChannelStrategy implements ChannelStrategy {
     private final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder;
     private final ChannelPreparable channelPreparer;
 
+    /**
+     * @param channelStrategy The instance of {@link ChannelStrategy} that holds the 1 channel reference a blob needs
+     *                        to transfer data.
+     * @param objectChannelBuilder An instance of {@link com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder};
+     *                             usually an instance of {@link com.spectralogic.ds3client.helpers.FileObjectPutter}
+     *                             or {@link com.spectralogic.ds3client.helpers.FileObjectGetter}.
+     * @param channelPreparer An instance of {@link ChannelPreparable} used to prepare a channel prior to moving data, most likely
+     *                        either {@link TruncatingChannelPreparable} or {@link NullChannelPreparable}.
+     */
     public SequentialChannelStrategy(final ChannelStrategy channelStrategy,
                                      final Ds3ClientHelpers.ObjectChannelBuilder objectChannelBuilder,
                                      final ChannelPreparable channelPreparer)
@@ -44,6 +59,14 @@ public class SequentialChannelStrategy implements ChannelStrategy {
         this.channelPreparer = channelPreparer;
     }
 
+    /**
+     * For a blob to be transferred, create a channel that will be the source for or destination
+     * of that transferred blob.
+     * @param blob The blob to be transferred.
+     * @return A {@link SeekableByteChannel} that will be the source for or destination
+     * of that transferred blob.
+     * @throws IOException
+     */
     @Override
     public SeekableByteChannel acquireChannelForBlob(final BulkObject blob) throws IOException {
         synchronized (lock) {
@@ -71,6 +94,14 @@ public class SequentialChannelStrategy implements ChannelStrategy {
         return seekableByteChannelDecorator;
     }
 
+    /**
+     * When a blob has been transferred, release the source or destination channel associated with that
+     * blob.
+     * @param seekableByteChannel A {@link SeekableByteChannel} that had been allocated as the source for or destination
+     *                            of a blob transfer.
+     * @param blob The blob {@code seekableByteChannel} was allocated to source or sink {@code blob}'s data.
+     * @throws IOException
+     */
     @Override
     public void releaseChannelForBlob(final SeekableByteChannel seekableByteChannel, final BulkObject blob) throws IOException {
         synchronized (lock) {

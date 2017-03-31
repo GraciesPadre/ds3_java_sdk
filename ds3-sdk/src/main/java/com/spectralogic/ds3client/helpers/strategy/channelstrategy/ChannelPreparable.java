@@ -19,6 +19,18 @@ import com.spectralogic.ds3client.helpers.Ds3ClientHelpers;
 
 import java.io.IOException;
 
+/**
+ * When initiating data movement in a put or get, the source or destination channel my need some sort of
+ * preparation.  For instance, when initiating a get, the destination channel may need to be truncated
+ * prior to moving data.
+ */
 public interface ChannelPreparable {
+    /**
+     * Prepare a channel prior to moving data.
+     * @param channelName The channel's identifier.
+     * @param channelBuilder The instance of {@link com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder}
+     *                       used to create a channel.
+     * @throws IOException
+     */
     void prepareChannel(final String channelName, final Ds3ClientHelpers.ObjectChannelBuilder channelBuilder) throws IOException;
 }

@@ -19,9 +19,16 @@ import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.FailureEventListener;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 
+/**
+ * This class provides the ability to emit an event when we have encountered an exception
+ * during a blob transfer.
+ */
 public class FailureEventObserver extends AbstractObserver<FailureEvent> {
     private FailureEventListener failureEventListener;
 
+    /**
+     * @param failureEventListener An instance of {@link FailureEventListener} wrapped in an event updater.
+     */
     public FailureEventObserver(final FailureEventListener failureEventListener) {
         super(new UpdateStrategy<FailureEvent>() {
             @Override
@@ -35,6 +42,10 @@ public class FailureEventObserver extends AbstractObserver<FailureEvent> {
         this.failureEventListener = failureEventListener;
     }
 
+    /**
+     * @param updateStrategy An interface whose implementation determines how to handle a failure
+     *                       event.
+     */
     public FailureEventObserver(final UpdateStrategy<FailureEvent> updateStrategy) {
         super(updateStrategy);
     }

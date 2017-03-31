@@ -21,9 +21,22 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * When initiating data movement in a put or get, the source or destination channel my need some sort of
+ * preparation.  For instance, when initiating a get, the destination channel may need to be truncated
+ * prior to moving data.
+ */
 public class TruncatingChannelPreparable implements ChannelPreparable {
     private final Set<String> channelNames = new HashSet<>();
 
+    /**
+     * Prepare a channel prior to moving data. This will truncate a chennal prior to opening it the
+     * first time.
+     * @param channelName The channel's identifier.
+     * @param channelBuilder The instance of {@link com.spectralogic.ds3client.helpers.Ds3ClientHelpers.ObjectChannelBuilder}
+     *                       used to create a channel.
+     * @throws IOException
+     */
     @Override
     public void prepareChannel(final String channelName, final Ds3ClientHelpers.ObjectChannelBuilder channelBuilder) throws IOException {
         if (channelNames.add(channelName)) {

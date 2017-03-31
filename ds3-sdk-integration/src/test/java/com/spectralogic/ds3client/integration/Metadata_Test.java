@@ -168,7 +168,7 @@ public class Metadata_Test {
         }
     }
 
-    private static SeekableByteChannel buildRandomChannel(int length) throws IOException {
+    private static SeekableByteChannel buildRandomChannel(final int length) throws IOException {
 
         final byte[] randomData = IOUtils.toByteArray(new RandomDataInputStream(System.currentTimeMillis(), length));
         final ByteBuffer randomBuffer = ByteBuffer.wrap(randomData);

@@ -33,6 +33,9 @@ import com.spectralogic.ds3client.utils.Guard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The HTTP PUT implementation class that retrieves a blob from a Black Pearl.
+ */
 public class PutJobTransferMethod implements TransferMethod {
     private static final Logger LOG = LoggerFactory.getLogger(PutJobTransferMethod.class);
 
@@ -61,6 +64,11 @@ public class PutJobTransferMethod implements TransferMethod {
         this.metadataAccess = metadataAccess;
     }
 
+    /**
+     * @param jobPart An instance of {@link JobPart}, which tells us which Black Pearl is the source
+     *                or destination for a blob transfer.
+     * @throws IOException
+     */
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
         final BulkObject blob = jobPart.getBulkObject();

@@ -18,6 +18,13 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import java.io.Closeable;
 import java.io.IOException;
 
+/**
+ * Define the contract for concrete classes that implement data movement.
+ */
 public interface TransferStrategy extends Closeable {
+    /**
+     * Perform data movement according to the properties you specify in {@link TransferStrategyBuilder}.
+     * @throws IOException
+     */
     void transfer() throws IOException;
 }

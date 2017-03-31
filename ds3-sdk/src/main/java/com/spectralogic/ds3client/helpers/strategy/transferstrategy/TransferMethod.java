@@ -19,6 +19,14 @@ import com.spectralogic.ds3client.helpers.JobPart;
 
 import java.io.IOException;
 
+/**
+ * Define the contract used to put or get a blob.
+ */
 public interface TransferMethod {
+    /**
+     * @param jobPart An instance of {@link JobPart}, which tells us which Black Pearl is the source
+     *                or destination for a blob transfer.
+     * @throws IOException
+     */
     void transferJobPart(final JobPart jobPart) throws IOException;
 }

@@ -18,9 +18,16 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.base.Preconditions;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 
+/**
+ * An {@link Observer} that enables sending event when a DS3 object transfer completes.
+ */
 public class ObjectCompletedObserver extends AbstractObserver<String> {
     private ObjectCompletedListener objectCompletedListener;
 
+    /**
+     * @param objectCompletedListener An {@link ObjectCompletedListener} wrapped in an event
+     *                                updater.
+     */
     public ObjectCompletedObserver(final ObjectCompletedListener objectCompletedListener) {
         super(new UpdateStrategy<String>() {
             @Override
@@ -34,6 +41,10 @@ public class ObjectCompletedObserver extends AbstractObserver<String> {
         this.objectCompletedListener = objectCompletedListener;
     }
 
+    /**
+     * @param updateStrategy An {@link UpdateStrategy} whose implementation determines how to handle a DS3 object transfer
+     *                       completion.
+     */
     public ObjectCompletedObserver(final UpdateStrategy<String> updateStrategy) {
         super(updateStrategy);
     }

@@ -29,6 +29,9 @@ import com.spectralogic.ds3client.models.common.Range;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 
+/**
+ * The HTTP GET implementation class that retrieves a blob from a Black Pearl.
+ */
 public class GetJobTransferMethod implements TransferMethod {
     private final ChannelStrategy channelStrategy;
     private final String bucketName;
@@ -51,6 +54,11 @@ public class GetJobTransferMethod implements TransferMethod {
         this.rangesForBlobs = rangesForBlobs;
     }
 
+    /**
+     * @param jobPart An instance of {@link JobPart}, which tells us which Black Pearl is the source
+     *                or destination for a blob transfer.
+     * @throws IOException
+     */
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
         final SeekableByteChannel seekableByteChannel = channelStrategy.acquireChannelForBlob(jobPart.getBulkObject());

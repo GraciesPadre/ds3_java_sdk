@@ -15,6 +15,10 @@
 
 package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
+/**
+ * An interface whose implementation determines the specific {@link TransferMethod} subclass to create
+ * when building a {@link TransferStrategy} in {@link TransferStrategyBuilder}.
+ */
 interface TransferMethodMaker {
     TransferMethod makeTransferMethod();
 }

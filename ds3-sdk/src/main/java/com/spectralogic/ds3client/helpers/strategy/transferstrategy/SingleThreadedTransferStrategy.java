@@ -23,6 +23,9 @@ import com.spectralogic.ds3client.models.MasterObjectList;
 
 import java.util.concurrent.Executors;
 
+/**
+ * An implementation of {@link TransferStrategy} that runs transfers in a single-threaded executor.
+ */
 public class SingleThreadedTransferStrategy extends AbstractTransferStrategy {
     public SingleThreadedTransferStrategy(final BlobStrategy blobStrategy,
                                           final JobState jobState,

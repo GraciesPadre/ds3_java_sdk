@@ -21,6 +21,10 @@ import com.spectralogic.ds3client.helpers.JobPart;
 
 import java.io.IOException;
 
+/**
+ * A {@link TransferRetryDecorator} that will continue to retry a blob transfer at most {@code maxNumObjectTransferAttempts}
+ * times, until the transfer either succeeds or experiences an unrecoverable exception.
+ */
 public class MaxNumObjectTransferAttemptsDecorator implements TransferRetryDecorator {
     private final int maxNumObjectTransferAttempts;
     private TransferMethod transferMethodDelegate;
@@ -29,6 +33,11 @@ public class MaxNumObjectTransferAttemptsDecorator implements TransferRetryDecor
         this.maxNumObjectTransferAttempts = maxNumObjectTransferAttempts;
     }
 
+    /**
+     * @param transferMethod An instance of {@link TransferMethod} used as a delegate when attempting a transfer.
+     * @return An instance of this class, with the intent to be able to chain a call to
+     *         {@code transferJobPart}.
+     */
     @Override
     public TransferMethod wrap(final TransferMethod transferMethod) {
         Preconditions.checkNotNull(transferMethod, "transferMethod may not be null.");
@@ -36,6 +45,11 @@ public class MaxNumObjectTransferAttemptsDecorator implements TransferRetryDecor
         return this;
     }
 
+    /**
+     * @param jobPart An instance of {@link JobPart}, which tells us which Black Pearl is the source
+     *                or destination for a blob transfer.
+     * @throws IOException
+     */
     @Override
     public void transferJobPart(final JobPart jobPart) throws IOException {
         int objectTransfersAttempted = 0;

@@ -18,6 +18,9 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.ChecksumType;
 
+/**
+ * The event emitted when we have computed the checksum for a blob to be transferred to a Black Pearl.
+ */
 public class ChecksumEvent {
     private final BulkObject blob;
     private final ChecksumType.Type checksumType;
