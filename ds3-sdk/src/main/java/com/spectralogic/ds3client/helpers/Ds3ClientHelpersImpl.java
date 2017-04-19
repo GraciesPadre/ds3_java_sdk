@@ -218,7 +218,7 @@ class Ds3ClientHelpersImpl extends Ds3ClientHelpers {
 
         final MasterObjectList masterObjectList = getBulkJobSpectraS3Response.getResult();
 
-        transferStrategyBuilder.withMasterObjectList(getBulkJobSpectraS3Response.getResult())
+        transferStrategyBuilder.withMasterObjectList(masterObjectList)
                 .withRangesForBlobs(PartialObjectHelpers.mapRangesToBlob(masterObjectList.getObjects(), partialRanges));
 
         return new ReadJobImpl(transferStrategyBuilder);
