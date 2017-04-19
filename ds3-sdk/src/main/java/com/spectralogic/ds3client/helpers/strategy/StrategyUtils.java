@@ -19,32 +19,31 @@ import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
-import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.models.BulkObject;
 import com.spectralogic.ds3client.models.JobNode;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.common.Range;
-import com.spectralogic.ds3client.utils.ResourceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
 public final class StrategyUtils {
-
     private static final Logger LOG = LoggerFactory.getLogger(StrategyUtils.class);
 
-    public static Ds3Client getClient(final ImmutableMap<UUID, JobNode> nodeMap, final UUID nodeId, final Ds3Client mainClient) {
+    // private static final Map<JobNode, Ds3Client> jobNodeDs3ClientMap = new WeakHashMap<>();
+
+    // TODO: When we get to the point where BP enables clustering, we'll want to be able to get the
+    // client connection info correct for the server on which a chunk resides. StrategyUtils.getClient
+    // appears to work to support the clustering scenario, but we don't need it right now, and holding
+    // connection info in a collection potentially exposes lifetime management issues that we haven't
+    // fully explored.
+    /*
+    public synchronized static Ds3Client getClient(final ImmutableMap<UUID, JobNode> nodeMap, final UUID nodeId, final Ds3Client mainClient) {
         final JobNode jobNode = nodeMap.get(nodeId);
 
         if (jobNode == null) {
@@ -52,8 +51,16 @@ public final class StrategyUtils {
             return mainClient;
         }
 
-        return mainClient.newForNode(jobNode);
+        Ds3Client ds3Client = jobNodeDs3ClientMap.get(jobNode);
+
+        if (ds3Client == null) {
+            ds3Client = mainClient.newForNode(jobNode);
+            jobNodeDs3ClientMap.put(jobNode, ds3Client);
+        }
+
+        return ds3Client;
     }
+    */
 
     public static ImmutableMap<UUID, JobNode> buildNodeMap(final Iterable<JobNode> nodes) {
         final ImmutableMap.Builder<UUID, JobNode> nodeMap = ImmutableMap.builder();
