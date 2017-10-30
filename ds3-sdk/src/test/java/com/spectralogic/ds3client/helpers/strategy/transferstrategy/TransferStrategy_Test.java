@@ -18,7 +18,7 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 import com.google.common.collect.Sets;
 import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.JobState;
-import com.spectralogic.ds3client.helpers.events.FailureEvent;
+import com.spectralogic.ds3client.helpers.events.FailureActivity;
 import com.spectralogic.ds3client.helpers.events.SameThreadEventRunner;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.models.BulkObject;
@@ -54,7 +54,7 @@ public class TransferStrategy_Test {
                 10,
                 new EventDispatcherImpl(new SameThreadEventRunner()),
                 masterObjectList(),
-                FailureEvent.FailureActivity.GettingObject)
+                FailureActivity.GettingObject)
                 .withTransferMethod(transferMethod(blobsTransferredSuccessfully, blobsThatFailed, numTimesTransferCalled))
                 .transfer();
 

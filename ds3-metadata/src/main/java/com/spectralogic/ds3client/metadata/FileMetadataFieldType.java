@@ -15,21 +15,22 @@
 
 package com.spectralogic.ds3client.metadata;
 
-import com.spectralogic.ds3client.metadata.interfaces.MetadataRestore;
-import com.spectralogic.ds3client.networking.Metadata;
-import com.spectralogic.ds3client.utils.Platform;
+public enum FileMetadataFieldType {
+    LastModifiedTime(FileMetadataFieldNames.LAST_MODIFIED_TIME),
+    LastAccessedTime(FileMetadataFieldNames.LAST_ACCESSED_TIME),
+    CreationTime(FileMetadataFieldNames.CREATION_TIME),
+    ChangedTime(FileMetadataFieldNames.CHANGED_TIME),
+    OwnerId(FileMetadataFieldNames.OWNER),
+    GroupId(FileMetadataFieldNames.GROUP),
+    Mode(FileMetadataFieldNames.MODE);
 
+    private final String metadataFieldId;
 
-public class MetadataRestoreFactory {
-    public MetadataRestore getOSSpecificMetadataRestore(final Metadata metadata, final String filePath) {
-        final String localOS = MetaDataUtil.getOS();
-        
-        if (Platform.isWindows()) {
-            return new WindowsMetadataRestore(metadata, filePath, localOS);
-        } else if (Platform.isMac()) {
-            return new MACMetadataRestore(metadata, filePath, localOS);
-        } else {
-            return new PosixMetadataRestore(metadata, filePath, localOS);
-        }
+    FileMetadataFieldType(final String metadataFieldId) {
+        this.metadataFieldId = metadataFieldId;
+    }
+
+    public String metadataFieldId() {
+        return metadataFieldId;
     }
 }

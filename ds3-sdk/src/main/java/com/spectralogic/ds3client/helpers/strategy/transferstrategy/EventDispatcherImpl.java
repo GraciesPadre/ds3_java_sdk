@@ -25,6 +25,7 @@ import com.spectralogic.ds3client.helpers.MetadataReceivedListener;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
+import com.spectralogic.ds3client.helpers.events.FailureActivity;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.events.MetadataEvent;
 import com.spectralogic.ds3client.models.BulkObject;
@@ -309,7 +310,7 @@ public class EventDispatcherImpl implements EventDispatcher {
     @Override
     public void emitContentLengthMismatchFailureEvent(final BulkObject ds3Object, final String endpoint, final Throwable t) {
         final FailureEvent failureEvent = FailureEvent.builder()
-                .doingWhat(FailureEvent.FailureActivity.GettingObject)
+                .doingWhat(FailureActivity.GettingObject)
                 .usingSystemWithEndpoint(endpoint)
                 .withCausalException(t)
                 .withObjectNamed(ds3Object.getName())

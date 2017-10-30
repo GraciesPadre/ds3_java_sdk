@@ -16,7 +16,6 @@
 package com.spectralogic.ds3client.integration;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.spectralogic.ds3client.Ds3Client;
 import com.spectralogic.ds3client.Ds3ClientBuilder;
@@ -26,6 +25,7 @@ import com.spectralogic.ds3client.commands.spectrads3.*;
 import com.spectralogic.ds3client.commands.spectrads3.notifications.*;
 import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.*;
+import com.spectralogic.ds3client.helpers.events.FailureActivity;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.events.SameThreadEventRunner;
 import com.spectralogic.ds3client.helpers.options.WriteJobOptions;
@@ -35,7 +35,7 @@ import com.spectralogic.ds3client.helpers.strategy.channelstrategy.SequentialFil
 import com.spectralogic.ds3client.helpers.strategy.transferstrategy.*;
 import com.spectralogic.ds3client.integration.test.helpers.*;
 import com.spectralogic.ds3client.integration.test.helpers.Ds3ClientShimFactory.ClientFailureType;
-import com.spectralogic.ds3client.metadata.MetadataAccessImpl;
+import com.spectralogic.ds3client.metadata.FileMetadataAccessImpl;
 import com.spectralogic.ds3client.models.*;
 import com.spectralogic.ds3client.models.Objects;
 import com.spectralogic.ds3client.models.bulk.Ds3Object;
@@ -1204,7 +1204,7 @@ public class PutJobManagement_Test {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
                     numFailureEventsFired.getAndIncrement();
-                    assertEquals(FailureEvent.FailureActivity.PuttingObject, failureEvent.doingWhat());
+                    assertEquals(FailureActivity.PuttingObject, failureEvent.doingWhat());
                 }
             };
 
@@ -1268,7 +1268,7 @@ public class PutJobManagement_Test {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
                     numFailureEventsFired.getAndIncrement();
-                    assertEquals(FailureEvent.FailureActivity.PuttingObject, failureEvent.doingWhat());
+                    assertEquals(FailureActivity.PuttingObject, failureEvent.doingWhat());
                 }
             };
 
@@ -1311,7 +1311,7 @@ public class PutJobManagement_Test {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
                     numFailureEventsFired.incrementAndGet();
-                    assertEquals(FailureEvent.FailureActivity.PuttingObject, failureEvent.doingWhat());
+                    assertEquals(FailureActivity.PuttingObject, failureEvent.doingWhat());
                 }
             };
 
@@ -1863,23 +1863,11 @@ public class PutJobManagement_Test {
 
     @Test
     public void testThatMetadataAccessDoesNotTerminateTransfer() throws IOException, URISyntaxException, InterruptedException {
-        final String tempPathPrefix = null;
-        final Path tempDirectory = Files.createTempDirectory(Paths.get("."), tempPathPrefix);
-
         final String fileName = "Gracie.txt";
-
-        final Path filePath = Paths.get(tempDirectory.toString(), fileName);
-
         final List<Ds3Object> ds3Objects = new ArrayList<>();
         ds3Objects.add(new Ds3Object(fileName));
 
         try {
-            if ( ! Platform.isWindows()) {
-                tempDirectory.toFile().setExecutable(false);
-            } else {
-                Runtime.getRuntime().exec("icacls " + tempDirectory.toString() + "/deny Everyone(RD)").waitFor();
-            }
-
             final int maxNumBlockAllocationRetries = 3;
             final int maxNumObjectTransferAttempts = 3;
 
@@ -1890,29 +1878,66 @@ public class PutJobManagement_Test {
             final AtomicInteger numTimesFailureHandlerCalled = new AtomicInteger(0);
 
             final Ds3ClientHelpers.Job writeJob = ds3ClientHelpers.startWriteJob(BUCKET_NAME, ds3Objects);
-            writeJob.withMetadata(new MetadataAccessImpl(ImmutableMap.<String, Path>builder().put(fileName, filePath).build(),
-                    new FailureEventListener() {
-                        @Override
-                        public void onFailure(final FailureEvent failureEvent) {
-                            numTimesFailureHandlerCalled.incrementAndGet();
-                            assertEquals(FailureEvent.FailureActivity.RecordingMetadata, failureEvent.doingWhat());
-                            assertEquals(client.getConnectionDetails().getEndpoint(), failureEvent.usingSystemWithEndpoint());
-                        }
+
+            writeJob.withMetadata(new FileMetadataAccessImpl(Paths.get("."),
+                    failureEvent -> {
+                        numTimesFailureHandlerCalled.incrementAndGet();
+                        assertEquals(FailureActivity.RecordingMetadata, failureEvent.doingWhat());
+                        assertEquals(client.getConnectionDetails().getEndpoint(), failureEvent.usingSystemWithEndpoint());
                     },
                     client.getConnectionDetails().getEndpoint()));
-            writeJob.transfer(new FileObjectGetter(Paths.get(".")));
+
+            writeJob.transfer(new Ds3ClientHelpers.ObjectChannelBuilder() {
+                                  @Override
+                                  public SeekableByteChannel buildChannel(final String key) throws IOException {
+                                      return new SeekableByteChannel() {
+                                          @Override
+                                          public int read(final ByteBuffer dst) throws IOException {
+                                              return 0;
+                                          }
+
+                                          @Override
+                                          public int write(final ByteBuffer src) throws IOException {
+                                              return 0;
+                                          }
+
+                                          @Override
+                                          public long position() throws IOException {
+                                              return 0;
+                                          }
+
+                                          @Override
+                                          public SeekableByteChannel position(final long newPosition) throws IOException {
+                                              return this;
+                                          }
+
+                                          @Override
+                                          public long size() throws IOException {
+                                              return 0;
+                                          }
+
+                                          @Override
+                                          public SeekableByteChannel truncate(final long size) throws IOException {
+                                              return this;
+                                          }
+
+                                          @Override
+                                          public boolean isOpen() {
+                                              return true;
+                                          }
+
+                                          @Override
+                                          public void close() throws IOException {
+
+                                          }
+                                      };
+                                  }
+                              }
+            );
 
             assertEquals(1, numTimesFailureHandlerCalled.get());
         } finally {
-            if ( ! Platform.isWindows()) {
-                tempDirectory.toFile().setExecutable(true);
-            } else {
-                Runtime.getRuntime().exec("icacls " + tempDirectory.toString() + "/grant Everyone(RD)").waitFor();
-            }
-
             deleteAllContents(client, BUCKET_NAME);
-            FileUtils.deleteDirectory(tempDirectory.toFile());
-            Files.delete(Paths.get(fileName));
         }
     }
 

@@ -32,6 +32,7 @@ import com.spectralogic.ds3client.helpers.MetadataAccess;
 import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 import com.spectralogic.ds3client.helpers.ObjectPart;
 import com.spectralogic.ds3client.helpers.events.EventRunner;
+import com.spectralogic.ds3client.helpers.events.FailureActivity;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.events.SameThreadEventRunner;
 import com.spectralogic.ds3client.helpers.strategy.StrategyUtils;
@@ -138,7 +139,7 @@ public final class TransferStrategyBuilder {
     private ChunkAttemptRetryBehavior chunkAttemptRetryBehavior;
     private ChunkAttemptRetryDelayBehavior chunkAttemptRetryDelayBehavior;
     private TransferBehaviorType transferBehaviorType = TransferBehaviorType.OriginalSdkTransferBehavior;
-    private FailureEvent.FailureActivity failureActivity = FailureEvent.FailureActivity.PuttingObject;
+    private FailureActivity failureActivity = FailureActivity.PuttingObject;
 
     /**
      * Use an instance of {@link BlobStrategy} you wish to create or retrieve blobs from a Black Pearl.  There are
@@ -455,7 +456,7 @@ public final class TransferStrategyBuilder {
      * @return Once you have an instance, you initiate a get by calling {@link TransferStrategy#transfer()}.
      */
     public TransferStrategy makePutTransferStrategy() {
-        failureActivity = FailureEvent.FailureActivity.PuttingObject;
+        failureActivity = FailureActivity.PuttingObject;
 
         switch (transferBehaviorType) {
             case StreamingTransferBehavior:
@@ -757,7 +758,7 @@ public final class TransferStrategyBuilder {
                             .withObjectNamed(obj.getName())
                             .withCausalException(e)
                             .usingSystemWithEndpoint(ds3Client.getConnectionDetails().getEndpoint())
-                            .doingWhat(FailureEvent.FailureActivity.ComputingChecksum)
+                            .doingWhat(FailureActivity.ComputingChecksum)
                             .build());
                     LOG.error("Error computing checksum.", e);
                 }
@@ -801,7 +802,7 @@ public final class TransferStrategyBuilder {
      * @return  Once you have an instance, you initiate a get by calling {@link TransferStrategy#transfer()}.
      */
     public TransferStrategy makeGetTransferStrategy() {
-        failureActivity = FailureEvent.FailureActivity.GettingObject;
+        failureActivity = FailureActivity.GettingObject;
 
         switch (transferBehaviorType) {
             case StreamingTransferBehavior:

@@ -15,18 +15,16 @@
 
 package com.spectralogic.ds3client.metadata;
 
-import com.google.common.collect.ImmutableMap;
-import com.spectralogic.ds3client.metadata.interfaces.MetadataStore;
+public final class FileMetadataFieldNames {
+    public static final String LAST_MODIFIED_TIME = "ds3-last-modified-time";
+    public static final String LAST_ACCESSED_TIME = "ds3-last-access-time";
+    public static final String CREATION_TIME = "ds3-create-time";
+    public static final String CHANGED_TIME = "ds3-ctime";
+    public static final String OWNER = "ds3-owner";
+    public static final String GROUP = "ds3-group";
+    public static final String MODE = "ds3-mode";
 
-
-public class MetadataStoreFactory
-{
-    public MetadataStore getOsSpecificMetadataStore(final ImmutableMap.Builder<String, String> metadataMap) {
-        if(MetaDataUtil.getOS().contains("Windows")) {
-            return new WindowsMetadataStore(metadataMap);
-        }
-        else {
-            return new PosixMetadataStore(metadataMap);
-        }
+    private FileMetadataFieldNames() {
+        // Intentionally not implemented
     }
 }

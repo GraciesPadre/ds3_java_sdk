@@ -17,6 +17,7 @@ package com.spectralogic.ds3client.helpers.strategy.transferstrategy;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import com.spectralogic.ds3client.helpers.JobState;
+import com.spectralogic.ds3client.helpers.events.FailureActivity;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.models.MasterObjectList;
@@ -32,7 +33,7 @@ public class MultiThreadedTransferStrategy extends AbstractTransferStrategy {
                                          final int numConcurrentTransferThreads,
                                          final EventDispatcher eventDispatcher,
                                          final MasterObjectList masterObjectList,
-                                         final FailureEvent.FailureActivity failureActivity)
+                                         final FailureActivity failureActivity)
     {
         super(blobStrategy,
               jobState,

@@ -25,6 +25,7 @@ import com.spectralogic.ds3client.commands.spectrads3.PutBulkJobSpectraS3Request
 import com.spectralogic.ds3client.exceptions.Ds3NoMoreRetriesException;
 import com.spectralogic.ds3client.helpers.JobPart;
 import com.spectralogic.ds3client.helpers.JobState;
+import com.spectralogic.ds3client.helpers.events.FailureActivity;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.strategy.blobstrategy.BlobStrategy;
 import com.spectralogic.ds3client.models.MasterObjectList;
@@ -55,7 +56,7 @@ abstract class AbstractTransferStrategy implements TransferStrategy {
     private final ListeningExecutorService executorService;
     private final EventDispatcher eventDispatcher;
     private final MasterObjectList masterObjectList;
-    private final FailureEvent.FailureActivity failureActivity;
+    private final FailureActivity failureActivity;
 
     private final AtomicReference<IOException> cachedException = new AtomicReference<>();
 
@@ -71,8 +72,8 @@ abstract class AbstractTransferStrategy implements TransferStrategy {
      * @param masterObjectList The {@link MasterObjectList} returned primarily retrieved from a call to {@link Ds3Client#putBulkJobSpectraS3(PutBulkJobSpectraS3Request)}
      *                         or {@link Ds3Client#getBulkJobSpectraS3(GetBulkJobSpectraS3Request)}, used primarily
      *                         to add contextual information to events.
-     * @param failureActivity Either {@link com.spectralogic.ds3client.helpers.events.FailureEvent.FailureActivity#PuttingObject} or
-     *                        {@link com.spectralogic.ds3client.helpers.events.FailureEvent.FailureActivity#PuttingObject}, used
+     * @param failureActivity Either {@link com.spectralogic.ds3client.helpers.events.FailureActivity#PuttingObject} or
+     *                        {@link com.spectralogic.ds3client.helpers.events.FailureActivity#PuttingObject}, used
      *                        to add contextual information to events.
      */
     public AbstractTransferStrategy(final BlobStrategy blobStrategy,
@@ -80,7 +81,7 @@ abstract class AbstractTransferStrategy implements TransferStrategy {
                                     final ListeningExecutorService executorService,
                                     final EventDispatcher eventDispatcher,
                                     final MasterObjectList masterObjectList,
-                                    final FailureEvent.FailureActivity failureActivity)
+                                    final FailureActivity failureActivity)
     {
         this.blobStrategy = blobStrategy;
         this.jobState = jobState;
@@ -195,7 +196,7 @@ abstract class AbstractTransferStrategy implements TransferStrategy {
         eventDispatcher.emitFailureEvent(failureEvent);
     }
 
-    private FailureEvent makeFailureEvent(final FailureEvent.FailureActivity failureActivity,
+    private FailureEvent makeFailureEvent(final FailureActivity failureActivity,
                                             final Throwable causalException,
                                             final Objects chunk)
     {

@@ -46,6 +46,7 @@ dependencies {
     compile     group: 'net.java.dev.jna', name: 'jna', version: "$jnaVersion"
     compile     "commons-io:commons-io:$commonsioVersion"
     compile     "org.apache.httpcomponents:httpclient:$httpclientVersion"
+    compile     "com.google.inject:guice:$guiceVersion"
 
     testCompile group: 'org.apache.commons', name: 'commons-lang3', version: "$commonslangVersion"
 }

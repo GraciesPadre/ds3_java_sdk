@@ -38,6 +38,7 @@ import com.spectralogic.ds3client.helpers.ObjectCompletedListener;
 
 import com.spectralogic.ds3client.helpers.UnrecoverableIOException;
 import com.spectralogic.ds3client.helpers.WaitingForChunksListener;
+import com.spectralogic.ds3client.helpers.events.FailureActivity;
 import com.spectralogic.ds3client.helpers.events.FailureEvent;
 import com.spectralogic.ds3client.helpers.events.SameThreadEventRunner;
 import com.spectralogic.ds3client.helpers.options.ReadJobOptions;
@@ -133,13 +134,13 @@ public class GetJobManagement_Test {
     private static final String TEST_ENV_NAME = "GetJobManagement_Test";
     private static final String DISK_FULL_MESSAGE = "There is not enough space on the disk";
     private static TempStorageIds envStorageIds;
-    private static UUID dataPolicyId;
+    private static UUID DATA_POLICY_ID;
 
     @BeforeClass
     public static void startup() throws Exception {
-        dataPolicyId = TempStorageUtil.setupDataPolicy(TEST_ENV_NAME, false, ChecksumType.Type.MD5, client);
-        envStorageIds = TempStorageUtil.setup(TEST_ENV_NAME, dataPolicyId, client);
-        setupBucket(dataPolicyId);
+        DATA_POLICY_ID = TempStorageUtil.setupDataPolicy(TEST_ENV_NAME, false, ChecksumType.Type.MD5, client);
+        envStorageIds = TempStorageUtil.setup(TEST_ENV_NAME, DATA_POLICY_ID, client);
+        setupBucket(DATA_POLICY_ID);
     }
 
     @AfterClass
@@ -751,7 +752,7 @@ public class GetJobManagement_Test {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
                     numFailuresRecorded.incrementAndGet();
-                    assertEquals(FailureEvent.FailureActivity.GettingObject, failureEvent.doingWhat());
+                    assertEquals(FailureActivity.GettingObject, failureEvent.doingWhat());
                 }
             };
 
@@ -806,7 +807,7 @@ public class GetJobManagement_Test {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
                     numFailuresRecorded.incrementAndGet();
-                    assertEquals(FailureEvent.FailureActivity.GettingObject, failureEvent.doingWhat());
+                    assertEquals(FailureActivity.GettingObject, failureEvent.doingWhat());
                 }
             };
 
@@ -949,7 +950,7 @@ public class GetJobManagement_Test {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
                     numFailuresRecorded.incrementAndGet();
-                    assertEquals(FailureEvent.FailureActivity.GettingObject, failureEvent.doingWhat());
+                    assertEquals(FailureActivity.GettingObject, failureEvent.doingWhat());
                 }
             };
 
@@ -983,7 +984,7 @@ public class GetJobManagement_Test {
                 @Override
                 public void onFailure(final FailureEvent failureEvent) {
                     numFailuresRecorded.incrementAndGet();
-                    assertEquals(FailureEvent.FailureActivity.GettingObject, failureEvent.doingWhat());
+                    assertEquals(FailureActivity.GettingObject, failureEvent.doingWhat());
                 }
             };
 

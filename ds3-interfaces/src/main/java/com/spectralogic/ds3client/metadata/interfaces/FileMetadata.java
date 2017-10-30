@@ -13,45 +13,16 @@
  * ****************************************************************************
  */
 
-// This code is auto-generated, do not modify
 package com.spectralogic.ds3client.metadata.interfaces;
+
+import com.google.common.collect.ImmutableMap;
+import com.spectralogic.ds3client.networking.Metadata;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 
-public interface MetadataStore {
-    /**
-     * @param attr basic file attributes
-     */
-    void saveCreationTimeMetaData(final BasicFileAttributes attr);
-
-
-    /**
-     * @param attr basic file attributes
-     */
-    void saveAccessTimeMetaData(final BasicFileAttributes attr);
-
-    /**
-     * @param attr basic file attributes
-     */
-    void saveLastModifiedTime(final BasicFileAttributes attr);
-
-
-    /**
-     * save os meta data and return os name
-     *
-     * @return os name
-     */
-     String saveOSMetaData(final String osName);
-
-    /**
-     *Storing metadata based on OS
-     *
-     * @param file  path of local file
-     * @param attrs FileAttributes
-     */
-    void saveOSSpecificMetadata(final Path file , BasicFileAttributes attrs) throws IOException;
-
-
+public interface FileMetadata {
+    ImmutableMap<String, String> readMetadataFrom(final Path filePath) throws IOException;
+    void writeMetadataTo(final Path filePath, final Metadata metadata) throws IOException;
 }
+
