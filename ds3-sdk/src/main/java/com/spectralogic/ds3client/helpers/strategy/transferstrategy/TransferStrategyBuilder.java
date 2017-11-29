@@ -119,7 +119,7 @@ public final class TransferStrategyBuilder {
     private ChannelStrategy channelStrategy;
     private String bucketName;
     private String jobId;
-    private TransferRetryDecorator transferRetryDecorator = new MaxNumObjectTransferAttemptsDecorator(DEFAULT_OBJECT_TRANSFER_ATTEMPTS);
+    private TransferRetryDecorator transferRetryDecorator = null;
     private ChecksumFunction checksumFunction;
     private ChecksumType.Type checksumType = ChecksumType.Type.NONE;
     private EventRunner eventRunner = new SameThreadEventRunner();
