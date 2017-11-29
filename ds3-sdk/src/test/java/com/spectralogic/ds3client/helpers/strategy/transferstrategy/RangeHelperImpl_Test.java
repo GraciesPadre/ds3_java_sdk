@@ -44,6 +44,10 @@ public class RangeHelperImpl_Test {
         final UnmodifiableIterator<Range> newRangesIterator = newRanges.iterator();
         newRangesIterator.next();
 
+        checkRanges(existingRangesIterator, newRangesIterator);
+    }
+
+    private void checkRanges(final UnmodifiableIterator<Range> existingRangesIterator, final UnmodifiableIterator<Range> newRangesIterator) {
         while (existingRangesIterator.hasNext()) {
             final Range existingRange = existingRangesIterator.next();
             final Range newRange = newRangesIterator.next();
@@ -104,13 +108,7 @@ public class RangeHelperImpl_Test {
         final UnmodifiableIterator<Range> newRangesIterator = newRanges.iterator();
         newRangesIterator.next();
 
-        while (existingRangesIterator.hasNext()) {
-            final Range existingRange = existingRangesIterator.next();
-            final Range newRange = newRangesIterator.next();
-
-            assertEquals(existingRange.getStart(), newRange.getStart());
-            assertEquals(existingRange.getLength(), newRange.getLength());
-        }
+        checkRanges(existingRangesIterator, newRangesIterator);
     }
 
     @Test
@@ -150,13 +148,7 @@ public class RangeHelperImpl_Test {
 
         final UnmodifiableIterator<Range> newRangesIterator = newRanges.iterator();
 
-        while (existingRangesIterator.hasNext()) {
-            final Range existingRange = existingRangesIterator.next();
-            final Range newRange = newRangesIterator.next();
-
-            assertEquals(existingRange.getStart(), newRange.getStart());
-            assertEquals(existingRange.getLength(), newRange.getLength());
-        }
+        checkRanges(existingRangesIterator, newRangesIterator);
     }
 
     @Test
@@ -176,13 +168,7 @@ public class RangeHelperImpl_Test {
 
         final UnmodifiableIterator<Range> newRangesIterator = newRanges.iterator();
 
-        while (existingRangesIterator.hasNext()) {
-            final Range existingRange = existingRangesIterator.next();
-            final Range newRange = newRangesIterator.next();
-
-            assertEquals(existingRange.getStart(), newRange.getStart());
-            assertEquals(existingRange.getLength(), newRange.getLength());
-        }
+        checkRanges(existingRangesIterator, newRangesIterator);
     }
 
     @Test
@@ -200,12 +186,6 @@ public class RangeHelperImpl_Test {
 
         final UnmodifiableIterator<Range> newRangesIterator = newRanges.iterator();
 
-        while (existingRangesIterator.hasNext()) {
-            final Range existingRange = existingRangesIterator.next();
-            final Range newRange = newRangesIterator.next();
-
-            assertEquals(existingRange.getStart(), newRange.getStart());
-            assertEquals(existingRange.getLength(), newRange.getLength());
-        }
+        checkRanges(existingRangesIterator, newRangesIterator);
     }
 }
